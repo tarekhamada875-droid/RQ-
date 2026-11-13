@@ -3,18 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { memo, Suspense } from 'react';
-import { adminService, garageService } from '../../services';
-import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../../services/garageDeletionService';
-import { soundManager } from '../../utils/sounds';
-import { useBackHandler } from '../../hooks/backHandler';
+import React, { memo, Suspense, useEffect, useRef } from 'react';
+import { adminService } from '../../services';
 import { AdminProvider } from '../../hooks/adminContext';
 import { DelayedFallback, ModalSuspenseBackdrop } from '../layout/LoadingFallbacks';
 import { useSession } from '../../hooks/sessionContext';
 import { Garage, Delegate } from '../../types';
-import { normalizeArabicSearch, normalizeDigits } from '../../utils/plates';
 import { isLightColor } from '../../utils/colors';
-import { sortGaragesNewestFirst } from '../../utils/dates';
 import { useLocalStorageState } from '../../hooks/useLocalStorage';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
@@ -23,8 +18,11 @@ import '../../styles/admin-custom-theme.css';
 
 import { AdminHeader } from './AdminHeader';
 import { AdminNavigationAndViews } from './AdminNavigationAndViews';
+import { useAdminModals } from '../../hooks/useAdminModals';
+import { useAdminGarageLists } from '../../hooks/useAdminGarageLists';
+import { useAdminGarageActions } from '../../hooks/useAdminGarageActions';
 
-// PR-G: lazy-load the 4 admin modals so they're code-split into separate
+// PR-G: lazy-load the admin modals so they're code-split into separate
 // chunks. These modals are conditionally rendered (showAppearanceModal,
 // showAddGarageModal, etc.) — eagerly importing them inflates the admin
 // initial bundle with modal code that may never be needed.
@@ -68,145 +66,19 @@ export const AdminDashboard = memo(({
   showToast,
 }: AdminDashboardProps) => {
 
-  // Localized states to encapsulate admin view and prevent global App re-renders
+  // Session + theme + admin color — small UI state that the parent owns.
   const { handleInitiateLogout, handleLogout } = useSession();
   const onLogout = handleInitiateLogout;
   const onImmediateLogout = () => handleLogout(true);
   const systemConfig = useSystemConfig();
-  const [adminSearch, setAdminSearch] = React.useState<string>('');
-  // `activeTab` includes retired values ('overview' | 'packages' | 'trial_leads' |
-  // 'supervisors') so the redirect effect below can detect and migrate them out
-  // of older browsers' localStorage. They have no UI surface.
-  const [activeTab, setActiveTab] = useLocalStorageState<'overview' | 'garages' | 'packages' | 'people' | 'delegates' | 'requests' | 'trial_leads' | 'supervisors' | 'admin-pin' | 'catalog_settings' | 'active_sessions' | 'wallet_settings' | 'credit_rate_settings' | 'daily_garage_reports'>('app_admin_tab', 'garages');
-
-  // Older browser storage may point at retired tabs. Normalize these saved values without touching user data.
-  React.useEffect(() => {
-    if (activeTab === 'supervisors') setActiveTab('people');
-    else if (activeTab === 'trial_leads' || activeTab === 'overview') setActiveTab('garages');
-    else if (activeTab === 'packages') setActiveTab('catalog_settings');
-  }, [activeTab, setActiveTab]);
-
-  const [showAddGarageModal, setShowAddGarageModal] = React.useState<boolean>(false);
-  // (admin back handler moved below — needs confirmDialog + showAppearanceSettings)
-
-  const [pinInput, setPinInput] = React.useState<string>('');
-  const [garageForm, setGarageForm] = React.useState<{
-    name: string;
-    hourlyRate: string;
-    overnightRate: string;
-    phone: string;
-    isTrial: boolean;
-    ownerPin: string;
-  }>({
-    name: '',
-    hourlyRate: '',
-    overnightRate: '',
-    phone: '',
-    isTrial: false,
-    ownerPin: ''
-  });
-
-  const [showMenu, setShowMenu] = React.useState(false);
-  const [showAppearanceSettings, setShowAppearanceSettings] = React.useState(false);
   const [localAdminColor, setLocalAdminColor] = useLocalStorageState<string>('app_admin_color', '#10b981');
   const adminColor = systemConfig?.adminColor || localAdminColor || '#10b981';
-
-  const [confirmDialog, setConfirmDialog] = React.useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void | Promise<void>;
-    onCancel?: () => void;
-    confirmText?: string;
-    cancelText?: string;
-    type?: 'danger' | 'warning' | 'success';
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: () => {},
-  });
-
-  // ── Back-handler registrations ──────────────────────────────────────
-  useBackHandler(() => { confirmDialog.onCancel?.(); setConfirmDialog((d) => ({ ...d, isOpen: false })); return true; }, confirmDialog.isOpen);
-  useBackHandler(() => { setShowAppearanceSettings(false); return true; }, showAppearanceSettings);
-  useBackHandler(() => { setShowAddGarageModal(false); return true; }, showAddGarageModal);
-  useBackHandler(() => { setActiveTab('catalog_settings'); return true; }, activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'wallet_settings' || activeTab === 'credit_rate_settings' || activeTab === 'daily_garage_reports');
-
   const resolvedAdminColor = adminColor;
-  
 
-  const menuRef = React.useRef<HTMLDivElement>(null);
-  const mainScrollRef = React.useRef<HTMLElement>(null);
-
-  React.useEffect(() => {
-    if (mainScrollRef.current) {
-      mainScrollRef.current.scrollTop = 0;
-    }
-  }, [activeTab]);
-
-  const refreshAdminListsAfterMutation = async () => {
-    try {
-      await onRefreshAdminLists?.();
-    } catch (error) {
-      // The mutation succeeded; report refresh failures separately rather than
-      // implying that the saved change itself failed.
-      console.error('Failed to refresh Admin lists after mutation:', error);
-    }
-  };
-
-  const handleApproveGarage = async (garage: Garage) => {
-    try {
-      await garageService.updateGarage(garage.id, { status: 'approved' });
-      soundManager.play('checkIn');
-      showToast?.(`تم قبول وتفعيل جراج "${garage.name}" بنجاح 🚀`, 'success');
-      void refreshAdminListsAfterMutation();
-    } catch (error) {
-      console.error('Failed to approve garage:', error);
-      soundManager.play('error');
-      showToast?.('حدث خطأ أثناء تفعيل الجراج', 'error');
-      throw error;
-    }
-  };
-
-  const handleRejectGarage = async (garage: Garage) => {
-    return new Promise<void>((resolve, reject) => {
-      setConfirmDialog({
-        isOpen: true,
-        title: 'رفض طلب إنشاء جراج',
-        message: `هل أنت متأكد من رفض طلب إنشاء جراج "${garage.name}"؟ سيؤدي ذلك لحذف البيانات نهائياً.`,
-        confirmText: 'نعم، ارفض واحذف',
-        cancelText: 'تراجع',
-        type: 'danger',
-        onConfirm: async () => {
-          try {
-            const result = await deleteGarageWithRecovery(garage.id);
-            if (result.ok === false) {
-              showToast?.(garageDeletionFailureMessage(result), 'error');
-              reject(new Error(result.errorCode));
-              return;
-            }
-            await refreshAdminListsAfterMutation();
-            soundManager.play('error');
-            showToast?.(`تم رفض طلب إنشاء جراج "${garage.name}" وحذف البيانات`, 'success');
-            resolve();
-          } catch (error) {
-            console.error('Failed to reject garage:', error);
-            soundManager.play('error');
-            showToast?.('حدث خطأ أثناء رفض الطلب', 'error');
-            reject(error);
-          } finally {
-            setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-          }
-        },
-        onCancel: () => {
-          resolve();
-        }
-      });
-    });
-  };
-
-  React.useEffect(() => {
+  // Hamburger menu state — small enough to keep local (just a UI toggle).
+  const [showMenu, setShowMenu] = React.useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setShowMenu(false);
@@ -216,61 +88,49 @@ export const AdminDashboard = memo(({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Extracted Stage 4: modal visibility + form state.
+  const {
+    showAddGarageModal,
+    setShowAddGarageModal,
+    showAppearanceSettings,
+    setShowAppearanceSettings,
+    confirmDialog,
+    setConfirmDialog,
+    pinInput,
+    setPinInput,
+    garageForm,
+    setGarageForm,
+    openAddGarageModal,
+  } = useAdminModals();
+
+  // Lock body scroll while the Add Garage modal is open.
   useBodyScrollLock(showAddGarageModal);
 
-  const handleAddGarage = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    try {
-      const created = await createNewGarage(e);
-      if (!created) return false;
-      await refreshAdminListsAfterMutation();
-      setShowAddGarageModal(false);
-      return true;
-    } catch (err) {
-      console.error('Admin garage creation failed:', err);
-      showToast?.(err instanceof Error ? err.message : 'حدث خطأ أثناء إنشاء الجراج', 'error');
-      return false;
-    }
-  };
+  // Extracted Stage 4: tab navigation + garage list pipeline.
+  const {
+    activeTab,
+    setActiveTab,
+    adminSearch,
+    setAdminSearch,
+    approvedGarages,
+    pendingGarages,
+    displayedGarages,
+    mainScrollRef,
+  } = useAdminGarageLists(allGarages);
 
-  const approvedGarages = React.useMemo(() => {
-    return sortGaragesNewestFirst(allGarages.filter(g => g.status !== 'pending'));
-  }, [allGarages]);
-
-  const pendingGarages = React.useMemo(() => {
-    return sortGaragesNewestFirst(allGarages.filter(g => g.status === 'pending'));
-  }, [allGarages]);
-
-  // Pre-normalize search fields once when the garage list changes, not on
-  // every keystroke. Filters out pending garages (never searchable) so the
-  // search loop below only touches approved rows.
-  const searchableGarages = React.useMemo(() => {
-    return allGarages
-      .filter(garage => garage && garage.status !== 'pending')
-      .map(garage => ({
-        garage,
-        normalizedName: normalizeArabicSearch(garage.name || ''),
-        rawPhone: garage.phone || '',
-        normalizedPhone: normalizeDigits(garage.phone || ''),
-      }));
-  }, [allGarages]);
-
-  const displayedGarages = React.useMemo(() => {
-    const rawSearch = adminSearch.trim();
-    if (!rawSearch) return approvedGarages;
-
-    const q = normalizeArabicSearch(rawSearch);
-    const digitQuery = normalizeDigits(rawSearch);
-
-    const filtered = searchableGarages
-      .filter(({ normalizedName, rawPhone, normalizedPhone }) => {
-        const phoneMatch = rawPhone.includes(rawSearch) || (digitQuery ? normalizedPhone.includes(digitQuery) : false);
-        return normalizedName.includes(q) || phoneMatch;
-      })
-      .map(({ garage }) => garage);
-
-    return sortGaragesNewestFirst(filtered);
-  }, [searchableGarages, approvedGarages, adminSearch]);
+  // Extracted Stage 4: garage lifecycle handlers (approve / reject / add).
+  // Depends on the modal-state setters from useAdminModals.
+  const {
+    handleApproveGarage,
+    handleRejectGarage,
+    handleAddGarage,
+  } = useAdminGarageActions({
+    onRefreshAdminLists,
+    createNewGarage,
+    showToast,
+    setConfirmDialog,
+    setShowAddGarageModal,
+  });
 
   return (
     <div
@@ -323,10 +183,7 @@ export const AdminDashboard = memo(({
             setSelectedDelegateForDetails(d);
             setView('admin_delegate_details');
           }}
-          onOpenAddGarage={() => {
-            setPinInput('');
-            setShowAddGarageModal(true);
-          }}
+          onOpenAddGarage={openAddGarageModal}
           handleApproveGarage={handleApproveGarage}
           handleRejectGarage={handleRejectGarage}
           showToast={showToast}
