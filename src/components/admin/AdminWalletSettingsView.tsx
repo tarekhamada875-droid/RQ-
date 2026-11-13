@@ -3,6 +3,7 @@ import { Wallet, Check, Loader2, ChevronRight } from 'lucide-react';
 import { apiFetch } from '../../api/apiClient';
 import { adminService } from '../../services';
 import { FastInput } from '../ui/FastInput';
+import { normalizeDigits } from '../../utils/plates';
 
 interface AdminWalletSettingsViewProps {
   onBack: () => void;
@@ -15,6 +16,12 @@ interface AdminWalletSettingsViewProps {
  *
  * This screen does NOT require PIN re-verification — setting a wallet number is not a
  * security-sensitive operation like changing the admin PIN. The admin is already authenticated.
+ *
+ * The field is digits-only (same FastInput mask pattern as the admin PIN inputs):
+ * a wallet number is a phone-style number, so letters/symbols are stripped live
+ * (including Arabic-Indic digits, which normalizeDigits converts to Western).
+ * handleSave additionally rejects any legacy stored value that contains
+ * non-digits instead of silently saving it.
  */
 export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = ({ onBack }) => {
   const [paymentWalletNumber, setPaymentWalletNumber] = useState<string>('');
@@ -52,18 +59,25 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
       setSaveError('أدخل رقم محفظة الدفع أولاً.');
       return;
     }
-    if (trimmed.length > 120) {
+    // Digits-only: convert Arabic-Indic digits to Western, then reject anything
+    // that still isn't a digit (guards legacy stored values that predate the mask).
+    const normalized = normalizeDigits(trimmed);
+    if (/\D/.test(normalized)) {
+      setSaveError('رقم المحفظة لازم يكون أرقام فقط (بدون حروف أو رموز).');
+      return;
+    }
+    if (normalized.length > 120) {
       setSaveError('رقم المحفظة طويل جداً.');
       return;
     }
-    if (trimmed === originalWalletNumber) {
+    if (normalized === originalWalletNumber) {
       setSaveSuccess('لم يتم تغيير الرقم.');
       return;
     }
     setIsSaving(true);
     try {
-      await adminService.updateSystemConfig({ paymentWalletNumber: trimmed });
-      setOriginalWalletNumber(trimmed);
+      await adminService.updateSystemConfig({ paymentWalletNumber: normalized });
+      setOriginalWalletNumber(normalized);
       setSaveSuccess('تم حفظ رقم محفظة الدفع بنجاح.');
     } catch (err: any) {
       setSaveError('تعذّر حفظ رقم المحفظة. حاول مرة أخرى.');
@@ -107,19 +121,20 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
                 inputMode="tel"
                 defaultValue={paymentWalletNumber}
                 onCommit={(v) => {
-                  setPaymentWalletNumber(v);
+                  setPaymentWalletNumber(normalizeDigits(v).replace(/\D/g, ''));
                   setSaveError('');
                   setSaveSuccess('');
                 }}
                 onLiveValue={(v) => {
-                  setPaymentWalletNumber(v);
+                  setPaymentWalletNumber(normalizeDigits(v).replace(/\D/g, ''));
                   setSaveError('');
                   setSaveSuccess('');
                 }}
+                mask={(v) => normalizeDigits(v).replace(/\D/g, '')}
                 maxLength={120}
                 aria-label={'رقم محفظة الدفع'}
                 required
-                placeholder={'01012345678 / Instapay / محفظة'}
+                placeholder={'01012345678'}
                 className="w-full text-center text-lg font-mono font-bold p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-amber-500 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
                 dir="ltr"
                 autoFocus
