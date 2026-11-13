@@ -1,10 +1,7 @@
 /**
  * Shared route combinators — reduce boilerplate across route handlers.
  *
- * Audit ref: Phase 7 / C2-C3 (consolidated audit, 2026-11-06).
- *
- * C2: extractIdempotencyKey replaces 25+ hand-copied key-extraction
- * preambles across route files.
+ * Audit ref: Phase 7 / C3 (consolidated audit, 2026-11-06).
  *
  * C3: withErrorHandler replaces 18+ try/catch blocks with consistent
  * error formatting. Also eliminates the dead `if (!adminDb)` guards
@@ -12,31 +9,6 @@
  * withErrorHandler catches the ADMIN_SDK_NOT_INITIALIZED throw from
  * the Proxy on first property access).
  */
-
-import { validateIdempotencyKey } from '../validation';
-
-/**
- * Extracts the idempotency key from the request body or headers.
- * Returns null if no key is provided (the request is non-idempotent).
- *
- * Before C2, every route handler that supported idempotency had this
- * same 3-line preamble:
- *   const idempotencyKey = validateIdempotencyKey(
- *     body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key')
- *   );
- *
- * Now it's one function call:
- *   const idempotencyKey = extractIdempotencyKey(c);
- */
-export function extractIdempotencyKey(c: any): string | null {
-  const body = typeof c.req.json === 'function' ? undefined : (c.req.body || {});
-  // Hono's c.req.json() is async and already consumed in the handler,
-  // so we read from the parsed body that the handler already extracted.
-  // This helper reads from c.req.body (if set by middleware) or from
-  // the headers. The handler should pass the already-parsed body.
-  const rawKey = (body?.idempotencyKey) || c.req.header('x-idempotency-key') || c.req.header('idempotency-key');
-  return validateIdempotencyKey(rawKey);
-}
 
 /**
  * Wraps a route handler with try/catch + consistent error formatting.

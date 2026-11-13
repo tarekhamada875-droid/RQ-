@@ -1,15 +1,6 @@
 import crypto from 'crypto';
 import { adminDb } from './firebaseAdmin';
 
-export interface IdempotencyRecord {
-  result: any;
-  endpoint: string;
-  actorUid?: string;
-  requestFingerprint?: string;
-  createdAt: any;
-  expiresAt: any;
-}
-
 const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 function stableValue(value: any): any {

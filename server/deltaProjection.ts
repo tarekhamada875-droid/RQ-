@@ -1,11 +1,6 @@
 import crypto from 'crypto';
 import { parseMoneyAmount } from './money';
 
-export interface OperationMetadata {
-  operationId: string;
-  operationVersion: number;
-}
-
 export interface ProjectionDelta {
   activeVehicleCount?: number;
   entriesToday?: number;

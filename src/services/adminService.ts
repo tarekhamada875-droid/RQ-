@@ -4,7 +4,7 @@ import { adminActivityService } from './adminActivityService';
 import { adminBillingService } from './adminBillingService';
 import { adminSystemConfigService } from './adminSystemConfigService';
 
-export type { AdminSummary, SubscriberPageCursor, SubscriberPageInfo, SubscriberPage } from './adminServiceTypes';
+export type { SubscriberPageCursor, SubscriberPageInfo } from './adminServiceTypes';
 
 export const adminService = {
   ...adminCoreService,

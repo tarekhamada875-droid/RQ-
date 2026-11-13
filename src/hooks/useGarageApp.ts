@@ -269,5 +269,3 @@ export function useGarageApp() {
     adminManagement,
   };
 }
-
-export type GarageAppState = ReturnType<typeof useGarageApp>;

@@ -90,10 +90,6 @@ export function setCachedRole(key: RoleCacheKey, value: Omit<RoleCacheEntry, 'ca
   roleCache.set(k, { ...value, cachedAt: Date.now() });
 }
 
-export function clearRoleCache(): void {
-  roleCache.clear();
-}
-
 export function roleCacheSize(): number {
   return roleCache.size;
 }
@@ -138,10 +134,6 @@ export function setCachedSession(key: SessionCacheKey, user: WorkerUser): void {
     if (lruKey) sessionCache.delete(lruKey);
   }
   sessionCache.set(k, { user, cachedAt: Date.now() });
-}
-
-export function clearSessionCache(): void {
-  sessionCache.clear();
 }
 
 export function sessionCacheSize(): number {

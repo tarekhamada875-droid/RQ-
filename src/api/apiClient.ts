@@ -8,12 +8,6 @@ export interface ApiClientOptions {
   timeoutMs?: number;
 }
 
-export interface ApiSuccessEnvelope<T> {
-  success: true;
-  data?: T;
-  [key: string]: unknown;
-}
-
 /**
  * Loose error shape parsed from unknown server responses.
  * All fields optional because we can't trust the server to always send them.

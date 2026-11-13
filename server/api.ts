@@ -8,5 +8,4 @@
 import { workerApp } from './cloudflareWorker';
 
 export const api = workerApp;
-export type ApiApp = typeof api;
 export default api;
