@@ -31,7 +31,7 @@ export const AdminGarageHeroAndStats = memo(({
   return (
     <section className="space-y-4">
       {/* Garage Hero Identity Banner */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 relative overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 relative overflow-hidden ">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${
@@ -78,7 +78,7 @@ export const AdminGarageHeroAndStats = memo(({
                         e.preventDefault();
                         onOpenEditPin();
                       }}
-                      className="text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline font-bold cursor-pointer"
+                      className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold cursor-pointer"
                     >
                       {'تعديل'}
                     </button>
@@ -93,10 +93,10 @@ export const AdminGarageHeroAndStats = memo(({
             <button
               disabled={isUpdatingLock}
               onClick={onToggleLock}
-              className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-[colors,transform] disabled:opacity-60 cursor-pointer ${
+              className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer ${
                 garage.isLocked
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
-                  : 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm'
+                  ? 'bg-emerald-600 text-white '
+                  : 'bg-rose-600 text-white '
               }`}
             >
               {isUpdatingLock ? (

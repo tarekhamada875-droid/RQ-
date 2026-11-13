@@ -108,11 +108,11 @@ export const AdminGarageDetailsView = memo(({
 
   return (
     <div
-      className={`h-screen bg-[#faf9f6] dark:bg-slate-950 font-sans pb-32 custom-scrollbar-slate text-right text-slate-900 dark:text-slate-100 transition-colors ${showAddStaffModal || staffToDelete ? 'overflow-hidden' : 'overflow-y-auto'}`}
+      className={`h-screen bg-[#faf9f6] dark:bg-slate-950 font-sans pb-32 custom-scrollbar-slate text-right text-slate-900 dark:text-slate-100 ${showAddStaffModal || staffToDelete ? 'overflow-hidden' : 'overflow-y-auto'}`}
       dir="rtl"
     >
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 mb-8 shadow-sm">
+      <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 mb-8 ">
         <div className="max-w-5xl mx-auto flex justify-between items-center h-full">
           <div className="flex items-center gap-3">
             <button
@@ -121,7 +121,7 @@ export const AdminGarageDetailsView = memo(({
                 setSelectedGarageForDetails(null);
                 setShowDeleteConfirm(false);
               }}
-              className="flex items-center justify-center w-11 h-11 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl hover:bg-slate-800 dark:hover:bg-amber-500 outline-none cursor-pointer transition-colors shadow-sm shrink-0"
+              className="flex items-center justify-center w-11 h-11 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl outline-none cursor-pointer shrink-0"
               title={'رجوع'}
             >
               <ChevronRight className={`w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5] `} />
@@ -138,7 +138,7 @@ export const AdminGarageDetailsView = memo(({
             <button
               type="button"
               onClick={() => setShowMenu(!showMenu)}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-[colors,transform] outline-none border ${showMenu ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center outline-none border ${showMenu ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}
             >
               <MoreVertical className="w-5 h-5 text-slate-600 dark:text-slate-400 stroke-[2.5]" />
             </button>
@@ -150,13 +150,13 @@ export const AdminGarageDetailsView = memo(({
                   onClick={() => setShowMenu(false)}
                 />
 
-                <div className={`absolute top-12 left-0 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl z-50 overflow-hidden shadow-xl p-2`}>
+                <div className={`absolute top-12 left-0 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl z-50 overflow-hidden p-2`}>
                   <button
                     onClick={() => {
                       setShowDeleteConfirm(true);
                       setShowMenu(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-600 rounded-xl transition-colors text-xs font-bold"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-rose-600 rounded-xl text-xs font-bold"
                   >
                     <Trash2 className="w-4 h-4" />
                     <span>{'حذف الجراج'}</span>

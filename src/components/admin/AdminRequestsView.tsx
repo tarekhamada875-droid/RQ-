@@ -170,7 +170,7 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
     <div className="max-w-4xl mx-auto space-y-4 dir-rtl text-right font-sans" dir="rtl">
       {/* One slim header for the whole queue — both counters inline next to
           the title instead of two full-width cards with floating badges. */}
-      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
           <ClipboardList className="h-5 w-5" />
         </div>
@@ -220,7 +220,7 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
               return (
                 <div
                   key={item.key}
-                  className="space-y-4 rounded-3xl border-2 border-slate-200 bg-white p-5 shadow-sm transition-[colors,transform] hover:border-emerald-500/50 dark:border-slate-800 dark:bg-slate-900 sm:p-6"
+                  className="space-y-4 rounded-3xl border-2 border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
@@ -256,7 +256,7 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
                       type="button"
                       onClick={() => void processGarage(garage, 'approve')}
                       disabled={isProcessing}
-                      className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3 text-xs font-black text-white shadow-sm transition-[colors,transform] hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 sm:text-sm"
+                      className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3 text-xs font-black text-white shadow-sm disabled:opacity-50 sm:text-sm"
                     >
                       {isApproving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 stroke-[3]" />}
                       <span>{isApproving ? 'جاري التفعيل...' : 'تأكيد وتفعيل الجراج'}</span>
@@ -265,7 +265,7 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
                       type="button"
                       onClick={() => void processGarage(garage, 'reject')}
                       disabled={isProcessing}
-                      className="flex cursor-pointer items-center justify-center gap-1.5 rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-xs font-black text-red-600 transition-[colors,transform] hover:bg-red-100 active:scale-[0.98] disabled:opacity-50 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/50 sm:text-sm"
+                      className="flex cursor-pointer items-center justify-center gap-1.5 rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-xs font-black text-red-600 disabled:opacity-50 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400 sm:text-sm"
                     >
                       {isRejecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4 stroke-[3]" />}
                       <span>{isRejecting ? 'جاري الرفض...' : 'رفض'}</span>
@@ -281,7 +281,7 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
               return (
                 <div
                   key={item.key}
-                  className="space-y-4 rounded-3xl border-2 border-slate-200 bg-white p-5 shadow-sm transition-[colors,transform] hover:border-amber-500/50 dark:border-slate-800 dark:bg-slate-900 sm:p-6"
+                  className="space-y-4 rounded-3xl border-2 border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
@@ -308,7 +308,7 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
                       type="button"
                       onClick={() => void processCreditRequest(request, 'approve')}
                       disabled={isProcessing}
-                      className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3 text-xs font-black text-white shadow-sm transition-[colors,transform] hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 sm:text-sm"
+                      className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3 text-xs font-black text-white shadow-sm disabled:opacity-50 sm:text-sm"
                     >
                       {isApproving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 stroke-[3]" />}
                       <span>{isApproving ? 'جاري الموافقة...' : 'موافقة وإضافة الرصيد'}</span>
@@ -317,7 +317,7 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
                       type="button"
                       onClick={() => void processCreditRequest(request, 'reject')}
                       disabled={isProcessing}
-                      className="flex cursor-pointer items-center justify-center gap-1.5 rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-xs font-black text-red-600 transition-[colors,transform] hover:bg-red-100 active:scale-[0.98] disabled:opacity-50 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/50 sm:text-sm"
+                      className="flex cursor-pointer items-center justify-center gap-1.5 rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-xs font-black text-red-600 disabled:opacity-50 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400 sm:text-sm"
                     >
                       {isRejecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4 stroke-[3]" />}
                       <span>{isRejecting ? 'جاري الرفض...' : 'رفض'}</span>

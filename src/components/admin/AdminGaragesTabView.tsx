@@ -33,7 +33,7 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
             {(
         <button
           onClick={onOpenAddGarage}
-          className="w-full bg-slate-900 dark:bg-emerald-600 text-white dark:text-white py-4 rounded-2xl font-black text-base flex items-center justify-center gap-4 hover:opacity-90 transition-[colors,transform] outline-none active:scale-[0.98]"
+          className="w-full bg-slate-900 dark:bg-emerald-600 text-white dark:text-white py-4 rounded-2xl font-black text-base flex items-center justify-center gap-4 outline-none "
         >
           <Plus className="w-5 h-5 stroke-[3]" />
           <span>{'إضافة جراج جديد'}</span>
@@ -41,7 +41,7 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
       )}
 
       <section className="w-full">
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden ">
           <div className="p-5 border-b border-slate-100 dark:border-slate-800 space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
               <div className="flex items-center gap-4">
@@ -64,7 +64,7 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
           {hasError && (
             <div className="px-4 pb-3 flex items-center justify-between gap-3 text-xs font-bold text-rose-600 dark:text-rose-400">
               <span>{'تعذر تحميل قائمة الجراجات.'}</span>
-              {onRefresh && <button type="button" onClick={() => void onRefresh()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-200 px-3 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/30"><RefreshCw className="w-3.5 h-3.5" /> {'إعادة المحاولة'}</button>}
+              {onRefresh && <button type="button" onClick={() => void onRefresh()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-200 px-3 dark:border-rose-900 "><RefreshCw className="w-3.5 h-3.5" /> {'إعادة المحاولة'}</button>}
             </div>
           )}
           <div className="p-3 sm:p-4 flex flex-col gap-2 min-h-[160px]">
@@ -84,7 +84,7 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
                     onClick={() => {
                                             onSelectGarage(g);
                     }}
-                    className={`w-full bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 rounded-xl px-4 py-3 flex items-center justify-between gap-3 transition-[colors,transform] cursor-pointer active:scale-[0.99] group`}
+                    className={`w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 rounded-xl px-4 py-3 flex items-center justify-between gap-3 cursor-pointer group`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <span className="text-mobile-wrap font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm leading-snug">
@@ -97,7 +97,7 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
                       )}
                     </div>
                     {(
-                      <div className="shrink-0 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors">
+                      <div className="shrink-0 text-slate-400 ">
                         <ChevronLeft className="w-4 h-4" />
                       </div>
                     )}

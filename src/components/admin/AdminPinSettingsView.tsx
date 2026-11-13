@@ -116,14 +116,14 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
 
   return (
     <div className="max-w-2xl mx-auto font-sans">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-10 shadow-xl transition-colors relative overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-10 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-emerald-500/5 to-transparent rounded-full -mr-16 -mt-16 pointer-events-none" />
         
         {!isAdminPinVerified ? (
           /* Stage 1: Identity verification */
           <div>
             <div className="mb-8 text-center space-y-3 relative z-10">
-              <div className="w-14 h-14 bg-red-500/10 dark:bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+              <div className="w-14 h-14 bg-red-500/10 dark:bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto ">
                 <Shield className="w-7 h-7 text-red-600 dark:text-red-400 stroke-[2.5]" />
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
@@ -157,7 +157,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                 <button
                   type="submit"
                   disabled={isVerifyingCurrent}
-                  className="flex-1 h-14 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black text-sm sm:text-base rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98] transition-[colors,transform] outline-none cursor-pointer"
+                  className="flex-1 h-14 bg-emerald-600 disabled:opacity-50 text-white font-black text-sm sm:text-base rounded-2xl flex items-center justify-center gap-2 outline-none cursor-pointer"
                 >
                   {isVerifyingCurrent ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -176,7 +176,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                     setIsAdminPinVerified(false);
                     onCancel();
                   }}
-                  className="px-6 h-14 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-extrabold text-sm rounded-2xl transition-[colors,transform] cursor-pointer flex items-center justify-center"
+                  className="px-6 h-14 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-extrabold text-sm rounded-2xl cursor-pointer flex items-center justify-center"
                 >
                   {'رجوع'}
                 </button>
@@ -192,7 +192,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
           /* Stage 2: Verified - Set a new admin passcode */
           <div>
             <div className="mb-8 text-center space-y-3 relative z-10">
-              <div className="w-14 h-14 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+              <div className="w-14 h-14 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto ">
                 <Key className="w-7 h-7 text-emerald-600 dark:text-emerald-400 stroke-[2.5]" />
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
@@ -227,7 +227,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                 <button
                   type="submit"
                   disabled={isSavingAdminPin}
-                  className="flex-1 h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm sm:text-base rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98] transition-[colors,transform] outline-none cursor-pointer"
+                  className="flex-1 h-14 bg-emerald-600 text-white font-black text-sm sm:text-base rounded-2xl flex items-center justify-center gap-2 outline-none cursor-pointer"
                 >
                   {isSavingAdminPin ? (
                     <>
@@ -249,7 +249,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                     setAdminPinSuccess('');
                     setIsAdminPinVerified(false);
                   }}
-                  className="px-6 h-14 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-extrabold text-sm rounded-2xl transition-[colors,transform] cursor-pointer flex items-center justify-center"
+                  className="px-6 h-14 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-extrabold text-sm rounded-2xl cursor-pointer flex items-center justify-center"
                 >
                   {'رجوع'}
                 </button>

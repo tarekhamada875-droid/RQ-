@@ -82,10 +82,10 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             <button
               type="button"
               onClick={() => setActiveTab('garages')}
-              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-[colors,transform] cursor-pointer ${
+              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs cursor-pointer ${
                 activeTab === 'garages'
-                  ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 '
+                  : 'text-slate-500 '
               }`}
             >
               <Car className={`w-4 h-4 ${activeTab === 'garages' ? 'text-current' : 'text-amber-500'}`} />
@@ -96,10 +96,10 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             <button
               type="button"
               onClick={() => setActiveTab('requests')}
-              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-[colors,transform] cursor-pointer ${
+              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2 px-4 py-2.5 rounded-xl font-black text-xs cursor-pointer ${
                 activeTab === 'requests'
-                  ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 '
+                  : 'text-slate-500 '
               }`}
             >
               <Zap className={`w-4 h-4 ${activeTab === 'requests' ? 'text-current' : 'text-rose-500'}`} />
@@ -119,10 +119,10 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             <button
               type="button"
               onClick={() => setActiveTab('people')}
-              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-[colors,transform] cursor-pointer ${
+              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs cursor-pointer ${
                 activeTab === 'people' || activeTab === 'delegates'
-                  ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 '
+                  : 'text-slate-500 '
               }`}
             >
               <Users className={`w-4 h-4 ${(activeTab === 'people' || activeTab === 'delegates') ? 'text-current' : 'text-indigo-500'}`} />
@@ -133,10 +133,10 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             <button
               type="button"
               onClick={() => setActiveTab('catalog_settings')}
-              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-[colors,transform] cursor-pointer ${
+              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs cursor-pointer ${
                   activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'credit_rate_settings' || activeTab === 'daily_garage_reports'
-                  ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 '
+                  : 'text-slate-500 '
               }`}
             >
               <SettingsIcon className={`w-4 h-4 ${(activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'wallet_settings' || activeTab === 'credit_rate_settings' || activeTab === 'daily_garage_reports') ? 'text-current' : 'text-sky-500'}`} />
@@ -159,7 +159,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           onRefresh={onRefreshAdminLists}
         />
       ) : activeTab === 'catalog_settings' ? (
-        <div className="space-y-6 animate-in fade-in duration-200">
+        <div className="space-y-6 ">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5">
             {/* Add New Garage — removed from Settings; the Garages tab already
                 has an "إضافة جراج جديد" button (AdminGaragesTabView), making
@@ -168,85 +168,85 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             {/* Admin PIN */}
             <div 
               onClick={() => setActiveTab('admin-pin')}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-[colors,transform] group shadow-sm"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 group "
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-slate-900 dark:text-white text-base">{'رمز دخول الآدمن'}</h3>
-                <div className="w-11 h-11 rounded-xl bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shadow-sm shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0">
                   <Key className="w-5 h-5" />
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
                 <span>{'تحديث رمز الحماية السري'}</span>
-                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 rotate-180`} />
+                <ChevronRight className={`w-4 h-4 text-slate-400 rotate-180`} />
               </div>
             </div>
 
             {/* Active Devices */}
             <div
               onClick={() => setActiveTab('active_sessions')}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-[colors,transform] group shadow-sm"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 group "
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-slate-900 dark:text-white text-base">الأجهزة والجلسات</h3>
-                <div className="w-11 h-11 rounded-xl bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shadow-sm shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
                 <span>مراجعة الأجهزة وإلغاء الجلسات</span>
-                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 rotate-180`} />
+                <ChevronRight className={`w-4 h-4 text-slate-400 rotate-180`} />
               </div>
             </div>
 
             {/* Payment Wallet Number */}
             <div
               onClick={() => setActiveTab('wallet_settings')}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-amber-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-[colors,transform] group shadow-sm"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 group "
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-slate-900 dark:text-white text-base">رقم محفظة الدفع</h3>
-                <div className="w-11 h-11 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-sm shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
                   <Wallet className="w-5 h-5" />
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
                 <span>يُعرض لأصحاب الجراجات عند نفاد الرصيد</span>
-                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-amber-500 rotate-180`} />
+                <ChevronRight className={`w-4 h-4 text-slate-400 rotate-180`} />
               </div>
             </div>
 
             {/* Credit Rate */}
             <div
               onClick={() => setActiveTab('credit_rate_settings')}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-[colors,transform] group shadow-sm"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 group "
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-slate-900 dark:text-white text-base">سعر الرصيد</h3>
-                <div className="w-11 h-11 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-sm shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
                   <Coins className="w-5 h-5" />
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
                 <span>كم جنيه يدفع الجراج مقابل رصيد واحد</span>
-                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 rotate-180`} />
+                <ChevronRight className={`w-4 h-4 text-slate-400 rotate-180`} />
               </div>
             </div>
 
             {/* Daily Garage Reports */}
             <div
               onClick={() => setActiveTab('daily_garage_reports')}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-sky-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-[colors,transform] group shadow-sm"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 group "
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-slate-900 dark:text-white text-base">تقارير الجراجات اليومية</h3>
-                <div className="w-11 h-11 rounded-xl bg-sky-500 text-white flex items-center justify-center shadow-sm shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-sky-500 text-white flex items-center justify-center shrink-0">
                   <CalendarDays className="w-5 h-5" />
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
                 <span>عرض ما حدث في أي جراج في يوم محدد</span>
-                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-sky-500 rotate-180`} />
+                <ChevronRight className={`w-4 h-4 text-slate-400 rotate-180`} />
               </div>
             </div>
           </div>

@@ -73,28 +73,18 @@ export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModal
 
   return (
     <div
-      className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-[110] flex items-center justify-center p-4 animate-overlay-30fps"
+      className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-[110] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden animate-popup-30fps"
+        className="w-full max-w-md bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         dir="rtl"
       >
-        <div
-          className={`absolute top-0 right-1/2 translate-x-1/2 w-48 h-48 ${
-            isReferralReward 
-              ? 'bg-amber-500/10 dark:bg-amber-500/5' 
-              : isTrial 
-              ? 'bg-emerald-500/15 dark:bg-emerald-500/10' 
-              : 'bg-emerald-500/10 dark:bg-emerald-500/5'
-          } rounded-full blur-2xl pointer-events-none`}
-        />
-        
         {/* Subtle, modern close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition-colors outline-none z-20"
+          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center outline-none z-20"
           aria-label="إغلاق"
         >
           <XIcon className="w-5 h-5" />
@@ -104,11 +94,11 @@ export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModal
           <div
             className={`w-16 h-16 ${
               isReferralReward
-                ? 'bg-amber-500 shadow-amber-500/20 dark:shadow-amber-500/10'
+                ? 'bg-amber-500 '
                 : isTrial
-                ? 'bg-emerald-500 shadow-emerald-500/25 dark:shadow-emerald-500/15'
-                : 'bg-emerald-500 shadow-emerald-500/20 dark:shadow-emerald-500/10'
-            } text-white rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg`}
+                ? 'bg-emerald-500 '
+                : 'bg-emerald-500 '
+            } text-white rounded-2xl flex items-center justify-center mx-auto mb-5 `}
           >
             {isReferralReward ? (
               <Gift className="w-8 h-8 fill-current" />
@@ -192,9 +182,9 @@ export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModal
             onClick={onClose}
             className={`w-full ${
               isReferralReward
-                ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/10'
-                : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/10'
-            } text-white py-4 px-6 rounded-2xl font-black text-base transition-[colors,transform] shadow-lg block`}
+                ? 'bg-amber-500 '
+                : 'bg-emerald-600 '
+            } text-white py-4 px-6 rounded-2xl font-black text-base block`}
           >
             تمام
           </button>

@@ -28,11 +28,11 @@ export const DeleteGarageConfirmModal: React.FC<DeleteGarageConfirmModalProps> =
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div 
         onClick={isLoading ? undefined : onCancel}
-        className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps"
+        className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80"
       />
-      <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2rem] p-6 sm:p-8 text-center border border-slate-200/80 dark:border-slate-800 shadow-2xl animate-popup-30fps" dir="rtl"
+      <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2rem] p-6 sm:p-8 text-center border border-slate-200/80 dark:border-slate-800 " dir="rtl"
         {...modalA11y.containerProps}>
-        <div className="w-14 h-14 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner shrink-0">
+        <div className="w-14 h-14 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-500/20 shrink-0">
           <Trash2 className="w-7 h-7" />
         </div>
         <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">حذف الجراج؟</h3>
@@ -58,7 +58,7 @@ export const DeleteGarageConfirmModal: React.FC<DeleteGarageConfirmModalProps> =
               className="h-3 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"
             >
               <div
-                className="h-full w-1/3 rounded-full bg-red-500 animate-pulse"
+                className="h-full w-1/3 rounded-full bg-red-500"
               />
             </div>
           </div>
@@ -67,13 +67,13 @@ export const DeleteGarageConfirmModal: React.FC<DeleteGarageConfirmModalProps> =
             <button 
               onClick={onConfirm}
               disabled={isLoading}
-              className="w-full py-3.5 bg-red-600 hover:bg-red-500 active:scale-95 text-white rounded-2xl font-black text-base disabled:opacity-50 transition-[colors,transform] duration-150 outline-none cursor-pointer shadow-lg shadow-red-600/20"
+              className="w-full py-3.5 bg-red-600 text-white rounded-2xl font-black text-base disabled:opacity-50 outline-none cursor-pointer shadow-lg shadow-red-600/20"
             >
               نعم، حذف الجراج
             </button>
             <button 
               onClick={onCancel}
-              className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 rounded-2xl font-bold text-sm transition-[colors,transform] duration-150 outline-none cursor-pointer"
+              className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-bold text-sm outline-none cursor-pointer"
             >
               إلغاء
             </button>

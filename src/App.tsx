@@ -79,7 +79,7 @@ export default function App() {
     setSelectedDelegateForDetails,
   });
 
-  if (isLoggingOut) return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm animate-pulse">جاري إنهاء الجلسة...</p></div>;
+  if (isLoggingOut) return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm">جاري إنهاء الجلسة...</p></div>;
   if (isLandscapeMobile) return <LandscapeMobileView garage={view === 'garage' ? garage : null} />;
   if (showOfflineScreen) return <OfflineView />;
   // Initial-sync gate (fixes the reopen-refresh race): for the garage view
@@ -92,11 +92,11 @@ export default function App() {
   const waitingForInitialSync = view === 'garage' && !garageData.isInitialSyncComplete;
   if (!isAuthReady || shouldWaitForSessionReady(view, isSessionReady) || waitingForInitialSync) {
     logDiagnostic(!isAuthReady ? 'APP_WAITING_FOR_AUTH_READY' : (waitingForInitialSync ? 'APP_WAITING_FOR_INITIAL_SYNC' : 'APP_WAITING_FOR_SESSION_READY'), { isAuthReady, isSessionReady, view, isInitialSyncComplete: garageData.isInitialSyncComplete });
-    return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm animate-pulse">جاري تحميل البيانات...</p></div>;
+    return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm">جاري تحميل البيانات...</p></div>;
   }
 
   const isLoggedIn = Boolean(view && view !== 'login');
-  return <div className={`w-full h-full bg-[#faf9f6] dark:bg-transparent transition-colors ${isLoggedIn ? 'theme-logged-in' : ''}`} style={{ '--theme-accent-color': resolvedColor } as React.CSSProperties}>
+  return <div className={`w-full h-full bg-[#faf9f6] dark:bg-transparent ${isLoggedIn ? 'theme-logged-in' : ''}`} style={{ '--theme-accent-color': resolvedColor } as React.CSSProperties}>
     <SessionProvider value={session}>
     <NavigationUiProvider value={navigationUi}>
     <GarageDataProvider value={garageData}>
@@ -105,7 +105,7 @@ export default function App() {
     <ErrorBoundary>
       <NetworkStatusBanner />
       <AppOverlays />
-      <Suspense fallback={<div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3" /><p className="text-slate-600 dark:text-slate-300 font-bold text-xs animate-pulse">جاري تحميل الصفحة...</p></div>}>
+      <Suspense fallback={<div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3" /><p className="text-slate-600 dark:text-slate-300 font-bold text-xs">جاري تحميل الصفحة...</p></div>}>
         <AppRoutes />
       </Suspense>
     </ErrorBoundary>

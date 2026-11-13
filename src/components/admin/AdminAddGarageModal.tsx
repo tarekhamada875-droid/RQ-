@@ -88,18 +88,18 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-900/75 dark:bg-slate-950/85 backdrop-blur-sm overflow-y-auto"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-900/75 dark:bg-slate-950/85 overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl relative z-10 my-auto overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-2xl transition-colors"
+        className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl relative z-10 my-auto overflow-hidden border border-slate-200/80 dark:border-slate-800 "
         onClick={e => e.stopPropagation()}
         onMouseDown={e => e.stopPropagation()}
         onTouchStart={e => e.stopPropagation()}
         {...modalA11y.containerProps}
       >
         {/* Header — lighter, cleaner */}
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 z-20 transition-colors">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 z-20 ">
           <div className="flex items-center gap-2.5">
             <div className="w-11 h-11 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
               <Plus className="w-5 h-5 stroke-[3]" />
@@ -113,7 +113,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label={'إغلاق'}
-            className="w-8 h-8 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg flex shrink-0 items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors outline-none cursor-pointer"
+            className="w-8 h-8 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-lg flex shrink-0 items-center justify-center outline-none cursor-pointer"
           >
             <X className="w-5 h-5" />
           </IconButton>
@@ -275,7 +275,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                     garagePinInputRef.current?.setValue(newPin);
                   }}
                   aria-label={'توليد رقم سري عشوائي'}
-                  className="absolute left-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                  className="absolute left-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg cursor-pointer"
                   title={'توليد رقم سري عشوائي'}
                 >
                   <RefreshCw className="w-4 h-4 mx-auto" strokeWidth={2} />
@@ -291,7 +291,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
               <select
                 name="referredByGarageId"
                 id="admin-add-garage-referrer"
-                className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:border-emerald-500 dark:focus:border-emerald-500 transition-[colors,transform]"
+                className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:border-emerald-500 dark:focus:border-emerald-500 "
                 dir="rtl"
               >
                 <option value="">{'بدون ترشيح / مباشر'}</option>
@@ -307,7 +307,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-emerald-600 dark:bg-emerald-600 text-white py-3.5 rounded-xl font-bold text-sm hover:bg-emerald-700 dark:hover:bg-emerald-700 active:scale-98 disabled:opacity-50 flex items-center justify-center gap-2 transition-[colors,transform] duration-150 outline-none cursor-pointer shadow-sm"
+              className="w-full bg-emerald-600 dark:bg-emerald-600 text-white py-3.5 rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2 outline-none cursor-pointer shadow-sm"
             >
               {isLoading ? <Spinner /> : (
                 <>

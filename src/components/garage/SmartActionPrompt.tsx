@@ -33,7 +33,7 @@ export const SmartActionPrompt: React.FC<SmartActionPromptProps> = ({ paymentWal
   return (
     <div
       id="smart-action-prompt-card"
-      className="bg-[#faf9f6] dark:bg-slate-900 rounded-[2rem] border-2 border-amber-500/60 relative shrink-0 p-6 sm:p-8 max-w-md md:max-w-xl mx-auto w-full shadow-xl"
+      className="bg-[#faf9f6] dark:bg-slate-900 rounded-[2rem] border-2 border-amber-500/60 relative shrink-0 p-6 sm:p-8 max-w-md md:max-w-xl mx-auto w-full "
       dir="rtl"
     >
       {/* Headline */}

@@ -37,7 +37,7 @@ export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardPr
 
   return (
     <div className="flex gap-4 shrink-0 w-full select-none" id="persistent_balance_card">
-      <div className={`flex-1 rounded-[1.75rem] border flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden bg-[#faf9f6] dark:bg-slate-900 ${showDebitFeedback ? 'border-rose-400' : isCriticalCredit ? 'border-rose-500 dark:border-rose-400' : isLowCredit ? 'border-amber-400 dark:border-amber-500' : 'border-slate-200 dark:border-slate-800'}`}>
+      <div className={`flex-1 rounded-[1.75rem] border flex flex-col items-center justify-center text-center relative overflow-hidden bg-[#faf9f6] dark:bg-slate-900 ${showDebitFeedback ? 'border-rose-400' : isCriticalCredit ? 'border-rose-500 dark:border-rose-400' : isLowCredit ? 'border-amber-400 dark:border-amber-500' : 'border-slate-200 dark:border-slate-800'}`}>
         {isLowCredit && (
           <div
             role="status"
@@ -48,7 +48,7 @@ export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardPr
             {isCriticalCredit ? 'آخر رصيد' : 'رصيدك بيخلص'}
           </div>
         )}
-        <div className={`relative z-10 py-1 text-4xl md:text-7xl font-black font-mono transition-colors ${showDebitFeedback ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-100'}`} aria-live="polite">
+        <div className={`relative z-10 py-1 text-4xl md:text-7xl font-black font-mono ${showDebitFeedback ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-100'}`} aria-live="polite">
           {formatArabicDigits(totalCredits.toLocaleString('en-US'))}
         </div>
         {showDebitFeedback && (

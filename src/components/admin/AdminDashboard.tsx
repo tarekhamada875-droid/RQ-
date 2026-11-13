@@ -273,7 +273,7 @@ export const AdminDashboard = memo(({
 
   return (
     <div
-      className={`admin-custom-theme h-screen h-[100dvh] w-full bg-[#faf9f6] dark:bg-slate-950 font-sans relative text-slate-900 dark:text-slate-100 transition-colors overflow-hidden flex flex-col`}
+      className={`admin-custom-theme h-screen h-[100dvh] w-full bg-[#faf9f6] dark:bg-slate-950 font-sans relative text-slate-900 dark:text-slate-100 overflow-hidden flex flex-col`}
       dir="rtl"
       style={{ '--admin-color': resolvedAdminColor, '--admin-color-text': isLightColor(resolvedAdminColor) ? '#0f172a' : '#ffffff' } as React.CSSProperties}
     >

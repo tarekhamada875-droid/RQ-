@@ -61,8 +61,8 @@ export const AdminGarageModals = memo(({
     <>
       {/* Add Staff Modal */}
       {showAddStaffModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl p-6 animate-popup-30fps">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-800 p-6">
             <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">{'إضافة موظف جديد'}</h3>
             <p className="text-xs text-slate-400 font-bold mb-5">{'أدخل اسم الموظف وسيتم استخدام الرمز الظاهر لتسجيل الدخول.'}</p>
 
@@ -91,7 +91,7 @@ export const AdminGarageModals = memo(({
                 <button
                   type="submit"
                   disabled={isLoading || !staffForm.name}
-                  className="flex-1 py-3.5 bg-emerald-600 text-white rounded-xl font-black text-sm hover:bg-emerald-700 disabled:opacity-50 transition-[colors,transform] flex items-center justify-center gap-2 cursor-pointer"
+                  className="flex-1 py-3.5 bg-emerald-600 text-white rounded-xl font-black text-sm disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isLoading ? (
                     <>
@@ -106,7 +106,7 @@ export const AdminGarageModals = memo(({
                   type="button"
                   disabled={isLoading}
                   onClick={() => setShowAddStaffModal(false)}
-                  className="px-5 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-black text-sm hover:bg-slate-200 disabled:opacity-50 transition-[colors,transform] cursor-pointer"
+                  className="px-5 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-black text-sm disabled:opacity-50 cursor-pointer"
                 >
                   {'إلغاء'}
                 </button>
@@ -118,8 +118,8 @@ export const AdminGarageModals = memo(({
 
       {/* Staff Delete Confirmation Modal */}
       {staffToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-2xl p-6 sm:p-8 text-center animate-popup-30fps">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 text-center">
             <div className="w-14 h-14 bg-rose-50 dark:bg-rose-900/20 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-7 h-7" />
             </div>
@@ -132,7 +132,7 @@ export const AdminGarageModals = memo(({
               <button
                 onClick={() => onDeleteStaff(staffToDelete.id)}
                 disabled={isLoading}
-                className="flex-1 h-14 bg-rose-600 text-white rounded-2xl font-black text-sm hover:bg-rose-700 disabled:opacity-50 transition-[colors,transform] flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                className="flex-1 h-14 bg-rose-600 text-white rounded-2xl font-black text-sm disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer "
               >
                 {isLoading ? (
                   <>
@@ -146,7 +146,7 @@ export const AdminGarageModals = memo(({
               <button
                 disabled={isLoading}
                 onClick={() => setStaffToDelete(null)}
-                className="flex-1 h-14 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-sm hover:bg-slate-200 disabled:opacity-50 transition-[colors,transform] cursor-pointer flex items-center justify-center"
+                className="flex-1 h-14 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-sm disabled:opacity-50 cursor-pointer flex items-center justify-center"
               >
                 {'إلغاء'}
               </button>
@@ -158,7 +158,7 @@ export const AdminGarageModals = memo(({
       {/* Edit Owner PIN Modal */}
       {showEditGaragePinModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setShowEditGaragePinModal(false);
@@ -166,7 +166,7 @@ export const AdminGarageModals = memo(({
           }}
         >
           <div
-            className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-2xl p-6 sm:p-8 text-right animate-popup-30fps"
+            className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 text-right"
             onClick={(e) => e.stopPropagation()}
             dir="rtl"
           >
@@ -208,7 +208,7 @@ export const AdminGarageModals = memo(({
                     className="w-full text-center text-xl font-mono font-black tracking-widest py-3 px-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 focus:border-emerald-500 dark:focus:border-emerald-500 rounded-2xl text-slate-900 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                   {pinError && (
-                    <p className="text-xs font-bold text-rose-500 text-center mt-2 animate-shake">
+                    <p className="text-xs font-bold text-rose-500 text-center mt-2 ">
                       {pinError}
                     </p>
                   )}
@@ -219,7 +219,7 @@ export const AdminGarageModals = memo(({
                 <button
                   type="submit"
                   disabled={isUpdatingGaragePin || !/^\d{5}$/.test(garagePinInput)}
-                  className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs sm:text-sm disabled:opacity-50 transition-[colors,transform] flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                  className="flex-1 h-12 bg-emerald-600 text-white rounded-2xl font-black text-xs sm:text-sm disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer "
                 >
                   {isUpdatingGaragePin ? (
                     <>
@@ -234,7 +234,7 @@ export const AdminGarageModals = memo(({
                   type="button"
                   disabled={isUpdatingGaragePin}
                   onClick={() => setShowEditGaragePinModal(false)}
-                  className="flex-1 h-12 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-xs sm:text-sm hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-[colors,transform] cursor-pointer flex items-center justify-center"
+                  className="flex-1 h-12 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-xs sm:text-sm disabled:opacity-50 cursor-pointer flex items-center justify-center"
                 >
                   {'إلغاء'}
                 </button>

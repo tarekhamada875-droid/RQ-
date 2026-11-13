@@ -90,11 +90,11 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
 
   return (
     <div className="max-w-2xl mx-auto font-sans" dir="rtl">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-10 shadow-xl transition-colors relative overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-10 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-amber-500/5 to-transparent rounded-full -mr-16 -mt-16 pointer-events-none" />
 
         <div className="mb-8 text-center space-y-3 relative z-10">
-          <div className="w-14 h-14 bg-amber-500/10 dark:bg-amber-500/20 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+          <div className="w-14 h-14 bg-amber-500/10 dark:bg-amber-500/20 rounded-2xl flex items-center justify-center mx-auto ">
             <Wallet className="w-7 h-7 text-amber-600 dark:text-amber-400 stroke-[2.5]" />
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
@@ -148,7 +148,7 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
               <button
                 type="submit"
                 disabled={isSaving || !hasChanges}
-                className="px-8 h-14 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-sm rounded-2xl transition-[colors,transform] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                className="px-8 h-14 bg-amber-500 text-white font-extrabold text-sm rounded-2xl cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed "
               >
                 {isSaving ? (
                   <>
@@ -165,7 +165,7 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
               <button
                 type="button"
                 onClick={onBack}
-                className="px-6 h-14 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-extrabold text-sm rounded-2xl transition-[colors,transform] cursor-pointer flex items-center justify-center gap-2"
+                className="px-6 h-14 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-extrabold text-sm rounded-2xl cursor-pointer flex items-center justify-center gap-2"
               >
                 <ChevronRight className="w-4 h-4" />
                 <span>{'رجوع'}</span>

@@ -84,7 +84,7 @@ export const EgyptianPlate: React.FC<EgyptianPlateProps> = memo(({
         <div className="flex-1 h-full min-w-0 flex justify-center items-center px-1" dir="rtl">
           <FitText
             minFontSize={size === 'sm' ? 7 : size === 'md' ? 12 : 22}
-            className={`font-black text-slate-800 text-center transition-[colors,transform] ${
+            className={`font-black text-slate-800 text-center ${
               letters.length >= 4 
                 ? (size === 'sm' ? 'text-[10px]' : size === 'md' ? 'text-base' : 'text-3xl') 
                 : (size === 'sm' ? 'text-[10px]' : size === 'md' ? 'text-xl' : 'text-4xl')

@@ -84,7 +84,7 @@ export function useVehicleOperations({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingType, setLoadingType] = useState<'hourly' | 'overnight' | 'checkout' | 'delete' | 'general' | null>(null);
   // Tracks whether the last checkout succeeded. The dashboard watches this
-  // (via isLoading transition) to decide whether to return to the main tab
+  // (via isLoading ) to decide whether to return to the main tab
   // (success) or stay on the active-vehicles list (failure).
   const [checkoutJustSucceeded, setCheckoutJustSucceeded] = useState<boolean>(false);
 

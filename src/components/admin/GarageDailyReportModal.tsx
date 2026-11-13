@@ -25,11 +25,11 @@ const DAILY_REPORT_LOG_LIMIT = 200;
  * Per-garage daily CSV export modal.
  *
  * Flow:
- *   1. Modal opens with a calendar (current month, past dates enabled).
- *   2. Admin picks a date.
- *   3. Fetches up to 200 activity_logs for that garage+date.
- *   4. Generates and downloads a CSV directly — no on-screen summary, no
- *      log list. The CSV is the report.
+ * 1. Modal opens with a calendar (current month, past dates enabled).
+ * 2. Admin picks a date.
+ * 3. Fetches up to 200 activity_logs for that garage+date.
+ * 4. Generates and downloads a CSV directly — no on-screen summary, no
+ * log list. The CSV is the report.
  *
  * Read cost: 1-N reads for activity_logs (capped at 200; N = actual
  * activity that day). 5-min in-memory cache prevents refetching the same
@@ -282,12 +282,12 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 font-sans animate-overlay-30fps"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 font-sans"
       dir="rtl"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl transition-[colors,transform] animate-popup-30fps"
+        className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl "
         onClick={(e) => e.stopPropagation()}
         {...modalA11y.containerProps}
       >
@@ -310,7 +310,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
             type="button"
             onClick={onClose}
             disabled={isExporting}
-            className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+            className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
             aria-label="إغلاق"
           >
             <X className="w-5 h-5" />
@@ -324,7 +324,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
               type="button"
               onClick={goPrevMonth}
               disabled={isExporting}
-              className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="الشهر السابق"
             >
               <ChevronRight className="w-4 h-4" />
@@ -334,7 +334,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
               type="button"
               onClick={goNextMonth}
               disabled={isExporting}
-              className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="الشهر التالي"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -358,15 +358,15 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
                   onClick={() => {
                     setSelectedDate(day.dateId);
                   }}
-                  className={`aspect-square rounded-lg text-xs font-black transition-[colors,transform] ${
+                  className={`aspect-square rounded-lg text-xs font-black ${
                     isSelected
-                      ? 'bg-emerald-500 text-white shadow-md'
+                      ? 'bg-emerald-500 text-white '
                       : isFuture
                         ? 'text-slate-300 dark:text-slate-700 cursor-not-allowed'
                         : day.isToday
-                          ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-950/50'
-                          : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer'
-                  } ${!isFuture && !isSelected ? 'active:scale-95' : ''}`}
+                          ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500 cursor-pointer '
+                          : 'text-slate-700 dark:text-slate-200 cursor-pointer'
+                  } ${!isFuture && !isSelected ? '' : ''}`}
                 >
                   {day.date.getDate()}
                 </button>
@@ -407,9 +407,9 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
             type="button"
             onClick={() => selectedDate && void handleDownloadCSV(selectedDate)}
             disabled={!selectedDate || isExporting}
-            className={`mt-4 w-full py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-[colors,transform] ${
+            className={`mt-4 w-full py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 ${
               selectedDate && !isExporting
-                ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md active:scale-98 cursor-pointer'
+                ? 'bg-emerald-500 text-white cursor-pointer'
                 : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
             }`}
           >

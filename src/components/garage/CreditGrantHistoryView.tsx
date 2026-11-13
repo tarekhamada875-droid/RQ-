@@ -88,13 +88,13 @@ export const CreditGrantHistoryView = memo(({ garage, onClose, showToast }: Cred
   }, [garage.id, showToast]);
 
   return (
-    <div className="fixed inset-0 bg-[#faf9f6] dark:bg-slate-950 z-[100] flex flex-col pt-safe px-safe overflow-hidden transition-colors" dir="rtl">
+    <div className="fixed inset-0 bg-[#faf9f6] dark:bg-slate-950 z-[100] flex flex-col pt-safe px-safe overflow-hidden " dir="rtl">
       <header className="relative bg-[#faf9f6] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 z-40 w-full shrink-0">
         <div className="max-w-2xl mx-auto flex items-center gap-3 w-full">
           <button
             type="button"
             onClick={onClose}
-            className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center hover:bg-slate-800 dark:hover:bg-amber-500 transition-colors shadow-sm outline-none shrink-0"
+            className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center outline-none shrink-0"
             aria-label="الرجوع"
             title="رجوع"
           >
@@ -108,7 +108,7 @@ export const CreditGrantHistoryView = memo(({ garage, onClose, showToast }: Cred
         {isLoading ? (
           <div className="space-y-3" aria-label="جاري تحميل سجل الشحن">
             {[1, 2, 3].map((item) => (
-              <div key={item} className="h-28 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse" />
+              <div key={item} className="h-28 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900" />
             ))}
           </div>
         ) : hasError ? (
@@ -131,7 +131,7 @@ export const CreditGrantHistoryView = memo(({ garage, onClose, showToast }: Cred
               return (
                 <li
                   key={grant.id || grant.entryId}
-                  className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-5 shadow-sm text-center"
+                  className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-5 text-center"
                 >
                   <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
                     {formatDate(timestamp)}

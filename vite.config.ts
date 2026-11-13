@@ -26,13 +26,12 @@ export default defineConfig(() => {
           // PR-G: exclude lazy-loaded chunks from the SW precache. These
           // chunks are fetched on demand via dynamic import() — precaching
           // them would download ~238 KB of code the user may never need
-          // (e.g. admin tab views for non-admin users, motion for routes
-          // that don't use it). The SW caches them at runtime when first
-          // requested via the default runtime caching behavior.
+          // (e.g. admin tab views for non-admin users). The SW caches them
+          // at runtime when first requested via the default runtime caching
+          // behavior.
           globIgnores: [
             '**/Admin*View-*.js',   // 8 lazy admin tab chunks
             '**/*Modal-*.js',       // 5 lazy modal chunks
-            '**/motion-*.js',       // motion chunk (lazy via code-split)
           ],
           runtimeCaching: [
             {
@@ -119,7 +118,6 @@ export default defineConfig(() => {
               if (id.includes('firebase/firestore') || id.includes('@firebase/firestore')) return 'firebase-firestore';
               if (id.includes('firebase/app') || id.includes('@firebase/app') || id.includes('@firebase/util') || id.includes('firebase/app-check')) return 'firebase-core';
               if (id.includes('firebase')) return 'firebase-other';
-              if (id.includes('motion')) return 'motion';
               if (id.includes('react') || id.includes('lucide-react')) return 'vendor';
               return 'deps';
             }

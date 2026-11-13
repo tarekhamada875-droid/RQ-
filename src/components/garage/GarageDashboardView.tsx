@@ -89,7 +89,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const [showTermsModal, setShowTermsModal] = useState(false);
 
   // (back handler registration moved below — needs isCreditGrantNotificationOpen
-  //  and isMenuOpen which are defined later in the component)
+  // and isMenuOpen which are defined later in the component)
 
   const observerTargetRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -279,7 +279,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
             )}
 
             {!isInputFocused && (
-              <div className="bg-[#faf9f6] dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-[2rem] overflow-hidden flex flex-col items-center pt-4 md:pt-10 [@media(max-height:500px)]:pt-2 transition-colors w-full shadow-sm relative shrink-0">
+              <div className="bg-[#faf9f6] dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-[2rem] overflow-hidden flex flex-col items-center pt-4 md:pt-10 [@media(max-height:500px)]:pt-2 w-full relative shrink-0">
                 <button
                   onClick={() => setActiveTab("active_vehicles")}
                   className="mb-4 md:mb-10 [@media(max-height:500px)]:mb-2 cursor-pointer w-full flex justify-center outline-none"
@@ -292,14 +292,14 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
 
                 <button
                   onClick={() => setActiveTab("active_vehicles")}
-                  className="w-full h-6 md:h-7 [@media(max-height:500px)]:h-5 relative overflow-hidden group outline-none select-none flex items-center justify-center shrink-0 transition-colors"
+                  className="w-full h-6 md:h-7 [@media(max-height:500px)]:h-5 relative overflow-hidden group outline-none select-none flex items-center justify-center shrink-0 "
                   style={{
                     backgroundColor: shimmerColor,
                   }}
                 >
                   <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
                     <div
-                      className={`w-7 h-7 md:w-8 md:h-8 [@media(max-height:500px)]:w-6 [@media(max-height:500px)]:h-6 rounded-full flex items-center justify-center border-2 shadow-md group-hover:scale-110 transition-[colors,transform] ${
+                      className={`w-7 h-7 md:w-8 md:h-8 [@media(max-height:500px)]:w-6 [@media(max-height:500px)]:h-6 rounded-full flex items-center justify-center border-2 shadow-md ${
                         isLightColor(shimmerColor) ? "text-slate-900" : "text-white"
                       }`}
                       style={{
@@ -308,7 +308,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
                       }}
                     >
                       <Car
-                        className={`w-3.5 h-3.5 md:w-4 md:h-4 [@media(max-height:500px)]:w-3 [@media(max-height:500px)]:h-3 group-active:translate-y-0.5 transition-transform ${
+                        className={`w-3.5 h-3.5 md:w-4 md:h-4 [@media(max-height:500px)]:w-3 [@media(max-height:500px)]:h-3 group-active:translate-y-0.5 ${
                           isLightColor(shimmerColor) ? "text-slate-900" : "text-white"
                         }`}
                       />

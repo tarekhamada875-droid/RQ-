@@ -57,11 +57,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       {/* Audit D8: toast presentation moved into the provider (was inline in App.tsx). */}
       {toast && (
-        <div className="fixed top-4 left-4 right-4 z-[300] flex justify-center pointer-events-none animate-slide-down">
+        <div className="fixed top-4 left-4 right-4 z-[300] flex justify-center pointer-events-none">
           <div
             onClick={() => clearToast()}
             role="alert"
-            className="pointer-events-auto max-w-md w-full bg-slate-900/95 dark:bg-slate-900 text-white border border-slate-700/80 rounded-2xl p-3.5 px-4 shadow-xl flex items-start justify-between gap-3 backdrop-blur-md cursor-pointer transition-[colors,transform] active:scale-95"
+            className="pointer-events-auto max-w-md w-full bg-slate-900/95 dark:bg-slate-900 text-white border border-slate-700/80 rounded-2xl p-3.5 px-4 shadow-xl flex items-start justify-between gap-3 cursor-pointer "
           >
             <div className="flex min-w-0 flex-1 items-start gap-3">
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${toast.type === 'error' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>
@@ -76,7 +76,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={(event) => { event.stopPropagation(); clearToast(); }}
-              className="text-slate-400 hover:text-white p-1 rounded-lg shrink-0 transition-colors"
+              className="text-slate-400 p-1 rounded-lg shrink-0 "
               title="إغلاق"
             >
               <X className="w-4 h-4" />
