@@ -94,7 +94,14 @@ export default function App() {
 
   if (isLoggingOut) return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm">جاري إنهاء الجلسة...</p></div>;
   if (isLandscapeMobile) return <LandscapeMobileView garage={view === 'garage' ? garage : null} />;
-  if (showOfflineScreen) return <OfflineView />;
+  // Offline Mode Step 1 (per docs/OFFLINE-MODE-PLAN.md §5):
+  // The full-screen red OfflineView wall no longer blocks the garage view
+  // when internet drops. Garages see the slim NetworkStatusBanner on top
+  // of their cached data instead — the Firestore persistent cache (PR-E)
+  // serves the lists without a network round-trip.
+  // Admin, delegate, and login views keep today's behavior exactly: they
+  // still hit the wall after the 2s grace period in useOnlineStatus.
+  if (showOfflineScreen && view !== 'garage') return <OfflineView />;
   // Initial-sync gate (fixes the reopen-refresh race): for the garage view
   // only, keep the loading screen up until both Firestore listeners have
   // delivered their first fresh (non-cached) snapshot, OR the 10s safety
@@ -116,7 +123,7 @@ export default function App() {
     <AdminMutationsProvider value={adminManagement}>
     <VehicleOpsProvider value={vehicleOperations}>
     <ErrorBoundary>
-      <NetworkStatusBanner />
+      <NetworkStatusBanner view={view} />
       <AppOverlays />
       <Suspense fallback={<DelayedFallback><PageSkeleton /></DelayedFallback>}>
         <AppRoutes />

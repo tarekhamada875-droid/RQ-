@@ -38,6 +38,13 @@ const allowedDocsMarkdown = new Set([
   'RELEASES.md',
   'SECURITY.md',
   'duplication-contract-tests.md',
+  // Owner-approved design doc for the offline-mode build (PRs #748, #749, #750).
+  // Latent issue: this entry was missing when the doc shipped, but production-gate's
+  // Markdown-only scope detector skipped the maintainability check on those PRs
+  // (they only touched docs/), so CI never caught it. Non-docs PRs (like the offline
+  // Step 1 PR) WOULD run the check and fail — so this entry is required for any
+  // further work to land. Added by the Step 1 implementer with owner approval.
+  'OFFLINE-MODE-PLAN.md',
 ]);
 if (existsSync(docsRoot)) {
   for (const entry of readdirSync(docsRoot)) {
