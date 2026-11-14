@@ -1,8 +1,9 @@
 # Offline Mode for Garages — Plan of Record
 
-**Status:** Design approved by owner (2026-11-14, this conversation). Build not started —
-waiting on owner's GO. Only the owner's coding assistant writes implementation code;
-no other party writes any code.
+**Status:** Design approved by owner (2026-11-14). Build not started — awaiting owner's GO.
+Implementation may be delegated to another AI by owner decision (2026-11-14, credit budget);
+the execution rules in §9 keep any implementer inside the approved design. The assistant who
+wrote this plan remains available for between-step review of diffs.
 
 **The one-line version:** "WhatsApp, but for cars." When internet dies, the garage keeps
 working; each action shows a little clock ("saved, waiting"); when internet returns,
@@ -162,3 +163,33 @@ through: per-car stamped replay (rejected as over-complicated) → count-only se
 - Exact daily-stats recomputation rules at settlement (revenue/counters by receipt timestamp).
 - UX copy review with owner (Arabic strings above are drafts).
 - Where the flag lives (remote config document vs. garage doc field) — decision at step 5.
+
+## 9. Execution handoff — hard rules for any implementer (AI or human)
+
+This doc is a **contract**, not a suggestion. The approved design is fixed.
+
+1. **First, read** `README.md`, `AGENTS.md`, `docs/PROJECT.md`, `docs/SECURITY.md`
+   (per the AGENTS.md owner test-and-handoff cycle), then this doc end to end.
+2. **One step = one PR = one bounded change.** Steps in order (1→6), never parallel,
+   never combined. After each squash merge: fresh branch from updated `main` —
+   never push to a merged branch.
+3. **No redesign, no scope additions, no "improvements."** §7 (what we deliberately
+   do NOT build) is a fence — do not cross it, do not replace its decisions with
+   alternatives. If any part of this doc seems wrong or impossible to implement,
+   STOP and ask the owner instead of improvising.
+4. **Merges follow the normal automated gates** (AGENTS.md: the owner is not a manual
+   test gate). But each step's report must state plainly which doc sections were
+   implemented and list ANY deviation from the doc. Deviations require owner approval
+   BEFORE the PR is opened.
+5. **Money is frozen.** Step 4 (settlement) implements §3 exactly: one idempotency
+   stamp, all-or-nothing, one ledger line, never-below-zero by construction,
+   subscriber re-check. The independent review of the step-4 diff by the plan's
+   author (or owner) is required before that PR merges.
+6. **Scope fences:** no changes to admin, delegate, auth, or top-up code paths;
+   Arabic RTL UI only; no new documentation files — update this doc instead.
+7. **Tests are part of each step:** extend the files listed in §4, add the step's
+   regression test, `npm run ci:check` must pass.
+8. **Pilot discipline:** everything ships dark (flag off). The pilot garage is enabled
+   only after step 6's tests pass. Kill-switch behavior per §3.8.
+9. **Report like AGENTS.md says:** short, plain language, verified final states only —
+   never claim merged/deployed before checks prove it.
