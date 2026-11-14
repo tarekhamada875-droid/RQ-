@@ -30,8 +30,11 @@ through: per-car stamped replay (rejected as over-complicated) → count-only se
   online-required behavior including the existing offline wall.
 - **The server is the only bank.** Credits are charged by the server, never invented
   on the phone. The phone keeps a local tally + receipts; the server settles them.
-- **Owner holds the kill switch.** Feature ships dark behind a flag, pilot garage first,
-  then all garages. Flag off = today's behavior, and any queued notebook still drains.
+- **No feature flag (owner decision, 2026-11-14).** No dark launch, no per-garage pilot
+  switch. Safety comes from the step order — the pocket limit is live before the
+  settlement endpoint can move money — plus tests in every PR. The production off
+  switch is a revert PR (minutes, not milliseconds); after a revert, garages return to
+  today's wall and phones with pending notebooks hold their data until the fix lands.
 - **Free plan stays the plan.** No feature may multiply reads/writes. Offline hours
   cost zero billed reads (phone serves from its own cache).
 
@@ -66,10 +69,10 @@ through: per-car stamped replay (rejected as over-complicated) → count-only se
    subscription dates (the check-in route already does this authoritative lookup
    online: `today >= startDate && today <= endDate`). A lapsed subscription cannot
    ride free.
-8. **Rollout.** Dark flag → one pilot garage (owner picks the one with the worst
-   internet) → owner watches settlement lines in the admin feed for a week →
-   open for all. Kill switch reverts garages to today's wall; queued notebooks
-   still drain after the flag turns off.
+8. **Rollout (no flag).** Owner decision 2026-11-14: no dark-launch flag, no per-garage
+   pilot. Steps ship to all garages as they merge. Safety = step order (the pocket
+   limit ships before the settlement endpoint exists) + regression tests in every PR
+   + revert-as-kill-switch (a revert PR restores today's behavior in minutes).
 
 ## 4. Existing machinery we build on (verified in code, 2026-11-14)
 
@@ -124,19 +127,13 @@ through: per-car stamped replay (rejected as over-complicated) → count-only se
 - Spinner ends only when both sides confirm; server's numbers win on the phone.
 - **Accept:** settle once → balance, ledger line, stats, receipts all correct; retry after mid-call drop → "already done," nothing double.
 
-### Step 5 — The switch (pilot + kill switch)
-- Remote flag (per-garage, default off) controlling the whole offline path; off = today's wall.
-- Owner picks the pilot garage; admin feed shows each settlement as a readable line
-  ("offline settlement: 23 regular, 4 subscribers, 23 credits").
-- Flag off later = garages return to the wall; any queued notebook still drains (settlement logic stays active until queues are empty).
-- **Accept:** flag off → old behavior; pilot garage settles visibly in the admin feed.
-
-### Step 6 — The proof (tests before full rollout)
+### Step 5 — The proof (final gate before the full feature is considered done)
 - Airplane-mode E2E: 10 cars offline → reconnect → all land once, balance correct, reports complete.
 - Kill the app mid-queue and mid-settlement → reopen → no loss, no double.
 - Two phones, same car → one receipt (deterministic ID collapse).
 - Lapsed subscriber offline → settlement charges correctly.
 - No-IDB browser (private mode) → app detects and says offline mode is unavailable rather than silently failing.
+- No feature flag anywhere in the code; the production off switch is a revert PR.
 
 ## 6. Cost model (verified against free tier)
 
@@ -162,7 +159,6 @@ through: per-car stamped replay (rejected as over-complicated) → count-only se
   duplicate-plate check-in behavior (must compose, not fight).
 - Exact daily-stats recomputation rules at settlement (revenue/counters by receipt timestamp).
 - UX copy review with owner (Arabic strings above are drafts).
-- Where the flag lives (remote config document vs. garage doc field) — decision at step 5.
 
 ## 9. Execution handoff — hard rules for any implementer (AI or human)
 
@@ -189,7 +185,8 @@ This doc is a **contract**, not a suggestion. The approved design is fixed.
    Arabic RTL UI only; no new documentation files — update this doc instead.
 7. **Tests are part of each step:** extend the files listed in §4, add the step's
    regression test, `npm run ci:check` must pass.
-8. **Pilot discipline:** everything ships dark (flag off). The pilot garage is enabled
-   only after step 6's tests pass. Kill-switch behavior per §3.8.
+8. **No flag, ever.** Do not add feature flags, per-garage gates, or pilot switches
+   (owner decision 2026-11-14). If production misbehaves, the kill switch is a
+   revert PR, not a toggle.
 9. **Report like AGENTS.md says:** short, plain language, verified final states only —
    never claim merged/deployed before checks prove it.
