@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { Garage, Delegate } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
-import { generateSafePin } from '../../utils/pins';
 import { sortGaragesNewestFirst } from '../../utils/dates';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { FitText } from '../ui/FitText';
@@ -50,8 +49,6 @@ export const DelegateDashboardView = memo(({
   const { delegatePagination, delegateListsLoading, delegateListsError, delegateDashboardLoading, delegateDashboardError, onRetryDelegateDashboard, onLoadMoreDelegateGarages } = useDelegateDashboard();
   const { showToast } = useToast();
   const [showAddGarage, setShowAddGarage] = useState(false);
-  const [newGaragePin, setNewGaragePin] = useState('');
-  const [pinGenerationsRemaining, setPinGenerationsRemaining] = useState(3);
   const [showSettings, setShowSettings] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const { theme, toggleTheme } = useTheme();
@@ -149,9 +146,6 @@ export const DelegateDashboardView = memo(({
     : 0;
 
   const handleOpenAddGarage = () => {
-    const initialPin = generateSafePin(allGarages.map(g => g.pin));
-    setNewGaragePin(initialPin);
-    setPinGenerationsRemaining(3);
     setShowAddGarage(true);
   };
 
@@ -450,11 +444,7 @@ export const DelegateDashboardView = memo(({
         showAddGarage={showAddGarage}
         setShowAddGarage={setShowAddGarage}
         onCreateGarage={onCreateGarage}
-        newGaragePin={newGaragePin}
-        pinGenerationsRemaining={pinGenerationsRemaining}
         allGarages={allGarages}
-        setNewGaragePin={setNewGaragePin}
-        setPinGenerationsRemaining={setPinGenerationsRemaining}
         isLoading={isLoading}
       />
       {showTermsModal && (

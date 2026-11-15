@@ -423,7 +423,14 @@ isSessionOccupiedError(errMsg)
       // A retry with the exact same payload must reach the Worker first: its
       // idempotency lookup runs before PIN uniqueness checks, which may now see
       // the garage created by the original request.
-      if (!isRetry) {
+      //
+      // Delegate path (2026-11-15): the delegate must NOT send or set a PIN.
+      // The Worker generates one server-side. Skip the client-side PIN
+      // uniqueness check (the Worker owns it now) and strip the field from
+      // the request body so the delegate path always matches the new contract.
+      if (isDelegateCreation) {
+        delete data.pin;
+      } else if (!isRetry) {
         const pin = ((data.pin as string) || '').trim();
         const pinCheck = await authService.isPinTaken(pin);
         if (pinCheck.taken) {
@@ -432,6 +439,18 @@ isSessionOccupiedError(errMsg)
           return false;
         }
 
+        const name = ((data.name as string) || '').trim();
+        const phone = normalizePhone((data.phone as string) || '');
+        const existing = allGarages.find(g => (phone && g.phone === phone) || g.name === name);
+        if (existing) {
+          showToast(APP_TEXT.ADMIN.DUPLICATE_ERROR, 'error');
+          setIsLoading(false);
+          return false;
+        }
+      } else {
+        // Admin retry path: keep existing PIN-availability and duplicate-name
+        // checks. Delegate retry is impossible — `data.pin` was deleted above
+        // and the Worker doesn't expect a PIN for delegates anyway.
         const name = ((data.name as string) || '').trim();
         const phone = normalizePhone((data.phone as string) || '');
         const existing = allGarages.find(g => (phone && g.phone === phone) || g.name === name);
