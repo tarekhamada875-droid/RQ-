@@ -1,18 +1,30 @@
-import React, { useRef } from 'react';
-import { Loader2, PlusCircle, RefreshCw, X } from 'lucide-react';
+import React from 'react';
+import { Loader2, PlusCircle, X } from 'lucide-react';
 import { Garage } from '../../types';
-import { generateSafePin } from '../../utils/pins';
-import { FastInput, type FastInputHandle } from '../ui/FastInput';
+
+/**
+ * DelegateDashboardOverlays
+ *
+ * The "create garage" modal that delegates use to onboard a new garage.
+ *
+ * Per the delegate PIN policy (2026-11-15): delegates never see, set, or
+ * transmit the new garage's PIN. The PIN is generated server-side by
+ * the Worker when the request is processed, written to private_pins/,
+ * and surfaced only to admin in the approval queue. Admin then tells
+ * the garage owner the PIN by phone, out of band.
+ *
+ * If a delegate tries to send a `pin` in the request body anyway, the
+ * Worker rejects with 400 DELEGATE_CANNOT_SET_PIN.
+ *
+ * Form fields (delegate modal): name, hourlyRate, overnightRate.
+ * No PIN field, no regenerate button, no PIN pre-generation state.
+ */
 
 interface DelegateDashboardOverlaysProps {
   showAddGarage: boolean;
   setShowAddGarage: (show: boolean) => void;
   onCreateGarage: (e: React.FormEvent<HTMLFormElement>) => Promise<boolean>;
-  newGaragePin: string;
-  pinGenerationsRemaining: number;
   allGarages: Garage[];
-  setNewGaragePin: (pin: string) => void;
-  setPinGenerationsRemaining: React.Dispatch<React.SetStateAction<number>>;
   isLoading: boolean;
 }
 
@@ -20,25 +32,15 @@ export const DelegateDashboardOverlays = ({
   showAddGarage,
   setShowAddGarage,
   onCreateGarage,
-  newGaragePin,
-  pinGenerationsRemaining,
-  allGarages,
-  setNewGaragePin,
-  setPinGenerationsRemaining,
   isLoading,
 }: DelegateDashboardOverlaysProps) => {
-  // PERF (audit 2026-11-08): FastInput imperative handle so the "generate
-  // safe PIN" button can imperatively set the read-only PIN field's DOM
-  // value without going through a controlled-value round-trip.
-  const newGaragePinRef = useRef<FastInputHandle>(null);
-
   return (
     <>
-        {/* 6) Add Garage Modal */}
+        {/* Add Garage Modal */}
         {showAddGarage && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 overflow-y-auto" onClick={() => setShowAddGarage(false)}>
-            <div 
-              className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 sm:p-8 relative my-auto border border-slate-200 dark:border-slate-800 " 
+            <div
+              className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 sm:p-8 relative my-auto border border-slate-200 dark:border-slate-800 transition-colors"
               onClick={e => e.stopPropagation()}
               onMouseDown={e => e.stopPropagation()}
               onTouchStart={e => e.stopPropagation()}
@@ -50,10 +52,10 @@ export const DelegateDashboardOverlays = ({
                   </div>
                   <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">طلب إنشاء جراج جديد</h2>
                 </div>
-                <button 
+                <button
                   type="button"
                   onClick={() => setShowAddGarage(false)}
-                  className="w-9 h-9 bg-red-500/10 text-red-500 rounded-xl flex shrink-0 items-center justify-center outline-none cursor-pointer"
+                  className="w-9 h-9 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl flex shrink-0 items-center justify-center transition-colors outline-none cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -62,8 +64,8 @@ export const DelegateDashboardOverlays = ({
               <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-right text-xs font-bold leading-relaxed text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
                 سيتم إرسال الطلب إلى الإدارة للمراجعة، ولن يتم تفعيل الجراج إلا بعد الموافقة.
               </p>
-  
-              <form 
+
+              <form
                 onSubmit={async (e) => {
                   e.preventDefault();
                   if (await onCreateGarage(e)) {
@@ -74,9 +76,9 @@ export const DelegateDashboardOverlays = ({
               >
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">اسم الجراج</label>
-                  <input name="name" placeholder="جراج التوفيق" required className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:border-amber-500 placeholder:text-slate-400 dark:placeholder:text-slate-500" dir="rtl" />
+                  <input name="name" placeholder="جراج التوفيق" required className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:border-amber-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500" dir="rtl" />
                 </div>
-  
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5 text-center">
                     <label className="text-xs font-bold text-slate-500 dark:text-slate-400 block">سعر الساعة</label>
@@ -108,43 +110,13 @@ export const DelegateDashboardOverlays = ({
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">رمز الدخول (PIN)</label>
-                  <div className="relative">
-                    <FastInput
-                      ref={newGaragePinRef}
-                      name="pin"
-                      type="text"
-                      defaultValue={newGaragePin}
-                      onCommit={setNewGaragePin}
-                      onLiveValue={setNewGaragePin}
-                      readOnly
-                      required
-                      className="w-full p-3.5 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold font-mono outline-none cursor-not-allowed text-center pl-12"
-                      dir="ltr"
-                    />
-                    {pinGenerationsRemaining > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const nextPin = generateSafePin(allGarages.map(g => g.pin));
-                          setNewGaragePin(nextPin);
-                          newGaragePinRef.current?.setValue(nextPin);
-                          setPinGenerationsRemaining(prev => prev - 1);
-                        }}
-                        className="absolute left-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg "
-                        title="توليد رقم سري عشوائي"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-  
+                {/* PIN field intentionally omitted — see file header.
+                    The Worker generates the PIN server-side for delegate requests. */}
+
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 rounded-xl py-3.5 font-black text-base disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
+                  className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 rounded-xl py-3.5 font-black text-base hover:opacity-95 transition-all disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
                 >
                   {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                     <>
@@ -157,7 +129,7 @@ export const DelegateDashboardOverlays = ({
             </div>
           </div>
         )}
-  
+
     </>
   );
 };

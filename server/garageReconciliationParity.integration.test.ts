@@ -596,8 +596,11 @@ describe('garage creation Hono contract', () => {
   it('creates a delegate-owned pending garage below the daily quota', async () => {
     mockDb.clear();
     seedDelegateGarages(2);
+    // Per delegate PIN policy (2026-11-15), delegates must NOT send a `pin`
+    // field — the Worker generates one server-side. The route rejects any
+    // delegate request that includes a non-empty `pin`.
     const response = await callHonoCreate('valid-delegate-token-delegate-a', {
-      name: 'Synthetic Delegate Garage', pin: '73916',
+      name: 'Synthetic Delegate Garage',
       createdByDelegateName: 'Delegate A', referrerName: 'Delegate A'
     });
     const result = await response.json() as any;
@@ -613,7 +616,10 @@ describe('garage creation Hono contract', () => {
     mockDb.clear();
     seedDelegateGarages(3);
     const before = snapshotRecords();
-    const response = await callHonoCreate('valid-delegate-token-delegate-a', { name: 'Quota Limit Garage', pin: '82517' });
+    // No `pin` field — delegates don't send PINs anymore. The route hits
+    // the daily-limit check (which fires before PIN generation) and
+    // rejects with 409 DELEGATE_DAILY_GARAGE_LIMIT_REACHED.
+    const response = await callHonoCreate('valid-delegate-token-delegate-a', { name: 'Quota Limit Garage' });
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({ success: false, error: 'DELEGATE_DAILY_GARAGE_LIMIT_REACHED' });
     expect(snapshotRecords()).toEqual(before);

@@ -151,4 +151,28 @@ describe('DelegateDashboardView garage application access', () => {
     await waitFor(() => expect(onCreateGarage).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'طلب إنشاء جراج جديد' })).not.toBeInTheDocument());
   });
+
+  // Regression for delegate PIN policy (2026-11-15): delegates must never
+  // see, set, or transmit a garage's PIN. The Worker generates the PIN
+  // server-side; admin delivers it to the owner by phone, out of band.
+  // If this test ever fails, someone re-added a PIN field to the delegate
+  // create-garage modal — that's a security regression.
+  it('does NOT render a PIN field in the create-garage modal (server-generated)', () => {
+    renderDelegateDashboard();
+    fireEvent.click(screen.getByRole('button', { name: 'افتح جراج جديد' }));
+
+    // The modal must have name, hourlyRate, overnightRate — but no PIN input,
+    // no PIN label, no "regenerate PIN" button.
+    expect(screen.getByPlaceholderText('جراج التوفيق')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('10 ج.م')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('50 ج.م')).toBeInTheDocument();
+
+    // No element labeled as the PIN input should be present. The previous
+    // modal had a read-only PIN input with a RefreshCw "regenerate" button.
+    expect(screen.queryByLabelText('رمز الدخول (PIN)')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('توليد رقم سري عشوائي')).not.toBeInTheDocument();
+    // Defensive: no input with name="pin" should exist in the form at all.
+    const form = screen.getByPlaceholderText('جراج التوفيق').closest('form');
+    expect(form?.querySelector('input[name="pin"]')).toBeNull();
+  });
 });

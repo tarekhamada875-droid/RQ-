@@ -90,7 +90,11 @@ describe('delegate daily garage creation limit', () => {
       req: {
         json: async () => ({
           name: 'Test Garage',
-          pin: '12345',
+          // No `pin` field — delegates no longer send or set PINs (2026-11-15
+          // PIN policy). The Worker generates the PIN server-side for delegate
+          // requests. This test exercises the daily-creation-limit path, which
+          // fires before PIN generation; the absence of a PIN field is now the
+          // delegate contract.
           idempotencyKey: 'create-garage-at-boundary'
         }),
         header: () => undefined

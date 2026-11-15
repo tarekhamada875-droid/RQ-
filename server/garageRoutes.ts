@@ -19,6 +19,7 @@ import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempoten
 import { parseMoneyAmount } from './money';
 import { computeLookupHash } from './pinCrypto';
 import { checkPinAvailabilityAcrossAll, saveEntityPinInTransaction } from './pinRepository';
+import { generateUniquePin } from './pinGeneration';
 import { reconcileGarageState } from './domain/garageReconciliation';
 import { validateId, validateIdempotencyKey, validateNewPin, validateNumber, validateString, sanitizePayload } from './validation';
 import {
@@ -68,7 +69,38 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       return c.json({ success: false, error: 'FORBIDDEN: Trial credits require Admin approval' }, 403);
     }
     const name = validateString(sanitized.name, 'name', { min: 2, max: 100, required: true })!;
-    const normPin = validateNewPin(sanitized.pin);
+
+    // PIN source-of-truth (delegate policy, 2026-11-15):
+    //
+    // - Delegate caller: PIN is generated server-side. The delegate must
+    //   NEVER see or set the PIN — admin owns PIN delivery (by phone, out
+    //   of band). If a delegate request includes a `pin` field, REJECT
+    //   with DELEGATE_CANNOT_SET_PIN. This closes the security gap where
+    //   a technical delegate could read or intercept the PIN before submit.
+    //
+    // - Admin caller: PIN is supplied by the admin via the admin modal.
+    //   Admins are trusted to set PINs the same way they always have.
+    //
+    // `createdByDelegateId` is set when an admin is acting on behalf of
+    // a delegate (rare admin path); we still let admin set the PIN in
+    // that case, since the caller is admin.
+    const isDelegateCaller = callerRole === 'delegate';
+    let normPin: string;
+    if (isDelegateCaller) {
+      if (sanitized.pin !== undefined && sanitized.pin !== null && sanitized.pin !== '') {
+        return c.json({ success: false, error: 'DELEGATE_CANNOT_SET_PIN' }, 400);
+      }
+      // Generate a unique PIN server-side. Availability check races are
+      // handled inside the helper (retries up to 100 times, then falls
+      // back to a wider random pool). Final uniqueness is re-verified
+      // inside the create-garage transaction via checkPinAvailabilityAcrossAll.
+      const generated = await generateUniquePin(
+        async (candidate) => checkPinAvailabilityAcrossAll(candidate),
+      );
+      normPin = generated.pin;
+    } else {
+      normPin = validateNewPin(sanitized.pin);
+    }
     const idempotencyKey = validateIdempotencyKey(
       sanitized.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key')
     );
