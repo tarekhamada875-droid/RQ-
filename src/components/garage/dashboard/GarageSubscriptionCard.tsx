@@ -1,11 +1,15 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, ArrowDown } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Garage } from '../../../types';
 import { formatArabicDigits } from '../../../utils/plates';
 
 interface GarageSubscriptionCardProps {
   garage: Garage;
 }
+
+// The five falling tracks, center-out: center (0s) → inner pair (0.12s) →
+// outer pair (0.24s). The digital-rain costume rides these frozen tracks.
+const DEBIT_RAIN_POSITIONS = ["center", "inner-left", "inner-right", "outer-left", "outer-right"] as const;
 
 export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardProps) => {
   const totalCredits = Math.max(0, Number(garage.credits ?? 0));
@@ -17,8 +21,9 @@ export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardPr
   // animation re-triggers for each confirmed balance decrease.
   const [debitNonce, setDebitNonce] = useState(0);
 
-  // The last arrow finishes after a 1.35s fall plus a 0.24s outer-pair delay.
-  // Keep the visual feedback mounted briefly afterward rather than cutting it off.
+  // The last streak finishes after a 1.35s fall plus a 0.36s outer companion
+  // delay. Keep the visual feedback mounted briefly afterward rather than
+  // cutting it off.
   const DEBIT_FEEDBACK_MS = 1800;
 
   useEffect(() => {
@@ -52,15 +57,26 @@ export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardPr
           {formatArabicDigits(totalCredits.toLocaleString('en-US'))}
         </div>
         {showDebitFeedback && (
-          <span key={debitNonce} id="balance_arrows_container" aria-hidden="true" className="absolute inset-0 z-20 overflow-hidden pointer-events-none text-red-600 dark:text-red-400" data-testid="credit-debit-feedback">
-            {/* Center starts first, followed by the inner pair and then the outer pair. */}
-            {["center", "inner-left", "inner-right", "outer-left", "outer-right"].map((position) => (
+          <span key={debitNonce} id="balance_arrows_container" aria-hidden="true" className="absolute inset-0 z-20 overflow-hidden pointer-events-none" data-testid="credit-debit-feedback">
+            {/* Digital rain (owner pick, 2026-11-17): main light streak per
+                track — center first, then the inner pair, then the outer pair. */}
+            {DEBIT_RAIN_POSITIONS.map((position) => (
               <span
                 key={position}
                 className={`credit-debit-arrow credit-debit-arrow-${position}`}
                 data-testid="credit-debit-arrow"
               >
-                <ArrowDown className="credit-debit-arrow-icon" strokeWidth={4} />
+                <span className="credit-debit-rain" />
+              </span>
+            ))}
+            {/* Fainter thin companions, a beat behind each track's main streak. */}
+            {DEBIT_RAIN_POSITIONS.map((position) => (
+              <span
+                key={`${position}-thin`}
+                className={`credit-debit-arrow credit-debit-arrow-${position} credit-debit-arrow-thin`}
+                data-testid="credit-debit-arrow-thin"
+              >
+                <span className="credit-debit-rain credit-debit-rain-thin" />
               </span>
             ))}
           </span>

@@ -340,15 +340,32 @@ input[type="number"]::-webkit-outer-spin-button {
   will-change: transform, opacity;
 }
 
-.credit-debit-arrow-icon {
+/* Digital rain streaks (owner pick, 2026-11-17 — option 4 of the
+   debit-looks-v2 demo). Each falling track carries one main ultra-thin
+   light streak plus a fainter thin companion. Only the costume changed:
+   the fall keyframes, track positions, and center-out delays are frozen. */
+.credit-debit-rain {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 2.5rem;
-  height: 2.5rem;
+  top: -1.125rem;
+  left: 50%;
+  width: 3.5px;
+  height: 52px;
+  margin-left: -7.25px;
+  border-radius: 999px;
+  background: linear-gradient(to bottom, rgba(244, 63, 94, 0) 0%, #fb7185 55%, #f43f5e 100%);
+  filter: drop-shadow(0 0 4px rgba(244, 63, 94, 0.45));
 }
 
-/* 5-arrow center-out pattern (Manus spec).
+.credit-debit-rain-thin {
+  top: -2.75rem;
+  width: 2px;
+  height: 26px;
+  margin-left: 5.25px;
+  opacity: 0.55;
+  background: linear-gradient(to bottom, rgba(244, 63, 94, 0) 0%, rgba(251, 113, 133, 0.85) 60%, rgba(244, 63, 94, 0.9) 100%);
+}
+
+/* 5-track center-out pattern (Manus spec).
    Order: center (0s) → inner pair (0.12s) → outer pair (0.24s).
    Opacity is fully controlled by the animation keyframes — do NOT set
    static opacity here or it will override the animation and freeze. */
@@ -357,6 +374,15 @@ input[type="number"]::-webkit-outer-spin-button {
 .credit-debit-arrow-inner-right { right: 32%; left: auto; margin-left: 0; animation-delay: 0.12s; }
 .credit-debit-arrow-outer-left { left: 14%; margin-left: -1.25rem; animation-delay: 0.24s; }
 .credit-debit-arrow-outer-right { right: 14%; left: auto; margin-left: 0; animation-delay: 0.24s; }
+
+/* Thin companion streaks start a beat behind their track's main streak —
+   same keyframes and curve, delays carried over exactly from the demo
+   (base delay + 0.06–0.12s extra). */
+.credit-debit-arrow-thin.credit-debit-arrow-center { animation-delay: 0.08s; }
+.credit-debit-arrow-thin.credit-debit-arrow-inner-left { animation-delay: 0.22s; }
+.credit-debit-arrow-thin.credit-debit-arrow-inner-right { animation-delay: 0.18s; }
+.credit-debit-arrow-thin.credit-debit-arrow-outer-left { animation-delay: 0.36s; }
+.credit-debit-arrow-thin.credit-debit-arrow-outer-right { animation-delay: 0.33s; }
 
 /* Owner decision (2026-11-16): the debit arrows ALWAYS play, regardless of
    the device's reduced-motion / animation settings. Do not add a
