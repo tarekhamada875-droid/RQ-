@@ -270,7 +270,7 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     expect(screen.getByTestId('low-credit-indicator')).toHaveTextContent('آخر رصيد');
   });
 
-  it('shows staggered falling arrows across the credit card after a deduction', () => {
+  it('shows staggered digital rain across the credit card after a deduction', () => {
     const initialGarage = { ...mockGarage, billingModel: 'prepaid_credits', credits: 15 } as any;
     const deductedGarage = { ...initialGarage, credits: 13 };
     const { rerender } = renderWithTheme(<GarageSubscriptionCard garage={initialGarage} />);
@@ -288,7 +288,17 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     expect(arrows[4]).toHaveClass('credit-debit-arrow-outer-right');
     arrows.forEach((track) => {
       expect(track.tagName.toLowerCase()).toBe('span');
-      expect(track.querySelector('svg')).not.toBeNull();
+      // Digital-rain costume: one main light streak per track, no SVG arrows.
+      expect(track.querySelector('.credit-debit-rain')).not.toBeNull();
+      expect(track.querySelector('.credit-debit-rain-thin')).toBeNull();
+      expect(track.querySelector('svg')).toBeNull();
+    });
+    // Fainter thin companions ride their own tracks, one per position.
+    const thin = screen.getAllByTestId('credit-debit-arrow-thin');
+    expect(thin).toHaveLength(5);
+    thin.forEach((track) => {
+      expect(track).toHaveClass('credit-debit-arrow-thin');
+      expect(track.querySelector('.credit-debit-rain-thin')).not.toBeNull();
     });
   });
 
