@@ -4,14 +4,12 @@ interface FitTextProps extends HTMLAttributes<HTMLSpanElement> {
   children: ReactNode;
   minFontSize?: number;
   /**
-   * Optional stable cache key for the natural-width measurement.
+   * Optional stable cache key for the class-level (natural) font size.
    *
-   * When the same FitText is reused for a value that changes length on every
-   * keystroke (e.g. the plate input), measuring natural width per keystroke
-   * is wasted work — the font doesn't change between keystrokes, only the
-   * text does. Pass a `measureKey` that's stable across keystrokes (e.g.
-   * font family name, or the className that determines the font) to skip
-   * the natural-width re-measurement until the key actually changes.
+   * The natural FONT SIZE only changes when the className (or fonts) change,
+   * so it is measured once per key — not per keystroke. The natural text
+   * WIDTH, in contrast, changes on every keystroke and is never cached; the
+   * fit always reads the live content width instead.
    *
    * Defaults to `minFontSize + className` — which captures font-family
    * changes via the className but not text content, exactly what we want.
@@ -22,17 +20,20 @@ interface FitTextProps extends HTMLAttributes<HTMLSpanElement> {
 /**
  * Keeps inherently single-line values readable inside a fixed-width visual area.
  *
- * PERF (audit 2026-11-08, "keystroke lag"): previously this component's
- * useLayoutEffect re-ran on every `children` change (i.e. every keystroke
- * when used inside an input), wiping its own natural-width cache and
- * forcing a synchronous layout (getComputedStyle + scrollWidth) on every
- * keystroke. With two FitText instances on the plate input, that was two
- * forced reflows per keystroke — the dominant cause of typing lag.
+ * PERF (audit 2026-11-08, "keystroke lag"): the fit must not force a
+ * synchronous layout per keystroke. This implementation reads exactly one
+ * value (`scrollWidth`) from a post-paint effect while the layout tree is
+ * clean — no inline-style clearing and no `getComputedStyle` in the typing
+ * path. The full clear → `getComputedStyle` → restore measurement only runs
+ * on mount, on `measureKey` change, on container resize and after font swaps.
  *
- * Fix: natural-width is now measured at most once per font-load + once
- * per `measureKey` change. `children` changes only recompute the math
- * (`available / natural × naturalSize`), which is pure arithmetic with
- * no DOM reads. One ResizeObserver still handles container resizes.
+ * FIX (owner report 2026-11-16, "3 letters drift into the number side"): the
+ * fit used to consult a natural-width cache that was measured once — when
+ * the first character appeared — and reused for every later keystroke. By
+ * the third letter the real text was wider than the cached width, so no
+ * shrink was applied, and on the RTL letters half of the plate input the
+ * overflowing text spilled LEFT across the divider into the numbers half.
+ * The fit is now computed from the live text width on every text change.
  */
 export function FitText({ children, minFontSize = 12, className = '', style, measureKey, ...props }: FitTextProps) {
   const textRef = useRef<HTMLSpanElement>(null);
@@ -40,124 +41,129 @@ export function FitText({ children, minFontSize = 12, className = '', style, mea
   // Mirror of `fontSize` so the imperative inline style we re-apply after
   // measuring stays in sync with what React last rendered.
   const appliedSizeRef = useRef<number | undefined>(undefined);
-  // Natural (unfitted) text metrics, measured ONCE per font/measurement-key
-  // change — NOT per children change.
-  const naturalWidthRef = useRef(0);
+  // Class-level (natural) font size — the size the className asks for.
+  // Measured once per measure-key change; never per keystroke.
   const naturalSizeRef = useRef(0);
   const measuredKeyRef = useRef<string>('');
 
   // The effective key that determines when we re-measure. Defaults to a
-  // function of minFontSize + className — both change rarely, and neither
-  // changes on every keystroke (className is the same regardless of which
-  // characters are typed into the plate field).
+  // function of minFontSize + className — both change rarely.
   const effectiveMeasureKey = measureKey ?? `${minFontSize}|${className}`;
 
-  // Re-fit on `children` change WITHOUT re-measuring. Pure math + setState.
-  useEffect(() => {
+  // The one fit routine, shared by text changes, container resizes and font
+  // swaps. Reads the LIVE content width — the span is a fit-content flex
+  // item (or shrink-wraps via max-w-full + whitespace-nowrap), so
+  // `scrollWidth` is the true text width whether the text fits or overflows.
+  const fit = () => {
     const element = textRef.current;
     const container = element?.parentElement;
     if (!element || !container) return;
 
-    const naturalWidth = naturalWidthRef.current;
-    const naturalSize = naturalSizeRef.current;
-
-    // If we haven't measured yet (first render), the layout effect below
-    // will do it. Skip — we have nothing to compute against.
-    if (!naturalWidth || !naturalSize) return;
-
     const availableWidth = container.clientWidth;
     if (!availableWidth) return;
 
-    if (naturalWidth <= availableWidth) {
-      if (appliedSizeRef.current !== undefined) {
+    const contentWidth = element.scrollWidth;
+    if (!contentWidth) return;
+
+    const applied = appliedSizeRef.current;
+    const naturalSize = naturalSizeRef.current;
+    // The size the text is ACTUALLY rendered at right now: the live inline
+    // size (fitted, or caller-provided via the style prop) with the class
+    // size as fallback. Reading the DOM — instead of trusting `applied` —
+    // keeps the width/size ratio consistent even when a setState from the
+    // layout pass has not committed yet.
+    const renderedSize = Number.parseFloat(element.style.fontSize) || naturalSize;
+
+    if (contentWidth <= availableWidth) {
+      // Fits at the current size. If a shrink is applied (text was
+      // backspaced), check whether the natural class size fits again.
+      if (applied === undefined) return;
+      if (!naturalSize) {
         appliedSizeRef.current = undefined;
         setFontSize(undefined);
+        return;
+      }
+      element.style.fontSize = '';
+      const naturalWidth = element.scrollWidth;
+      element.style.fontSize = `${applied}px`;
+      if (naturalWidth && naturalWidth <= availableWidth) {
+        appliedSizeRef.current = undefined;
+        setFontSize(undefined);
+        return;
+      }
+      const next = Math.max(Math.min(minFontSize, naturalSize), Math.floor((naturalSize * availableWidth / naturalWidth) * 10) / 10);
+      if (next !== applied) {
+        appliedSizeRef.current = next;
+        setFontSize(next);
       }
       return;
     }
 
-    const safeMinimum = Math.min(minFontSize, naturalSize);
-    const next = Math.max(safeMinimum, Math.floor((naturalSize * availableWidth / naturalWidth) * 10) / 10);
-    if (appliedSizeRef.current !== next) {
+    // Text overflows. Derive the fitted size from the width we are actually
+    // rendering at right now (font metrics scale linearly with font-size, the
+    // same assumption the original natural-width formula made).
+    const baseSize = renderedSize;
+    if (!baseSize) return;
+    const next = Math.max(Math.min(minFontSize, baseSize), Math.floor((baseSize * availableWidth / contentWidth) * 10) / 10);
+    if (next !== applied) {
       appliedSizeRef.current = next;
       setFontSize(next);
     }
+  };
+
+  // Re-fit whenever the text changes — WITHOUT re-measuring the font size.
+  // Post-paint effect: the browser has already laid out the new text, so the
+  // single `scrollWidth` read inside `fit()` costs no extra synchronous
+  // reflow inside the keystroke's frame.
+  useEffect(() => {
+    fit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [children, minFontSize, effectiveMeasureKey]);
 
-  // Measure natural width ONCE per font/measure-key change. This is the
-  // only place that calls getComputedStyle / scrollWidth.
+  // Baseline: measure the class-level font size once per measure-key change.
+  // This is the only place that calls getComputedStyle / clears inline
+  // styles in the typing flow.
   useLayoutEffect(() => {
     const element = textRef.current;
     const container = element?.parentElement;
     if (!element || !container) return;
 
-    const measure = () => {
-      if (measuredKeyRef.current === effectiveMeasureKey && naturalWidthRef.current) {
+    const measureNaturalSize = () => {
+      if (measuredKeyRef.current === effectiveMeasureKey && naturalSizeRef.current) {
         return; // already measured for this key
       }
-
       const availableWidth = container.clientWidth;
       if (!availableWidth) return;
 
-      // Clear the inline override, read natural metrics, then restore.
+      // Clear the inline override, read the class-level font size, then put
+      // back EXACTLY what was rendered before (the fitted size, or whatever
+      // inline font-size the style prop carried) so the DOM never flashes
+      // at the wrong size.
+      const previousInlineSize = element.style.fontSize;
       element.style.fontSize = '';
       naturalSizeRef.current = Number.parseFloat(window.getComputedStyle(element).fontSize) || 0;
-      naturalWidthRef.current = element.scrollWidth;
-      element.style.fontSize = appliedSizeRef.current != null ? `${appliedSizeRef.current}px` : '';
-
-      if (!naturalWidthRef.current || !naturalSizeRef.current) return;
-      measuredKeyRef.current = effectiveMeasureKey;
-
-      // First measurement: also compute the initial fit.
-      if (naturalWidthRef.current <= availableWidth) {
-        if (appliedSizeRef.current !== undefined) {
-          appliedSizeRef.current = undefined;
-          setFontSize(undefined);
-        }
-        return;
-      }
-      const safeMinimum = Math.min(minFontSize, naturalSizeRef.current);
-      const next = Math.max(safeMinimum, Math.floor((naturalSizeRef.current * availableWidth / naturalWidthRef.current) * 10) / 10);
-      if (appliedSizeRef.current !== next) {
-        appliedSizeRef.current = next;
-        setFontSize(next);
-      }
+      element.style.fontSize = previousInlineSize;
+      if (naturalSizeRef.current) measuredKeyRef.current = effectiveMeasureKey;
     };
 
-    measure();
+    measureNaturalSize();
+    fit();
+
     const observer = new ResizeObserver(() => {
-      // Container resized — invalidate the available-width-only path and
-      // recompute. Natural width is still cached (font didn't change).
-      const availableWidth = container.clientWidth;
-      if (!availableWidth) return;
-      const naturalWidth = naturalWidthRef.current;
-      const naturalSize = naturalSizeRef.current;
-      if (!naturalWidth || !naturalSize) {
-        measure();
-        return;
-      }
-      if (naturalWidth <= availableWidth) {
-        if (appliedSizeRef.current !== undefined) {
-          appliedSizeRef.current = undefined;
-          setFontSize(undefined);
-        }
-        return;
-      }
-      const safeMinimum = Math.min(minFontSize, naturalSize);
-      const next = Math.max(safeMinimum, Math.floor((naturalSize * availableWidth / naturalWidth) * 10) / 10);
-      if (appliedSizeRef.current !== next) {
-        appliedSizeRef.current = next;
-        setFontSize(next);
-      }
+      // Container resized — re-read the class size if it was never captured
+      // (e.g. the container was hidden at mount), then re-fit with a fresh
+      // content width.
+      measureNaturalSize();
+      fit();
     });
     observer.observe(container);
     void document.fonts?.ready.then(() => {
-      // A font swap changes the natural text width — force one re-measure
-      // by invalidating the cache, then re-running the measurement path.
+      // A font swap changes glyph widths — invalidate the class-size cache
+      // and re-fit with fresh widths.
       measuredKeyRef.current = '';
-      naturalWidthRef.current = 0;
       naturalSizeRef.current = 0;
-      measure();
+      measureNaturalSize();
+      fit();
     });
 
     return () => observer.disconnect();
@@ -168,7 +174,9 @@ export function FitText({ children, minFontSize = 12, className = '', style, mea
       {...props}
       ref={textRef}
       className={`block max-w-full whitespace-nowrap ${className}`}
-      style={{ ...style, fontSize }}
+      // Only add the key when a fit is applied — `fontSize: undefined` would
+      // clobber a font-size the caller passed in via the style prop.
+      style={fontSize !== undefined ? { ...style, fontSize } : style}
     >
       {children}
     </span>
