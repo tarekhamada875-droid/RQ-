@@ -76,7 +76,7 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
         adminBillingService.listPendingCreditRequests()
           .then(setCreditRequests)
           .catch(() => {});
-      }, 30_000);
+      }, 300_000); // 5 min — was 30s
     };
     const stopPolling = () => {
       if (intervalId) {

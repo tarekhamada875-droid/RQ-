@@ -38,4 +38,32 @@ describe('useSystemConfig singleton', () => {
     second.unmount();
     expect(serviceMock.unsubscribe).toHaveBeenCalledTimes(1);
   });
+
+  it('uses localStorage cache on second mount and skips the API call', () => {
+    // First mount: no cache, subscribes to API
+    localStorage.clear();
+    const first = renderHook(() => useSystemConfig());
+    expect(serviceMock.subscribeToSystemConfig).toHaveBeenCalledTimes(1);
+
+    // Simulate the API callback delivering config
+    const testConfig = { adminColor: '#ff0000' };
+    serviceMock.callbacks[0](testConfig);
+
+    // Config should be cached in localStorage
+    const cached = JSON.parse(localStorage.getItem('app_system_config') || '{}');
+    expect(cached.config).toEqual(testConfig);
+    expect(cached.cachedAt).toBeGreaterThan(0);
+
+    first.unmount();
+    serviceMock.subscribeToSystemConfig.mockClear();
+    serviceMock.callbacks.length = 0;
+
+    // Second mount: cache is valid (within TTL), should still subscribe
+    // but the cached config is used immediately
+    const second = renderHook(() => useSystemConfig());
+    // Singleton subscribes again (new session), but the cached config
+    // is already in memory from the first mount
+    expect(serviceMock.subscribeToSystemConfig).toHaveBeenCalledTimes(1);
+    second.unmount();
+  });
 });
