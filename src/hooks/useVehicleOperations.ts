@@ -26,7 +26,6 @@ interface UseVehicleOperationsProps {
   currentStaff: Staff | null;
   vehicles: Vehicle[];
   setVehicles: React.Dispatch<React.SetStateAction<Vehicle[]>>;
-  todayTransactions: Vehicle[];
   isOnline: boolean;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   closeKeyboard: () => void;
@@ -41,7 +40,6 @@ export function useVehicleOperations({
   currentStaff,
   vehicles,
   setVehicles,
-  todayTransactions,
   isOnline,
   showToast,
   closeKeyboard,
@@ -62,7 +60,6 @@ export function useVehicleOperations({
   const closeAllOverlays = () => {
     _setShowCheckInModal(false);
     _setShowCheckOutModal(false);
-    setShowRecentExitWarning(false);
     setShowSubscriberWarning(false);
   };
   const setShowCheckInModal = (val: boolean) => {
@@ -72,10 +69,6 @@ export function useVehicleOperations({
   const setShowCheckOutModal = (val: boolean) => {
     if (val) closeAllOverlays();
     _setShowCheckOutModal(val);
-  };
-  const setShowRecentExitWarning = (val: boolean) => {
-    if (val) closeAllOverlays();
-    _setShowRecentExitWarning(val);
   };
   const setShowSubscriberWarning = (val: boolean) => {
     if (val) closeAllOverlays();
@@ -88,17 +81,8 @@ export function useVehicleOperations({
   // (success) or stay on the active-vehicles list (failure).
   const [checkoutJustSucceeded, setCheckoutJustSucceeded] = useState<boolean>(false);
 
-  const [showRecentExitWarning, _setShowRecentExitWarning] = useState<boolean>(false);
-  const [recentVehicle, setRecentVehicle] = useState<Vehicle | null>(null);
   const [showSubscriberWarning, _setShowSubscriberWarning] = useState<boolean>(false);
   const [subscriberWarningPlate, setSubscriberWarningPlate] = useState<string>('');
-  const [pendingCheckInType, setPendingCheckInType] = useState<'hourly' | 'overnight' | null>(null);
-  // PR-U: pendingCheckInPlate preserves the plate value across the
-  // RecentExitWarning flow. Previously this was implicitly held in
-  // newPlateNumber (context state). Now that the draft lives in
-  // RegistrationCard, we need to explicitly store the plate that
-  // triggered the warning so the "confirm" action can re-check-in.
-  const [pendingCheckInPlate, setPendingCheckInPlate] = useState<string>('');
 
   const deletingVehicleRef = useRef<string | null>(null);
 
@@ -145,7 +129,7 @@ export function useVehicleOperations({
   // no longer lives in this hook's state). Returns the formatted plate
   // string when the caller should restore it (on error), or null on
   // success / no-restore-needed.
-  const handleCheckIn = useCallback(async (type: 'hourly' | 'overnight', plateValue: string, bypassWarning = false): Promise<string | null> => {
+  const handleCheckIn = useCallback(async (type: 'hourly' | 'overnight', plateValue: string): Promise<string | null> => {
     if (!isOnline) {
       showToast('لا يوجد اتصال بالإنترنت. يرجى إعادة المحاولة عند عودة النت.', 'error');
       return null;
@@ -177,26 +161,12 @@ export function useVehicleOperations({
     // "already inside" errors for cars that have since left. The server
     // already checks for duplicates and returns ALREADY_INSIDE — let it
     // be the source of truth.
-
-    const recentlyExited = todayTransactions
-      .filter(v => v.plateNumberRaw === raw)
-      .sort((a, b) => {
-        const timeA = a.exitTime ? safeDate(a.exitTime).getTime() : Date.now();
-        const timeB = b.exitTime ? safeDate(b.exitTime).getTime() : Date.now();
-        return timeB - timeA;
-      })[0];
-
-    if (recentlyExited && !showRecentExitWarning && !bypassWarning) {
-      const exitTime = recentlyExited.exitTime ? safeDate(recentlyExited.exitTime) : new Date();
-      if (Date.now() - exitTime.getTime() < 3600000) {
-        setRecentVehicle(recentlyExited);
-        setPendingCheckInType(type);
-        setPendingCheckInPlate(plateValue); // PR-U: preserve plate for re-check-in
-        setShowRecentExitWarning(true);
-        soundManager.play('error');
-        return formatted; // PR-U: restore plate so user sees what triggered the warning
-      }
-    }
+    //
+    // Recent-exit warning removed (2026-11-15, owner decision): the popup
+    // that warned about quick re-entries was removed because it required
+    // an always-on Firestore listener (subscribeToTodayTransactions) that
+    // cost ~50 reads/garage/day. The server-side VEHICLE_ALREADY_INSIDE
+    // check still catches real duplicates.
 
     let isSubscriber = false;
 
@@ -382,7 +352,7 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, setGarage, setVehicles, isLoading, closeKeyboard, vehicles, todayTransactions, showRecentExitWarning, currentStaff, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
+  }, [isOnline, garage, setGarage, setVehicles, isLoading, closeKeyboard, vehicles, currentStaff, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
   // PR-U: removed newPlateNumber from deps — it's now a parameter, not state.
 
   // Check Out
@@ -614,17 +584,10 @@ export function useVehicleOperations({
     loadingType,
     setLoadingType,
     checkoutJustSucceeded,
-    showRecentExitWarning,
-    setShowRecentExitWarning,
-    recentVehicle,
-    setRecentVehicle,
     showSubscriberWarning,
     setShowSubscriberWarning,
     subscriberWarningPlate,
     setSubscriberWarningPlate,
-    pendingCheckInType,
-    setPendingCheckInType,
-    pendingCheckInPlate,
     handleCheckIn,
     confirmCheckOut,
     handleDeleteVehicle,
@@ -640,17 +603,10 @@ export function useVehicleOperations({
     loadingType,
     setLoadingType,
     checkoutJustSucceeded,
-    showRecentExitWarning,
-    setShowRecentExitWarning,
-    recentVehicle,
-    setRecentVehicle,
     showSubscriberWarning,
     setShowSubscriberWarning,
     subscriberWarningPlate,
     setSubscriberWarningPlate,
-    pendingCheckInType,
-    setPendingCheckInType,
-    pendingCheckInPlate,
     handleCheckIn,
     confirmCheckOut,
     handleDeleteVehicle,

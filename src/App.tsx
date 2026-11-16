@@ -31,7 +31,7 @@ export default function App() {
   const { isAuthReady, isSessionReady, isLoggingOut, currentStaff, showLogoutConfirm, setShowLogoutConfirm } = session;
   const { view, setView, showOfflineScreen, isLandscapeMobile, showSubscribers, setShowSubscribers, showDeleteConfirm, setShowDeleteConfirm, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails } = navigationUi;
   const { garage, delegate } = garageData;
-  const { isLoading, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, showRecentExitWarning, setShowRecentExitWarning, showSubscriberWarning, setShowSubscriberWarning, setSelectedVehicle, setRecentVehicle, setSubscriberWarningPlate } = vehicleOperations;
+  const { isLoading, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, showSubscriberWarning, setShowSubscriberWarning, setSelectedVehicle, setSubscriberWarningPlate } = vehicleOperations;
 
   // Force light theme when the garage view is active — garage owners always
   // see the light/day theme for maximum clarity, regardless of their phone's
@@ -76,7 +76,6 @@ export default function App() {
   useBackHandler(() => { setShowCheckOutModal(false); return true; }, showCheckOutModal);
   useBackHandler(() => { setShowCheckInModal(false); setSelectedVehicle(null); return true; }, showCheckInModal);
   useBackHandler(() => { setShowDeleteConfirm(false); return true; }, showDeleteConfirm);
-  useBackHandler(() => { setShowRecentExitWarning(false); setRecentVehicle(null); return true; }, showRecentExitWarning);
   useBackHandler(() => { setShowSubscriberWarning(false); setSubscriberWarningPlate(''); return true; }, showSubscriberWarning);
   useBackHandler(() => { setShowSubscribers(false); return true; }, showSubscribers);
   // Admin sub-pages: back returns to admin dashboard.
