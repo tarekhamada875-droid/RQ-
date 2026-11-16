@@ -88,8 +88,8 @@ describe('CheckOutModal icon actions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'إغلاق' }));
     expect(props.onCancel).toHaveBeenCalledOnce();
 
-    expect(screen.getAllByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })).toHaveLength(1);
-    fireEvent.click(screen.getByRole('button', { name: 'حذف السيارة (خطأ إدخال)' }));
+    expect(screen.getAllByRole('button', { name: 'امسح العربية (دخول غلط)' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'امسح العربية (دخول غلط)' }));
     expect(props.onDelete).toHaveBeenCalledOnce();
   });
 
@@ -101,7 +101,7 @@ describe('CheckOutModal icon actions', () => {
     props.selectedVehicle.enteredByRole = 'garage';
     render(<ServerTimeProvider><CheckOutModal {...props} /></ServerTimeProvider>);
 
-    expect(screen.getByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'امسح العربية (دخول غلط)' })).toBeInTheDocument();
   });
 
   it('hides delete for another staff account and for legacy records without stable entrant metadata', () => {
@@ -109,18 +109,18 @@ describe('CheckOutModal icon actions', () => {
     otherStaffProps.selectedVehicle.enteredByEntityId = 'staff-2';
     otherStaffProps.selectedVehicle.staffId = 'staff-2';
     const { rerender } = render(<ServerTimeProvider><CheckOutModal {...otherStaffProps} /></ServerTimeProvider>);
-    expect(screen.queryByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'امسح العربية (دخول غلط)' })).toBeNull();
 
     const legacyProps = makeProps(2);
     delete legacyProps.selectedVehicle.enteredByEntityId;
     delete legacyProps.selectedVehicle.enteredByRole;
     rerender(<ServerTimeProvider><CheckOutModal {...legacyProps} /></ServerTimeProvider>);
-    expect(screen.queryByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'امسح العربية (دخول غلط)' })).toBeNull();
   });
 
   it('hides the delete action after the five-minute entry-error window', () => {
     render(<ServerTimeProvider><CheckOutModal {...makeProps(6)} /></ServerTimeProvider>);
 
-    expect(screen.queryByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'امسح العربية (دخول غلط)' })).toBeNull();
   });
 });

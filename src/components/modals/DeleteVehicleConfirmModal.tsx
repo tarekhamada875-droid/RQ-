@@ -34,7 +34,7 @@ export const DeleteVehicleConfirmModal: React.FC<DeleteVehicleConfirmModalProps>
         </div>
         <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">حذف السيارة؟</h3>
         <p className="text-slate-500 dark:text-slate-400 text-sm mb-6 leading-relaxed">
-          سيتم حذف السيارة <span className="inline-block px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-black rounded-lg text-xs font-mono">{vehicle.plateNumber}</span> نهائياً من النظام.
+          العربية دي <span className="inline-block px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-black rounded-lg text-xs font-mono">{vehicle.plateNumber}</span> هتتمسح نهائيًا من النظام.
         </p>
         <div className="space-y-3 pt-1">
           <button 
@@ -42,13 +42,13 @@ export const DeleteVehicleConfirmModal: React.FC<DeleteVehicleConfirmModalProps>
             disabled={isLoading}
             className="w-full py-3.5 bg-red-600 text-white rounded-2xl font-black text-base disabled:opacity-50 outline-none cursor-pointer shadow-lg shadow-red-600/20 flex items-center justify-center"
           >
-            تأكيد الحذف
+            امسح العربية
           </button>
           <button 
             onClick={onCancel}
             className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-bold text-sm outline-none cursor-pointer flex items-center justify-center"
           >
-            إلغاء
+            امسح
           </button>
         </div>
       </div>

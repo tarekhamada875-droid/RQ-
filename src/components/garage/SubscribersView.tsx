@@ -187,7 +187,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
             // First-page hydration skeleton. Shown only until the first
             // Firestore snapshot (or shared subscriber page) lands, so the
             // user doesn't see a blank list area during initial load.
-            <div className="space-y-3" aria-label="جاري تحميل المشتركين">
+            <div className="space-y-3" aria-label="بيتحمل المشتركين">
               {[1, 2, 3, 4].map((item) => (
                 <div key={item} className="h-28 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900" />
               ))}

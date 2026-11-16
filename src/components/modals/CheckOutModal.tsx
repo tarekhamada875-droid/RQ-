@@ -203,7 +203,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                       <div className="px-5 py-2.5 sm:px-8 sm:py-5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl sm:rounded-[2rem] border border-emerald-200 dark:border-emerald-800 text-lg sm:text-3xl font-black tracking-tight mb-2">
                         مشترك شهري
                       </div>
-                      <span className="text-[10px] sm:text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">لا توجد رسوم خروج</span>
+                      <span className="text-[10px] sm:text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">مفيش رسوم خروج</span>
                     </div>
                   ) : (
                     <>
@@ -237,7 +237,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                     ) : (
                       <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6" />
                     )}
-                    {isLoading && loadingType === 'delete' ? 'جاري حذف السيارة...' : 'حذف السيارة (خطأ إدخال)'}
+                    {isLoading && loadingType === 'delete' ? 'جاري حذف السيارة...' : 'امسح العربية (دخول غلط)'}
                   </button>
                 </div>
               )}
