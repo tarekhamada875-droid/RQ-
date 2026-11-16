@@ -171,13 +171,17 @@ describe('GarageDashboardView listeners under Option 2 (badge reads garage.lastC
 
     // No credit-grant listener at all while the modal is closed — the badge
     // reads garage.lastCreditGrantAt via the existing garage-doc subscription.
-    await waitFor(() => {
-      expect(subscriberListeners).toHaveLength(1);
-    });
+    // Subscriber listener also doesn't start until the subscribers view opens
+    // (on-demand change 2026-11-15).
     expect(rechargeListeners).toHaveLength(0);
+    expect(subscriberListeners).toHaveLength(0);
+
+    // Open subscribers overlay — starts the on-demand subscriber listener.
+    fireEvent.click(screen.getByRole('button', { name: 'Open subscribers' }));
+    await waitFor(() => expect(subscriberListeners).toHaveLength(1));
     expect(activeCount(subscriberListeners)).toBe(1);
 
-    // Subscriber badge still works (separate listener, unchanged).
+    // Push subscriber data via the listener callback.
     const subscriber = {
       id: 'expiring-subscriber',
       ownerName: 'Soon Expiring',
@@ -186,14 +190,13 @@ describe('GarageDashboardView listeners under Option 2 (badge reads garage.lastC
     act(() => {
       subscriberListeners[0].callback([subscriber], { lastDoc: { id: 'cursor-50' }, hasMore: true });
     });
-    expect(screen.getByTestId('expiring-subscriber-badge')).toHaveTextContent('1');
-
-    // Open subscribers overlay — does not open a credit-grant listener.
-    fireEvent.click(screen.getByRole('button', { name: 'Open subscribers' }));
     expect(screen.getByTestId('overlay-subscriber-ids')).toHaveTextContent('expiring-subscriber');
+    expect(screen.getByTestId('expiring-subscriber-badge')).toHaveTextContent('1');
     expect(serviceMocks.subscribeToSubscribers).toHaveBeenCalledTimes(1);
+
+    // Close subscribers overlay — listener tears down but data stays.
     fireEvent.click(screen.getByRole('button', { name: 'Close subscribers' }));
-    expect(activeCount(subscriberListeners)).toBe(1);
+    expect(activeCount(subscriberListeners)).toBe(0);
     expect(serviceMocks.subscribeToSubscribers).toHaveBeenCalledTimes(1);
 
     // Open the credit-grant history overlay — limit-50 listener starts now.
@@ -236,6 +239,9 @@ describe('GarageDashboardView listeners under Option 2 (badge reads garage.lastC
       vi.setSystemTime(new Date('2026-10-24T12:00:00.000Z'));
       render(<DashboardHarness />);
 
+      // Subscriber listener only starts when the subscribers view is opened
+      // (on-demand change 2026-11-15).
+      fireEvent.click(screen.getByRole('button', { name: 'Open subscribers' }));
       await waitFor(() => expect(subscriberListeners).toHaveLength(1));
       act(() => subscriberListeners[0].callback([
         { id: 'expired-yesterday', endDate: '2026-10-23' },

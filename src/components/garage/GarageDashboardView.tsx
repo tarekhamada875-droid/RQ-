@@ -95,8 +95,13 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const [isAuthenticated, setIsAuthenticated] = useState(!!auth.currentUser);
 
   const garageId = garage?.id;
+  // On-demand subscribers listener (2026-11-15): only subscribe when the
+  // subscribers view is actually open (showSubscribers === true). Previously
+  // this ran for every garage owner with hasMonthlySubscribers — costing
+  // ~1 read per subscriber per dashboard mount. Now the listener only
+  // starts when the user navigates to the subscribers view.
   const shouldSubscribeToSubscribers = Boolean(
-    garage?.hasMonthlySubscribers && (!currentStaff || showSubscribers),
+    garage?.hasMonthlySubscribers && showSubscribers,
   );
   const { creditGrantLogs, isCreditGrantLoading, subscriberPage } = useGarageDashboardLiveData({
     garageId,

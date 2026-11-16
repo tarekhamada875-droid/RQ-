@@ -85,7 +85,7 @@ export const DelegateDashboardView = memo(({
 
     const startPolling = () => {
       if (intervalId) return;
-      intervalId = setInterval(() => void refreshCreditRequests(), 30_000);
+      intervalId = setInterval(() => void refreshCreditRequests(), 300_000); // 5 min — was 30s
     };
     const stopPolling = () => {
       if (intervalId) {
