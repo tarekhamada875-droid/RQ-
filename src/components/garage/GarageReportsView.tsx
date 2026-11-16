@@ -161,7 +161,7 @@ export const GarageReportsView = memo(({
           className="flex items-center gap-1 text-[10px] font-black text-purple-600 dark:text-purple-400 disabled:opacity-40 cursor-pointer"
         >
           <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span>{isRefreshing ? 'جاري التحديث...' : 'تحديث'}</span>
+          <span>{isRefreshing ? 'بيتحدّث...' : 'تحديث'}</span>
         </button>
       </div>
 
@@ -171,7 +171,7 @@ export const GarageReportsView = memo(({
             opening the reports view, so the user doesn't see zeros flash
             before the Worker confirms the dashboard summary. */}
         {isInitialLoad ? (
-          <div className="space-y-4" aria-label="جاري تحميل التقارير">
+          <div className="space-y-4" aria-label="بيتحمل التقرير">
             <div className="h-20 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900" />
             <div className="grid grid-cols-2 gap-3.5">
               <div className="h-24 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900" />
@@ -190,7 +190,7 @@ export const GarageReportsView = memo(({
               className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-xs font-black text-white disabled:opacity-40 cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'جاري التحديث...' : 'إعادة المحاولة'}
+              {isRefreshing ? 'بيتحدّث...' : 'حاول تاني'}
             </button>
           </div>
         ) : (
@@ -208,13 +208,13 @@ export const GarageReportsView = memo(({
               if (noticeState === 'live_may_be_truncated') {
                 return (
                   <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold leading-relaxed text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
-                    الإحصاءات اليومية تعتمد على ما يصل إلى 200 سجل من حركات اليوم؛ إذا تجاوز العدد ذلك، فقد لا تشمل كل الحركات.
+                    الإحصائيات بتاعه النهارده بتعتمد على حد أقصى ٢٠٠ حركة؛ لو زاد العدد عن كده، ممكن ماتبقاش شاملة كل الحركات.
                   </p>
                 );
               }
               return (
                 <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold leading-relaxed text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
-                  عرض مباشر لحركات اليوم من سجل النشاط. الملخص الموثوق غير متاح مؤقتاً.
+                  عرض مباشر لحركات النهارده من السجل. الملخص الموثوق مش متاح دلوقتي.
                 </p>
               );
             })()}

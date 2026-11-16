@@ -28,9 +28,9 @@ export const SubscriberWarningModal: React.FC<SubscriberWarningModalProps> = mem
         <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">تنبيه: مشترك شهري</h3>
         
         <p className="text-slate-500 dark:text-slate-400 font-bold mb-5 text-sm leading-relaxed">
-          رقم اللوحة ينتمي إلى مشترك شهري فعال ونشط حالياً.
+          رقم اللوحة بتاع مشترك شهري شغال وفعّال دلوقتي.
           <br/>
-          <span className="text-emerald-600 dark:text-emerald-400 font-black">لن يتم تسجيله</span> في قائمة السيارات المتواجدة بالداخل.
+          <span className="text-emerald-600 dark:text-emerald-400 font-black">مش هيتسجل</span> في قائمة العربيات اللي جوّه.
         </p>
 
         {/* Plate Mockup in Warning Modal */}
@@ -45,7 +45,7 @@ export const SubscriberWarningModal: React.FC<SubscriberWarningModalProps> = mem
           onClick={onConfirm}
           className="w-full py-3.5 bg-slate-900 dark:bg-emerald-600 text-white rounded-2xl font-black text-base outline-none cursor-pointer shadow-lg shadow-emerald-600/20 flex items-center justify-center"
         >
-          حسنًا، فهمت
+          تمام
         </button>
       </div>
     </div>

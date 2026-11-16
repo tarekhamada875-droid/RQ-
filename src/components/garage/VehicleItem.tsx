@@ -15,7 +15,7 @@ export const VehicleItem = memo(({ vehicle, onCheckOut, disabled = false }: Vehi
         onClick={() => !disabled && onCheckOut(vehicle)}
         disabled={disabled}
         className="relative cursor-pointer outline-none block disabled:cursor-not-allowed "
-        title="تسجيل خروج"
+        title="إخراج العربية"
       >
         <EgyptianPlate
           plateNumber={vehicle.plateNumber}
