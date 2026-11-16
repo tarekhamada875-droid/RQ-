@@ -240,19 +240,13 @@ export const GarageReportsView = memo(({
             </div>
           ) : (
             <div className="text-center w-full max-w-sm">
-              <div className="w-16 h-16 bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <TrendingUp className="w-8 h-8" />
-              </div>
               <p className="text-sm font-bold text-slate-400 dark:text-slate-500 mb-2">إجمالي الإيرادات — آخر ٣٠ يوم</p>
-              <div className="flex items-baseline justify-center gap-2 font-mono leading-none mb-4">
+              <div className="flex items-baseline justify-center gap-2 font-mono leading-none">
                 <span className="text-5xl sm:text-6xl font-black text-slate-900 dark:text-white">
                   {formatArabicDigits(monthlyRevenue ?? 0)}
                 </span>
                 <span className="text-lg font-black text-slate-400">ج.م</span>
               </div>
-              <p className="text-xs font-bold text-slate-400 dark:text-slate-500">
-                بيانات من {formatArabicDigits(monthlyDaysWithData)} يوم خلال آخر ٣٠ يوم
-              </p>
             </div>
           )}
         </div>
