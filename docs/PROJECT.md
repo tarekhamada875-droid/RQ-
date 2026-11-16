@@ -60,3 +60,5 @@ Arabic is the sole supported application language. Keep user-facing interface co
 Preserve the existing visual design, Egyptian license-plate identity, mobile/desktop layout, and role flows. Keep plate identifiers, PINs, IDs, and numeric entry readable in their appropriate direction.
 
 The garage monthly revenue card is deliberately minimal (owner decision, 2026-11-16, #760): a label, the big Arabic-Indic number, and the currency — no decorative icon and no data-coverage note. A regression test (`GarageReportsView.monthly.test.tsx`) enforces this; do not re-add the removed elements.
+
+The credit-debit falling-arrows feedback on the garage balance card always plays, regardless of the device's reduced-motion/animation settings (owner decision, 2026-11-16): do not gate `.credit-debit-arrow` behind `prefers-reduced-motion` or any equivalent JS check. The red balance/border state remains as the non-motion cue.
