@@ -14,9 +14,11 @@ A new trial grants exactly 100 credits (added to the single balance as a `trial_
 
 The referral reward is 20 credits, awarded once to the referring garage when the referred garage makes its first qualifying paid grant (≥ 500 EGP). The delegate commission is 100 EGP, awarded on a rolling 30-day recurring basis to the delegate when a garage they onboarded makes a qualifying paid grant (≥ 500 EGP) and no commission has been awarded in the past 30 days. Both fire on the same trigger; smaller first grants do not trigger either. Retries, later grants, and legacy recharge events do not create another commission or referral reward.
 
+Read/write economy (owner decision, 2026-11-14, to stay on the Firestore free tier): garage reports (daily/monthly) and subscriber data load on demand when their screens are opened, not via always-on listeners; delegate and admin request polling runs every 5 minutes (previously 30 seconds); `system_config` is cached in localStorage with a silent fallback when storage is unavailable. Do not reintroduce always-on listeners or fast polling for these views.
+
 Admin revenue (the EGP collected from garages for credits) is tracked separately on each garage doc as `totalAdminRevenue` and aggregated in the admin summary. Garage revenue (money collected from drivers at check-out, plus 2 EGP per subscriber renewal) is tracked separately as `totalRevenue` / `todayRevenue`.
 
-All login PINs are exactly 5 digits. PIN resets are handled out-of-band: the garage owner contacts Admin by phone, and Admin resets the PIN through the Worker.
+All login PINs are exactly 5 digits. PIN resets are handled out-of-band: the garage owner contacts Admin by phone, and Admin resets the PIN through the Worker. New-garage PINs are generated server-side (`server/pinGeneration.ts`) and delegates never see or set them (2026-11-14); the new garage owner receives the PIN directly.
 
 Admin can apply credit corrections (positive to add, negative to subtract, cannot drive the balance below zero) outside the normal 50–2,000 EGP grant flow, for fixing mistakes. Each correction requires a typed reason and is recorded in the ledger as kind `correction_delta`.
 
@@ -33,6 +35,7 @@ The following features have been removed from the product entirely:
 - Legacy commission paths (recharge-based, no 500 EGP threshold).
 - Three-bucket credit balances (`creditBalance: { paid, referral, trial }`) — replaced by the single `credits` field on 2026-10-29. Browser writes to either `credits` or `creditBalance` are denied.
 - Payment references on credit grants — removed on 2026-10-29. Grants now require only an amount and a reason.
+- Recent-exit warning modal on the garage dashboard — removed 2026-11-14 (#755); check-out completes without the secondary warning step (the modal component file remains but is unwired).
 
 New writes must reject them. The server endpoints for these features no longer exist.
 
@@ -52,6 +55,6 @@ Garage deletion is a multi-step process that also cleans up payment reference ma
 
 ## UX boundary
 
-Arabic is the sole supported application language. Keep user-facing interface copy Arabic-only and use RTL layout across active roles, screens, dialogs, and shared feedback. Time is hidden from user-facing screens; server timestamps remain authoritative internally.
+Arabic is the sole supported application language. Keep user-facing interface copy Arabic-only and use RTL layout across active roles, screens, dialogs, and shared feedback. Garage-facing dashboard copy uses Egyptian colloquial Arabic rather than Modern Standard Arabic (2026-11-14); keep new garage-facing strings in dialect. Time is hidden from user-facing screens; server timestamps remain authoritative internally.
 
 Preserve the existing visual design, Egyptian license-plate identity, mobile/desktop layout, and role flows. Keep plate identifiers, PINs, IDs, and numeric entry readable in their appropriate direction.

@@ -1,9 +1,11 @@
 # Offline Mode for Garages — Plan of Record
 
-**Status:** Design approved by owner (2026-11-14). Build not started — awaiting owner's GO.
-Implementation may be delegated to another AI by owner decision (2026-11-14, credit budget);
-the execution rules in §9 keep any implementer inside the approved design. The assistant who
-wrote this plan remains available for between-step review of diffs.
+**Status:** SHELVED by owner decision (2026-11-14). Step 1 was implemented (#751) and
+rolled back the same day (#752) — the offline wall (`OfflineView`) remains the behavior
+for every role. The owner chose to cut Firestore read/write costs with lighter polling
+and on-demand loading instead (#755–#757). This doc is historical evidence of an
+approved-then-shelved design (like `docs/LAST-PLAN-BEFORE-PRODUCTION.md`); do not
+resume it without explicit owner approval.
 
 **The one-line version:** "WhatsApp, but for cars." When internet dies, the garage keeps
 working; each action shows a little clock ("saved, waiting"); when internet returns,
