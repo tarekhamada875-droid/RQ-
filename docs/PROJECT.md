@@ -58,3 +58,5 @@ Garage deletion is a multi-step process that also cleans up payment reference ma
 Arabic is the sole supported application language. Keep user-facing interface copy Arabic-only and use RTL layout across active roles, screens, dialogs, and shared feedback. Garage-facing dashboard copy uses Egyptian colloquial Arabic rather than Modern Standard Arabic (2026-11-14); keep new garage-facing strings in dialect. Time is hidden from user-facing screens; server timestamps remain authoritative internally.
 
 Preserve the existing visual design, Egyptian license-plate identity, mobile/desktop layout, and role flows. Keep plate identifiers, PINs, IDs, and numeric entry readable in their appropriate direction.
+
+The garage monthly revenue card is deliberately minimal (owner decision, 2026-11-16, #760): a label, the big Arabic-Indic number, and the currency — no decorative icon and no data-coverage note. A regression test (`GarageReportsView.monthly.test.tsx`) enforces this; do not re-add the removed elements.
