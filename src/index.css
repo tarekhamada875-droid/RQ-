@@ -358,10 +358,10 @@ input[type="number"]::-webkit-outer-spin-button {
 .credit-debit-arrow-outer-left { left: 14%; margin-left: -1.25rem; animation-delay: 0.24s; }
 .credit-debit-arrow-outer-right { right: 14%; left: auto; margin-left: 0; animation-delay: 0.24s; }
 
-@media (prefers-reduced-motion: reduce) {
-  /* The red balance/border state remains as a clear non-motion debit cue. */
-  .credit-debit-arrow { display: none; }
-}
+/* Owner decision (2026-11-16): the debit arrows ALWAYS play, regardless of
+   the device's reduced-motion / animation settings. Do not add a
+   prefers-reduced-motion gate here — the red balance/border state is the
+   non-motion cue, the falling arrows are the motion cue, and both run. */
 
 /* Fluid auto-contained font utility overrides */
 .text-mobile-fluid {
