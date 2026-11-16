@@ -300,5 +300,48 @@ export const vehicleService = {
         throw makeActivityLogUnavailableError(fallbackError);
       }
     }
+  },
+
+  /**
+   * Fetch total revenue for the last 30 days from the precomputed
+   * `daily_stats` collection. Each day has a `revenue` field written
+   * by the Worker at check-out time.
+   *
+   * Reads 1 query (up to 30 docs) — much cheaper than querying 30 days
+   * of activity logs directly (~1,500 reads). The daily_stats docs are
+   * already computed and maintained server-side.
+   *
+   * Returns { totalRevenue, daysWithData } where daysWithData is the
+   * number of days that had at least one checkout.
+   */
+  getMonthlyRevenue: async (garageId: string): Promise<{ totalRevenue: number; daysWithData: number }> => {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoKey = getCairoDateKey(thirtyDaysAgo);
+
+    const q = query(
+      collection(db, 'garages', garageId, 'daily_stats'),
+      where('dateId', '>=', thirtyDaysAgoKey),
+      orderBy('dateId', 'desc'),
+    );
+
+    try {
+      const snapshot = await getDocs(q);
+      let totalRevenue = 0;
+      let daysWithData = 0;
+      snapshot.forEach((doc: any) => {
+        const data = doc.data();
+        const rev = Number(data.revenue || 0);
+        if (rev > 0 || Number(data.count || 0) > 0) {
+          daysWithData++;
+        }
+        totalRevenue += rev;
+      });
+      return { totalRevenue, daysWithData };
+    } catch (error) {
+      console.error('[Monthly Revenue] Failed to fetch daily_stats:', error);
+      throw error;
+    }
   }
 };

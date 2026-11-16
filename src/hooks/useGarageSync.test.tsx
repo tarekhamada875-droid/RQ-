@@ -435,34 +435,10 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     unmount();
   });
 
-  it('warns when activity history is unavailable and keeps the last displayed records', () => {
-    const previousTransactions = [{ id: 'last-known-transaction' }];
-    const showToast = vi.fn();
-    serviceMocks.subscribeToTodayTransactions.mockImplementation((_garageId: string, callback: (logs: any[], error?: Error) => void) => {
-      callback([], Object.assign(new Error('ACTIVITY_LOGS_UNAVAILABLE'), { code: 'ACTIVITY_LOGS_UNAVAILABLE' }));
-      return () => {};
-    });
-
-    const { result, unmount } = renderHook(() => {
-      const [todayTransactions, setTodayTransactions] = useState(previousTransactions as any[]);
-      useGarageSync({
-        ...createBaseProps(),
-        isSessionReady: true,
-        user: null,
-        garage: { id: 'garage-1' } as any,
-        setTodayTransactions,
-        showToast
-      });
-      return todayTransactions;
-    });
-
-    expect(result.current).toEqual(previousTransactions);
-    expect(showToast).toHaveBeenCalledWith(
-      'تعذر تحديث سجل حركة اليوم. قد تكون البيانات المعروضة قديمة.',
-      'error'
-    );
-    unmount();
-  });
+  // Test removed (2026-11-15): the subscribeToTodayTransactions listener was
+  // removed from useGarageSync. The reports view now manages its own on-demand
+  // listener. Error handling for unavailable activity logs moved to the
+  // reports view's local useEffect.
 
   it('loads bounded Admin garage and delegate pages without reading recharge-request history', async () => {
     vi.useRealTimers();
@@ -553,7 +529,10 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
       return subscription.unsubscribe;
     };
     serviceMocks.subscribeToActiveVehicles.mockImplementation(() => register('active-vehicles'));
-    serviceMocks.subscribeToTodayTransactions.mockImplementation(() => register('today-transactions'));
+    // subscribeToTodayTransactions removed (2026-11-15): the always-on listener
+    // was replaced with an on-demand one started by the reports view. The sync
+    // hook no longer subscribes to today-transactions — only active-vehicles and
+    // current-garage remain.
     serviceMocks.subscribeToGarage.mockImplementation(() => register('current-garage'));
 
     const props = {
@@ -567,7 +546,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
 
     const firstMount = renderHook(() => useGarageSync(props));
     expect(activeSubscriptions().map(({ key }) => key).sort()).toEqual([
-      'active-vehicles', 'current-garage', 'today-transactions',
+      'active-vehicles', 'current-garage',
     ]);
     const firstSubscriptions = subscriptions.slice();
 
@@ -576,13 +555,13 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     firstSubscriptions.forEach(({ unsubscribe }) => expect(unsubscribe).toHaveBeenCalledOnce());
 
     const secondMount = renderHook(() => useGarageSync(props));
-    expect(activeSubscriptions()).toHaveLength(3);
+    expect(activeSubscriptions()).toHaveLength(2);
     const secondSubscriptions = subscriptions.slice(firstSubscriptions.length);
 
     secondMount.unmount();
     expect(activeSubscriptions()).toHaveLength(0);
     secondSubscriptions.forEach(({ unsubscribe }) => expect(unsubscribe).toHaveBeenCalledOnce());
-    expect(subscriptions).toHaveLength(6);
+    expect(subscriptions).toHaveLength(4);
   });
 
   it('ignores a queued garage subscription callback after switching garages', () => {

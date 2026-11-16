@@ -58,7 +58,6 @@ function renderOperations(initialGarage: Garage, initialVehicles: Vehicle[] = []
       currentStaff: null,
       vehicles,
       setVehicles,
-      todayTransactions: [],
       isOnline: true,
       showToast,
       closeKeyboard,

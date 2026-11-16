@@ -38,7 +38,9 @@ export function useGarageSync({
   setSelectedGarageForDetails,
   setVehicles,
   setTodayTransactions,
-  showToast,
+  // showToast removed (2026-11-15): the only use was the today-transactions
+  // listener's error toast, which was removed when the listener became
+  // on-demand. The reports view handles its own error toasts now.
   getLatestEntitySnapshot,
 }: UseGarageSyncProps) {
   const [allGarages, setAllGarages] = useState<Garage[]>([]);
@@ -233,26 +235,13 @@ export function useGarageSync({
     };
   }, [isSessionReady, garage?.id, setVehicles]);
 
-  // Subscribe to completed transactions
-  useEffect(() => {
-    if (!isSessionReady || !garage?.id) {
-      return;
-    }
-    let active = true;
-    const unsub = vehicleService.subscribeToTodayTransactions(garage.id, (completedTransactions, error) => {
-      // Unsubscription cannot retract a callback that is already queued.
-      if (!active) return;
-      if (error) {
-        showToast?.('تعذر تحديث سجل حركة اليوم. قد تكون البيانات المعروضة قديمة.', 'error');
-        return;
-      }
-      setTodayTransactions(completedTransactions);
-    });
-    return () => {
-      active = false;
-      unsub();
-    };
-  }, [isSessionReady, garage?.id, setTodayTransactions, showToast]);
+  // Subscribe to completed transactions — REMOVED (2026-11-15, owner decision).
+  // The always-on Firestore listener cost ~50 reads/garage/day for every
+  // garage, even when nobody was looking at the reports page. The reports
+  // view now manages its own on-demand listener (started when the user
+  // clicks the "load data" button, stopped when they navigate away).
+  // todayTransactions stays as [] in the global state; the reports view
+  // has its own local copy from its own listener.
 
   const staffLoadGenerationRef = useRef(0);
   const loadGarageData = useCallback(async (garageId: string) => {

@@ -171,7 +171,6 @@ export function useGarageApp() {
     currentStaff,
     vehicles,
     setVehicles,
-    todayTransactions,
     isOnline,
     showToast,
     closeKeyboard,
