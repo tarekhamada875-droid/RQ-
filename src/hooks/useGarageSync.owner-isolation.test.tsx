@@ -25,7 +25,10 @@ vi.mock('../services', () => ({
   adminService: serviceMocks,
   authService: serviceMocks,
 }));
-vi.mock('../utils', () => ({
+vi.mock('../utils/storage', () => ({
+  // The hook imports throttleSnapshot from '../utils/storage' — passthrough
+  // here so rapid test deliveries are not swallowed by the real 150ms
+  // throttle. (The previous '../utils' mock never intercepted the import.)
   throttleSnapshot: (callback: (...args: any[]) => void) =>
     Object.assign(callback, { cancel: vi.fn() })
 }));
@@ -151,7 +154,7 @@ describe('useGarageSync owner data isolation', () => {
     expect(result.current.transactions).toEqual([]);
   });
 
-  it('clears owner data and rejects queued snapshots when session readiness is lost', () => {
+  it('attaches before the claim and keeps same-identity data across a session-ready flip', () => {
     let activeVehiclesCallback: ((vehicles: any[]) => void) | undefined;
     serviceMocks.subscribeToActiveVehicles.mockImplementation((_garageId: string, callback: (vehicles: any[]) => void) => {
       activeVehiclesCallback = callback;
@@ -172,23 +175,26 @@ describe('useGarageSync owner data isolation', () => {
         });
         return { vehicles, transactions, setVehicles, setTransactions };
       },
-      { initialProps: { isSessionReady: true } }
+      { initialProps: { isSessionReady: false } }
     );
 
-    act(() => {
-      activeVehiclesCallback?.([{ id: 'vehicle-before-session-loss' }]);
-      result.current.setTransactions([{ id: 'transaction-before-session-loss' }]);
-    });
-    expect(result.current.vehicles).toEqual([{ id: 'vehicle-before-session-loss' }]);
-    expect(result.current.transactions).toEqual([{ id: 'transaction-before-session-loss' }]);
+    // Early-attach contract (stale-tab reopen audit 2026-11-17): the garage
+    // listeners start as soon as the identity is known, while the server
+    // session claim is still in flight.
+    expect(serviceMocks.subscribeToActiveVehicles).toHaveBeenCalledWith('garage-a', expect.any(Function));
 
-    rerender({ isSessionReady: false });
+    // A fresh snapshot delivered while the claim is in flight lands in state.
+    act(() => activeVehiclesCallback?.([{ id: 'vehicle-before-claim' }]));
+    expect(result.current.vehicles).toEqual([{ id: 'vehicle-before-claim' }]);
 
-    expect(result.current.vehicles).toEqual([]);
-    expect(result.current.transactions).toEqual([]);
+    // The claim completing for the SAME identity must not wipe the data the
+    // early listener already delivered (the old ready/unready owner key did).
+    rerender({ isSessionReady: true });
+    expect(result.current.vehicles).toEqual([{ id: 'vehicle-before-claim' }]);
 
-    act(() => activeVehiclesCallback?.([{ id: 'late-vehicle-after-session-loss' }]));
-    expect(result.current.vehicles).toEqual([]);
+    // The listener was never torn down by the flip and keeps streaming.
+    act(() => activeVehiclesCallback?.([{ id: 'vehicle-after-claim' }]));
+    expect(result.current.vehicles).toEqual([{ id: 'vehicle-after-claim' }]);
   });
 
 });
