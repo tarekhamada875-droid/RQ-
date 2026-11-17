@@ -320,6 +320,32 @@ workerApp.post('/api/activity-logs/add', requireWorkerAuth, async (c) => {
 registerCreditRequestRoutes(workerApp);
 
 export { workerApp };
+
+// Keep-warm heartbeat (resume-latency audit 2026-11-17): after long idle (the
+// owner's tab reopened 9h later) the first API call paid ~0.9s of server time
+// — full isolate boot + Firebase Admin init + Firestore REST connection setup.
+// Cloudflare aggressively evicts idle isolates on the free plan (measured
+// elevated first-call latency even after 15-77s gaps), so a 1-minute cron
+// (wrangler.deploy.toml [triggers]) self-pings the static /api/version route
+// to keep an isolate recently exercised. Best-effort by nature: cron invocations
+// may run in a different PoP than user traffic and eviction is never fully
+// guaranteed off — this narrows the window, it cannot close it.
+export async function scheduled(_event: unknown, env: { WORKER_SELF_URL?: string }, ctx: { waitUntil: (p: Promise<unknown>) => void }) {
+  const selfUrl = env?.WORKER_SELF_URL;
+  if (!selfUrl) return;
+  try {
+    ctx.waitUntil(
+      fetch(`${selfUrl}/api/version`, { headers: { 'x-rq-keep-warm': '1' } }).then(
+        () => undefined,
+        () => undefined
+      )
+    );
+  } catch {
+    // Keep-warm is best-effort; never surface cron failures.
+  }
+}
+
 export default {
-  fetch: workerApp.fetch
+  fetch: workerApp.fetch,
+  scheduled
 };

@@ -13,6 +13,9 @@ ENVIRONMENT = "production"
 WORKER_VERSION = "1.0.0-production"
 FIREBASE_PROJECT_ID = "gen-lang-client-0091669619"
 FIREBASE_DATABASE_ID = "ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759"
+# Keep-warm heartbeat target (see scheduled handler in server/cloudflareWorker.ts):
+# the cron below self-pings this URL's static /api/version route every minute.
+WORKER_SELF_URL = "https://rq.tarekhamada875.workers.dev"
 
 [[durable_objects.bindings]]
 name = "PIN_RATE_LIMITER"
@@ -21,3 +24,13 @@ class_name = "PinRateLimiterDurableObject"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["PinRateLimiterDurableObject"]
+
+# Keep-warm heartbeat (resume-latency audit 2026-11-17): Cloudflare evicts idle
+# isolates aggressively on the free plan — measured elevated first-call latency
+# after even 15-77s gaps, and ~0.9s server time after hours-long idle (owner's
+# tab reopened 9h later). Pinging our own static /api/version every minute keeps
+# an isolate recently exercised so the first real request after a long idle is
+# less likely to pay the full boot. 1440 invocations/day (static response, no
+# Firestore reads) — negligible against the free-plan 100k req/day cap.
+[triggers]
+crons = ["* * * * *"]
