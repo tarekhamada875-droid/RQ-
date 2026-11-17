@@ -215,4 +215,25 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     const other = await api.fetch(new Request(`http://localhost/api/garages/${garageId}/credit-ledger`, { headers: { Authorization: 'Bearer valid-staff-token-other-garage' } }));
     expect(other.status).toBe(403);
   });
+
+  it('filters the ledger by kind when ?kind= is passed (perf audit F5, 2026-11-17)', async () => {
+    // The recharge-history screen only renders paid_grant rows; the other
+    // kinds used to cross the wire and be discarded client-side (24KB pages).
+    mockDb.seed('credit_ledger/k1', { garageId, entryId: 'k1', kind: 'paid_grant', amount: 100, occurredAt: '2026-10-17T00:00:00.000Z' });
+    mockDb.seed('credit_ledger/k2', { garageId, entryId: 'k2', kind: 'regular_entry_debit', amount: -10, occurredAt: '2026-10-17T01:00:00.000Z' });
+    mockDb.seed('credit_ledger/k3', { garageId, entryId: 'k3', kind: 'paid_grant', amount: 50, occurredAt: '2026-10-17T02:00:00.000Z' });
+
+    const res = await api.fetch(new Request(`http://localhost/api/garages/${garageId}/credit-ledger?kind=paid_grant`, { headers: adminHeaders }));
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.data.map((row: any) => row.entryId)).toEqual(['k3', 'k1']); // newest first, only paid_grants
+
+    // Unknown kinds are rejected (validation surface, not a free text filter).
+    const bad = await api.fetch(new Request(`http://localhost/api/garages/${garageId}/credit-ledger?kind=nonsense`, { headers: adminHeaders }));
+    expect(bad.status).toBe(400);
+
+    // Without the param the response still carries every kind (back-compat).
+    const unfiltered = await api.fetch(new Request(`http://localhost/api/garages/${garageId}/credit-ledger`, { headers: adminHeaders }));
+    expect(((await unfiltered.json() as any).data) as any[]).toHaveLength(3);
+  });
 });

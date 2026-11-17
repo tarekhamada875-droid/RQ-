@@ -357,7 +357,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
         : dashboardResponse({ id: delegateId, name: 'Other delegate' })
     );
 
-    let resolveOldPage!: (value: { items: any[]; hasMore: boolean; nextCursor: string | null }) => void;
+    let resolveOldPage!: (value: { garages: any[]; hasMore: boolean; nextCursor: string | null }) => void;
     serviceMocks.getDashboardDataPage.mockImplementationOnce(() => new Promise((resolve) => {
       resolveOldPage = resolve;
     }));
@@ -389,7 +389,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
 
     await act(async () => {
       resolveOldPage({
-        items: [{ id: 'stale-page-garage' }],
+        garages: [{ id: 'stale-page-garage' }],
         hasMore: false,
         nextCursor: null
       });
@@ -413,7 +413,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     };
     serviceMocks.getDashboardData.mockResolvedValue(initial);
     serviceMocks.getDashboardDataPage.mockImplementation(async (_id: string, section: string) => ({
-      items: [{ id: `${section}-garage-2` }],
+      garages: [{ id: `${section}-garage-2` }],
       hasMore: false,
       nextCursor: null
     }));
@@ -738,7 +738,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
       .mockResolvedValueOnce(firstResponse)
       .mockResolvedValueOnce(refreshedResponse);
     serviceMocks.getDashboardDataPage.mockResolvedValue({
-      items: [{ id: 'garage-3' }],
+      garages: [{ id: 'garage-3' }],
       hasMore: false,
       nextCursor: null,
     });

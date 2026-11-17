@@ -49,11 +49,12 @@ const handleDelegateDashboard = withErrorHandler(async (c: any) => {
       if (!allowedSections.includes(section)) return c.json({ success: false, error: 'INVALID_PAGE_SECTION' }, 400);
       const page = await readChildPage(section, c.req.query('cursor'));
       const garages = page.documents.map((doc: any) => sanitizeDelegateDoc({ id: doc.id, ...doc.data() }));
+      // Perf audit F1: `items` used to duplicate `garages` here; the client now
+      // reads `garages` directly (delegateService.DelegateDashboardPage).
       return c.json({
         success: true,
         delegate: delegateSnap ? sanitizeDelegateDoc({ id: delegateSnap.id, ...delegateSnap.data() }) : null,
         garages,
-        items: garages,
         hasMore: page.hasMore,
         nextCursor: page.nextCursor,
         pagination: { [section]: { hasMore: page.hasMore, nextCursor: page.nextCursor } }

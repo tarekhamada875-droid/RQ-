@@ -8,6 +8,7 @@
  */
 import type { WorkerApp } from './cloudflareWorker';
 import { adminDb } from './firebaseAdmin';
+import { computeLookupHash, computeLegacyLookupHash, isPinLookupSaltMigrated } from './pinCrypto';
 import {
   requireWorkerAuth,
   writeSessionIndex,
@@ -97,9 +98,17 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       { name: 'supervisors', role: 'supervisor' }
     ];
     const pinLookupStartedAt = Date.now();
+    // PERF (owner debug audit 2026-11-17, finding F3): compute the scrypt
+    // lookup hashes once for the whole request and pass them to every
+    // collection query — they used to be recomputed per collection (~4 extra
+    // scryptSync runs of ~100ms CPU each inside the isolate).
+    const precomputedHashes = {
+      active: computeLookupHash(normalizedPin),
+      legacy: isPinLookupSaltMigrated() ? computeLegacyLookupHash(normalizedPin) : null
+    };
     const [adminPinStored, ...collectionResults] = await Promise.all([
       getAdminPin(),
-      ...collectionsToCheck.map((collection) => queryAccountWherePin(collection.name, normalizedPin))
+      ...collectionsToCheck.map((collection) => queryAccountWherePin(collection.name, normalizedPin, precomputedHashes))
     ]);
     const pinLookupMs = Date.now() - pinLookupStartedAt;
 

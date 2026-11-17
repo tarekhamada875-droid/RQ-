@@ -546,7 +546,9 @@ app.get('/api/garages', requireWorkerAuth, withErrorHandler(async (c) => {
   const garagePage = buildFirestorePage(snap.docs, pageRequest, '__name__');
   const garages = garagePage.documents.map((docSnap: any) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
 
-  return c.json({ success: true, garages, items: garages, hasMore: garagePage.hasMore, nextCursor: garagePage.nextCursor });
+  // Perf audit F1: the list used to be sent twice (`garages` + `items`), doubling
+  // the payload of the heaviest admin endpoint. Frontend only reads `garages`.
+  return c.json({ success: true, garages, hasMore: garagePage.hasMore, nextCursor: garagePage.nextCursor });
 }, 'Garage'));
 
 // Read-only consistency diagnostics & Event Ledger reconciliation.

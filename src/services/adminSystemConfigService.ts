@@ -13,7 +13,11 @@ const getSystemConfig = async (): Promise<SystemConfig | null> => {
   if (!auth.currentUser) return null;
 
   try {
-    const res = await apiCall<{ config?: SystemConfig }>('/api/system-config');
+    // PERF (owner debug audit 2026-11-17, finding F7): this read fires on every
+    // rq-session-ready event and every settings-view mount (10x in one 18-min
+    // session, always the same ~100 bytes). 60s SWR cache makes re-entries
+    // instant; the update POST below clears the cache so writes stay fresh.
+    const res = await apiCall<{ config?: SystemConfig }>('/api/system-config', { cacheTtlMs: 60_000 });
     return res?.config || null;
   } catch (error) {
     console.error('Error fetching system config:', error);

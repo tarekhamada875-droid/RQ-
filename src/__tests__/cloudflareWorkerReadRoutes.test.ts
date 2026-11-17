@@ -179,6 +179,8 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     expect(body.delegates[0]).not.toHaveProperty('pinHash');
     expect(body.hasMore).toBe(false);
     expect(body.nextCursor).toBeNull();
+    // Perf audit F1: the duplicated `items` alias is no longer sent.
+    expect(body.items).toBeUndefined();
   });
 
 });

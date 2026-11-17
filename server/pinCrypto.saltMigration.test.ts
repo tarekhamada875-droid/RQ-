@@ -8,6 +8,7 @@ import {
   computeLookupHash,
   computeLegacyLookupHash,
   isPinLookupSaltMigrated,
+  __resetLookupHashCacheForTests,
 } from './pinCrypto';
 
 const LEGACY_SALT = 'ark_garage_secure_pin_lookup_salt_v2';
@@ -90,5 +91,41 @@ describe('PIN lookup salt migration (audit N22)', () => {
     // existing pinLookupHash in the production DB — update the migration
     // notes in server/pinCrypto.ts AND plan a force-rotation.
     expect(LEGACY_SALT).toBe('ark_garage_secure_pin_lookup_salt_v2');
+  });
+});
+
+describe('lookup-hash memoization (perf audit F3, 2026-11-17)', () => {
+  afterEach(() => {
+    delete (globalThis as any).__RQ_PIN_LOOKUP_SALT__;
+    delete process.env.PIN_LOOKUP_SALT;
+    __resetLookupHashCacheForTests();
+  });
+
+  it('repeats return the identical hash without recomputation drift', () => {
+    // The memo must be transparent: same (pin, salt) → same hash, whether the
+    // value came from scrypt or from the cache.
+    const pin = '24680';
+    const first = computeLookupHash(pin);
+    expect(computeLookupHash(pin)).toBe(first);
+    expect(computeLegacyLookupHash(pin)).toBe(computeLegacyLookupHash(pin));
+    // Both salts cache independently — the legacy hash never collapses into
+    // the active-salt hash.
+    (globalThis as any).__RQ_PIN_LOOKUP_SALT__ = TEST_NEW_SALT;
+    const migrated = computeLookupHash(pin);
+    expect(migrated).not.toBe(first);
+    expect(migrated).toBe(computeLookupHash(pin));
+    expect(computeLegacyLookupHash(pin)).toBe(computeLegacyLookupHash(pin));
+  });
+
+  it('cache reset forces recomputation to the same value', () => {
+    const pin = '11223';
+    const before = computeLookupHash(pin);
+    __resetLookupHashCacheForTests();
+    expect(computeLookupHash(pin)).toBe(before);
+  });
+
+  it('empty pins still short-circuit without touching the cache', () => {
+    expect(computeLookupHash('')).toBe('');
+    expect(computeLegacyLookupHash('')).toBe('');
   });
 });

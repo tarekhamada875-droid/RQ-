@@ -95,8 +95,11 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
     if (body.creditRate !== undefined) {
       // Allow 0.01 to 1000. Below 0.01 is effectively free; above 1000 is nonsensical.
       // Integer 1 (default) preserves the legacy 1 EGP = 1 credit behavior.
+      // PERF audit F6 (owner debug session 2026-11-17): the client computed
+      // 1.3333333333333333 from a division and the raw float was stored.
+      // Round to 2 decimals so the config stays clean.
       const rate = validateNumber(body.creditRate, 'creditRate', { min: 0.01, max: 1000 });
-      updatePayload.creditRate = rate;
+      updatePayload.creditRate = Math.round(rate * 100) / 100;
     }
 
     await adminDb.doc('system_config/global').set(updatePayload, { merge: true });
@@ -350,10 +353,11 @@ app.get('/api/admin/delegates', requireWorkerAuth, withErrorHandler(async (c) =>
     nextCursor = btoa(`${lastCreatedAt},${lastDoc.id}`);
   }
 
+  // Perf audit F1: `items` used to duplicate `delegates` in every page (~50% wasted bytes).
+  // Frontend reads `delegates`; the alias is no longer sent.
   return c.json({
     success: true,
     delegates,
-    items: delegates,
     hasMore,
     nextCursor
   });

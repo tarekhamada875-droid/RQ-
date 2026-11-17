@@ -17,7 +17,10 @@ export const adminBillingService = {
   },
 
   getGarageCreditLedger: async (garageId: string): Promise<any[]> => {
-    return apiCall<any[]>(`/api/garages/${encodeURIComponent(garageId)}/credit-ledger?limit=50`);
+    // PERF (owner debug audit 2026-11-17, finding F5): the recharge-history
+    // screen only renders paid_grant rows — ask the server to filter so the
+    // other ledger kinds never cross the wire (measured 24KB → mostly waste).
+    return apiCall<any[]>(`/api/garages/${encodeURIComponent(garageId)}/credit-ledger?limit=50&kind=paid_grant`);
   },
 
   // ── Credit requests (delegate → admin) ───────────────────────────────

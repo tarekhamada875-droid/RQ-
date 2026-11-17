@@ -114,6 +114,42 @@ export function hashPinWithUniqueSalt(cleanPinStr: string, saltHex?: string): st
   return `$scrypt$N=${N},r=${r},p=${p}$${actualSaltHex}$${derived}`;
 }
 
+// PERF (owner debug audit 2026-11-17, finding F3): both lookup-hash functions
+// run scryptSync (N=16384), which costs ~100ms+ of CPU inside a Workers
+// isolate. The availability check and the PIN login flow each recomputed the
+// SAME hash up to 6-7 times per request (once per queried collection plus the
+// retirement check), burning ~1.1s of pure CPU on
+// /api/auth/check-pin-availability (measured serverMs=1145). scrypt is
+// deterministic for a fixed (pin, salt) pair, so lookup hashes are memoized
+// in a bounded per-isolate map. Only LOOKUP hashes are cached — the values
+// already stored as Firestore doc ids in pin_reservations/ — never password
+// verification hashes, which use a unique random salt per PIN. Cache keys are
+// fast SHA-256 digests of (salt|pin), so raw PINs never linger in memory.
+const lookupHashCache = new Map<string, string>();
+const LOOKUP_HASH_CACHE_MAX = 2000;
+
+function memoizeLookupHash(cacheKey: string, compute: () => string): string {
+  const cached = lookupHashCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+  const value = compute();
+  while (lookupHashCache.size >= LOOKUP_HASH_CACHE_MAX) {
+    const oldest = lookupHashCache.keys().next().value;
+    if (oldest === undefined) break;
+    lookupHashCache.delete(oldest);
+  }
+  lookupHashCache.set(cacheKey, value);
+  return value;
+}
+
+function cacheKeyFor(salt: string, cleanPinStr: string): string {
+  return crypto.createHash('sha256').update(`${salt}|${cleanPinStr}`).digest('hex');
+}
+
+// Test-only: reset the memo cache (salt-rotation tests recompute from scratch).
+export function __resetLookupHashCacheForTests(): void {
+  lookupHashCache.clear();
+}
+
 /**
  * Computes the lookup hash using the ACTIVE salt (env-derived if set,
  * legacy hardcoded value otherwise). Use this when STORING a new
@@ -122,7 +158,8 @@ export function hashPinWithUniqueSalt(cleanPinStr: string, saltHex?: string): st
  */
 export function computeLookupHash(cleanPinStr: string): string {
   if (!cleanPinStr) return '';
-  return crypto.scryptSync(cleanPinStr, resolveActiveSalt(), 32).toString('hex');
+  const salt = resolveActiveSalt();
+  return memoizeLookupHash(cacheKeyFor(salt, cleanPinStr), () => crypto.scryptSync(cleanPinStr, salt, 32).toString('hex'));
 }
 
 /**
@@ -134,7 +171,7 @@ export function computeLookupHash(cleanPinStr: string): string {
  */
 export function computeLegacyLookupHash(cleanPinStr: string): string {
   if (!cleanPinStr) return '';
-  return crypto.scryptSync(cleanPinStr, LEGACY_PIN_LOOKUP_SALT, 32).toString('hex');
+  return memoizeLookupHash(cacheKeyFor(LEGACY_PIN_LOOKUP_SALT, cleanPinStr), () => crypto.scryptSync(cleanPinStr, LEGACY_PIN_LOOKUP_SALT, 32).toString('hex'));
 }
 
 /**
