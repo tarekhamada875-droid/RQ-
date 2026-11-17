@@ -87,15 +87,34 @@ export function useGarageSync({
   // timeout (so a flaky network cannot permanently lock the user out).
   // Only the garage view is gated — admin/delegate views use different
   // listeners and are not affected by the original race.
+  //
+  // RESUME PERF (stale-tab reopen audit 2026-11-17): the two garage-view
+  // listeners now attach as soon as the identity is known (restored
+  // localStorage garage + auth ready) instead of after the server session
+  // claim. On the owner's 9h-idle reopen that moved first-fresh-snapshot
+  // delivery INTO the claim's own latency window (token refresh + validate)
+  // instead of after it, so the gate is bounded by the claim alone. The
+  // Firestore rules for garages/{id} and its vehicles subcollection are
+  // satisfied by the same server-written garage_sessions doc the claim
+  // refreshes — still active on a reopen (24h timeout). If the claim
+  // ultimately fails (occupied/kicked/expired), the same logout flow that
+  // always handled it fires, and these listeners are torn down by the
+  // identity change; a permission-denied listener is console noise,
+  // never rendered content.
   const [isInitialSyncComplete, setIsInitialSyncComplete] = useState(false);
   const garageFreshSnapshotReceivedRef = useRef(false);
   const vehiclesFreshSnapshotReceivedRef = useRef(false);
   const initialSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const INITIAL_SYNC_TIMEOUT_MS = 10_000;
 
-  // Keep transient garage data tied to the active role/entity, not just the shared garage ID.
+  // Keep transient garage data tied to the active role/entity (identity),
+  // not the shared garage ID and NOT the session-ready phase. The phase
+  // prefix used to wipe same-identity data exactly when the claim completed,
+  // which also destroyed snapshots that early-attached listeners delivered
+  // while the claim was still in flight. Real ownership changes (view,
+  // entity, user) still change the key and clear everything below.
   const isAdminView = view === 'admin_dashboard' || view.startsWith('admin_');
-  const dataOwnerKey = `${isSessionReady ? 'ready' : 'unready'}:` + (view === 'garage'
+  const dataOwnerKey = (view === 'garage'
     ? `garage:${garage?.id ?? ''}:staff:${currentStaff?.id ?? 'owner'}:user:${user?.uid ?? ''}`
     : view === 'delegate_dashboard'
       ? `delegate:${delegate?.id ?? ''}:user:${user?.uid ?? ''}`
@@ -155,9 +174,11 @@ export function useGarageSync({
     }
   }, [dataOwnerKey]);
 
-  // Subscribe to Active Vehicles
+  // Subscribe to Active Vehicles — early-attached (see the initial-sync gate
+  // note above): the identity comes from restored localStorage, so the
+  // listener can start while the session claim is still in flight.
   useEffect(() => {
-    if (!isSessionReady || !garage?.id) {
+    if (!isAuthReady || view !== 'garage' || !garage?.id) {
       return;
     }
     let active = true;
@@ -233,7 +254,7 @@ export function useGarageSync({
       throttledVehicleUpdate.cancel();
       unsub();
     };
-  }, [isSessionReady, garage?.id, setVehicles]);
+  }, [isAuthReady, view, garage?.id, setVehicles]);
 
   // Subscribe to completed transactions — REMOVED (2026-11-15, owner decision).
   // The always-on Firestore listener cost ~50 reads/garage/day for every
@@ -526,15 +547,27 @@ export function useGarageSync({
   // Packages listener removed — feature retired by owner.
 
   // Sync bounded admin collections. Detail pages retain their own selected-document reads.
+  // (Admin list loading stays gated on the server session claim — these are
+  // Worker API calls that need the claimed session, unlike the garage-view
+  // Firestore listeners below which only need a valid garage_sessions doc.)
   useEffect(() => {
     if (!isSessionReady || !isAuthReady || !user) return;
 
     if ((view === 'admin_dashboard' || view === 'admin_garage_details' || view === 'admin_delegate_details') && !adminListsLoadedRef.current) {
       void refreshAdminLists();
     }
+  }, [isSessionReady, isAuthReady, user, view, refreshAdminLists]);
+
+  // Current-garage document listener — early-attached (see the initial-sync
+  // gate note above). Same callback contract as before; the only change is
+  // that it no longer waits for the server session claim.
+  useEffect(() => {
+    if (!isAuthReady || view !== 'garage' || !garage?.id) {
+      return;
+    }
 
     let garageSubscriptionCurrent = true;
-    const subscribedGarageId = view === 'garage' ? garage?.id : undefined;
+    const subscribedGarageId = garage?.id;
     const unsubCurrentGarage = subscribedGarageId
       ? garageService.subscribeToGarage(subscribedGarageId, (updatedGarage, metadata) => {
           // A callback already queued by the old listener must not replace the
@@ -604,14 +637,11 @@ export function useGarageSync({
         })
       : () => {};
 
-    const unsubCurrentDelegate = () => {};
-
     return () => {
       garageSubscriptionCurrent = false;
       unsubCurrentGarage();
-      unsubCurrentDelegate();
     };
-  }, [isSessionReady, isAuthReady, user, view, garage?.id, setGarage, refreshAdminLists]);
+  }, [isAuthReady, view, garage?.id, setGarage]);
 
   // Load Admin specific garage details once
   useEffect(() => {
