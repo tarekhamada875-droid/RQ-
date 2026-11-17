@@ -58,13 +58,18 @@ app.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
     // the only credential for new logins, so devices still holding an active
     // session under the OLD PIN must be signed out here, server-side. Sessions
     // live per device under {role}_sessions/{uid}/sessions/{sid}; the
-    // session_index is the only uid→entity map, so query it by entityId
-    // (single-field equality — covered by the automatic index) and deactivate
-    // every matching live device doc. This replaces the old implicit kick that
-    // relied on the entity activeSessionIds marker gating auth (removed — the
-    // marker is advisory bookkeeping now and no longer revokes anything).
+    // session_index is the only uid→entity map, so query it by entityId and
+    // deactivate every matching live device doc. session_index always lives at
+    // the top level, so a plain collection query is used here: equality is
+    // covered by the automatic collection-scope index, whereas a
+    // collectionGroup query would need a manually created collection-group
+    // index that does not exist (its failure used to be swallowed by this
+    // best-effort catch, silently skipping the kick). This replaces the old
+    // implicit kick that relied on the entity activeSessionIds marker gating
+    // auth (removed — the marker is advisory bookkeeping now and no longer
+    // revokes anything).
     try {
-      const indexSnap = await adminDb.collectionGroup('session_index')
+      const indexSnap = await adminDb.collection('session_index')
         .where('entityId', '==', entityId)
         .get();
       const kickNow = new Date();
