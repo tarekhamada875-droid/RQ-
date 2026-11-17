@@ -6,7 +6,14 @@ import { BackHandlerProvider } from './hooks/backHandler.tsx';
 import { ToastProvider } from './hooks/toast.tsx';
 import { GarageInputProvider } from './hooks/garageInput.tsx';
 import { ServerTimeProvider } from './hooks/serverTimeContext.tsx';
+import { debugRecorder } from './debug/debugRecorder.ts';
+import { DebugHud } from './debug/DebugHud.tsx';
 import './index.css';
+
+// DEBUG (owner full-project debug session, 2026-11-17): start the black-box
+// recorder before anything else so boot-time errors and the very first API
+// calls are captured. Purely observational; no behavioral impact.
+debugRecorder.init();
 
 // PERF (DevTools runtime audit 2026-11-11): app-shell boundary.
 //
@@ -51,6 +58,10 @@ window.addEventListener('vite:preloadError', (event) => {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
+      {/* DEBUG (owner audit 2026-11-17): outside the provider tree so the
+          export button survives provider-level failures and works on every
+          view, including the login screen. */}
+      <DebugHud />
       <ThemeProvider>
         <BackHandlerProvider>
           <ToastProvider>

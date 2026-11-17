@@ -1,0 +1,169 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { sanitizeValue, debugRecorder } from './debugRecorder';
+
+describe('sanitizeValue (PII-safe structural snapshot)', () => {
+  it('keeps numbers, booleans and null untouched', () => {
+    expect(sanitizeValue({ count: 3, active: true, missing: null })).toEqual({
+      count: 3,
+      active: true,
+      missing: null,
+    });
+  });
+
+  it('redacts long or unsafe string values but records their length', () => {
+    const out = sanitizeValue({ name: 'محمد أحمد علي حسن', phone: '01012345678' }) as Record<string, string>;
+    expect(out.name).toBe('«str:17»');
+    expect(out.phone).toBe('«str:11»');
+    expect(JSON.stringify(out)).not.toContain('محمد');
+    expect(JSON.stringify(out)).not.toContain('01012345678');
+  });
+
+  it('never records values under forbidden keys (tokens, PINs, secrets)', () => {
+    const out = sanitizeValue({ idToken: 'abc.def.ghi', pin: '12345', password: 'hunter2' }) as Record<string, string>;
+    expect(out.idToken).toBe('«str:11»');
+    expect(out.pin).toBe('«str:5»');
+    expect(out.password).toBe('«str:7»');
+    expect(JSON.stringify(out)).not.toContain('hunter2');
+  });
+
+  it('keeps safe technical strings: ids, enum codes, ISO dates, correlation ids', () => {
+    const out = sanitizeValue({
+      id: 'uid_abc-123',
+      code: 'SESSION_REVOKED',
+      createdAt: '2026-11-17T09:30:00Z',
+      correlationId: 'c1d2e3',
+    }) as Record<string, string>;
+    expect(out.id).toBe('uid_abc-123');
+    expect(out.code).toBe('SESSION_REVOKED');
+    expect(out.createdAt).toBe('2026-11-17T09:30:00Z');
+    expect(out.correlationId).toBe('c1d2e3');
+  });
+
+  it('caps array sampling with an honest total length', () => {
+    const items = Array.from({ length: 7 }, (_, i) => ({ id: `s${i}`, name: `اسم ${i}` }));
+    const out = sanitizeValue({ items }) as { items: { len: number; sample: Array<Record<string, string>> } };
+    expect(out.items.len).toBe(7);
+    expect(out.items.sample).toHaveLength(3);
+    expect(out.items.sample[0].id).toBe('s0');
+    expect(out.items.sample[0].name).toBe('«str:5»');
+  });
+
+  it('caps depth and object key count', () => {
+    const deep = { a: { b: { c: { d: { e: 'too deep' } } } } };
+    expect(sanitizeValue(deep)).toEqual({ a: { b: { c: { d: '«maxdepth»' } } } });
+    const wide: Record<string, number> = {};
+    for (let i = 0; i < 40; i += 1) wide[`k${i}`] = i;
+    const outWide = sanitizeValue(wide) as Record<string, number>;
+    expect(Object.keys(outWide).length).toBe(30);
+  });
+});
+
+describe('debugRecorder api entries', () => {
+  beforeEach(() => {
+    debugRecorder.clear();
+  });
+
+  it('apiBegin creates a pending entry and apiEnd settles it with timings', () => {
+    const seq = debugRecorder.apiBegin({
+      method: 'POST',
+      endpoint: '/api/vehicles/check-in',
+      uid: 'uid_x',
+      bodyString: JSON.stringify({ plateNumbers: '123', plateLetters: 'س ل ب', garageId: 'g1', driverPhone: '01098765432' }),
+    });
+
+    const pending = debugRecorder.exportJson();
+    expect(pending).toContain('"pending": true');
+
+    debugRecorder.apiEnd(seq, {
+      status: 200,
+      ok: true,
+      clientMs: 123.4,
+      ttfbMs: 100.1,
+      parseMs: 2.2,
+      serverMs: 80,
+      resBytes: 456,
+      correlationId: 'corr-1',
+      resFields: sanitizeValue({ success: true, data: { plateLetters: 'س ل ب' } }),
+    });
+
+    const exported = JSON.parse(debugRecorder.exportJson()) as {
+      meta: Record<string, unknown>;
+      entries: Array<Record<string, unknown>>;
+    };
+
+    expect(exported.meta.apiCalls).toBe(1);
+    expect(exported.meta.apiClientMsP50).toBe(123);
+    const entry = exported.entries.find((e) => e.seq === seq) as Record<string, unknown>;
+    expect(entry.pending).toBe(false);
+    expect(entry.m).toBe('POST');
+    expect(entry.ep).toBe('/api/vehicles/check-in');
+    expect(entry.clientMs).toBeCloseTo(123.4, 1);
+    expect(entry.serverMs).toBe(80);
+    expect((entry.resFields as Record<string, unknown>).success).toBe(true);
+    // PII from the request body must not survive into the file.
+    expect(debugRecorder.exportJson()).not.toContain('01098765432');
+    expect(debugRecorder.exportJson()).not.toContain('س ل ب');
+  });
+
+  it('failed calls keep error code and message but no PII payload', () => {
+    const seq = debugRecorder.apiBegin({ method: 'GET', endpoint: '/api/garage/summary' });
+    debugRecorder.apiEnd(seq, {
+      status: 403,
+      ok: false,
+      clientMs: 45,
+      errorCode: 'FORBIDDEN',
+      errorMessage: 'scope denied',
+    });
+    const exported = JSON.parse(debugRecorder.exportJson()) as { entries: Array<Record<string, unknown>> };
+    const entry = exported.entries.find((e) => e.cat === 'api') as Record<string, unknown>;
+    expect(entry.ok).toBe(false);
+    expect(entry.errorCode).toBe('FORBIDDEN');
+    expect(entry.pending).toBe(false);
+  });
+
+  it('ring buffer drops the oldest entries past the cap', () => {
+    for (let i = 0; i < 1300; i += 1) {
+      debugRecorder.record('note', { i });
+    }
+    const exported = JSON.parse(debugRecorder.exportJson()) as { meta: { events: number } };
+    expect(exported.meta.events).toBeLessThanOrEqual(1200);
+  });
+});
+
+describe('debugRecorder summary and hygiene', () => {
+  beforeEach(() => {
+    debugRecorder.clear();
+  });
+
+  it('getSummary lists slowest calls and counts errors', () => {
+    const a = debugRecorder.apiBegin({ method: 'GET', endpoint: '/api/slow' });
+    debugRecorder.apiEnd(a, { status: 200, ok: true, clientMs: 900, serverMs: 850 });
+    const b = debugRecorder.apiBegin({ method: 'POST', endpoint: '/api/boom' });
+    debugRecorder.apiEnd(b, { status: 500, ok: false, clientMs: 30, errorCode: 'INTERNAL_SERVER_ERROR' });
+    debugRecorder.record('error', { ev: 'window_error', msg: 'boom' });
+
+    const summary = debugRecorder.getSummary();
+    expect(summary).toContain('API calls: 2');
+    expect(summary).toContain('failed: 1');
+    expect(summary).toContain('JS errors: 1');
+    expect(summary).toContain('/api/slow');
+    expect(summary).toContain('900ms');
+  });
+
+  it('clear resets the buffer and seq', () => {
+    debugRecorder.record('note', { i: 1 });
+    debugRecorder.clear();
+    expect(debugRecorder.count).toBe(1); // only the 'cleared' marker
+    const exported = JSON.parse(debugRecorder.exportJson()) as { meta: { events: number } };
+    expect(exported.meta.events).toBe(1);
+  });
+});
+
+afterEach(() => {
+  // Keep tests isolated from persisted state.
+  try {
+    localStorage.removeItem('rq_debug_recorder_v1');
+  } catch {
+    // ignore
+  }
+});
