@@ -1,4 +1,9 @@
 import { auth } from '../firebase';
+import { debugRecorder, sanitizeValue } from '../debug/debugRecorder';
+
+// Debug timing source: performance.now where available (monotonic),
+// Date.now fallback for exotic runtimes.
+const nowMs = (): number => (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now());
 
 export interface ApiClientOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -167,6 +172,11 @@ export async function apiFetch<T = Record<string, any>>(endpoint: string, option
       token = await fetchTokenOnce(auth.currentUser);
     } catch (cause) {
       console.warn('[ApiClient] Failed to obtain Firebase ID token:', cause);
+      debugRecorder.record('error', {
+        ev: 'id_token_fetch_failed',
+        endpoint,
+        msg: cause instanceof Error ? cause.message.slice(0, 200) : String(cause).slice(0, 200),
+      });
     }
   }
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -202,6 +212,15 @@ export async function apiFetch<T = Record<string, any>>(endpoint: string, option
   }
 
   const url = getApiUrl(endpoint);
+  // DEBUG (owner audit 2026-11-17): record every API call — start a pending
+  // entry now, patch it when the call settles (success or any throw path).
+  const dbgSeq = debugRecorder.apiBegin({
+    method,
+    endpoint,
+    uid: auth.currentUser?.uid || null,
+    bodyString: safeBody,
+  });
+  const dbgStart = nowMs();
   const request = makeRequestSignal(options);
   let response: Response;
   try {
@@ -212,16 +231,36 @@ export async function apiFetch<T = Record<string, any>>(endpoint: string, option
       ? 'استغرق الاتصال بالخادم وقتاً أطول من المتوقع. يرجى المحاولة مرة أخرى.'
       : 'تعذر الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.';
     console.error(`[ApiClient] ${timedOut ? 'Timeout' : 'Network error'} for ${endpoint}:`, cause);
+    debugRecorder.apiEnd(dbgSeq, {
+      ok: false,
+      clientMs: nowMs() - dbgStart,
+      errorCode: timedOut ? 'API_TIMEOUT' : 'NETWORK_ERROR',
+      errorMessage: message.slice(0, 160),
+    });
     throw new ApiError(message, { code: timedOut ? 'API_TIMEOUT' : 'NETWORK_ERROR', cause });
   } finally {
     request.cleanup();
   }
+  const dbgTtfbMs = nowMs() - dbgStart;
 
   const serverCorrelationId = response.headers?.get?.('X-Correlation-ID') || correlationId;
+  const dbgServerMsRaw = response.headers?.get?.('X-Debug-Server-Ms');
+  const dbgServerMs = dbgServerMsRaw ? Number(dbgServerMsRaw) : null;
   const contentType = response.headers?.get?.('content-type') || 'application/json';
   if (contentType && !contentType.includes('application/json')) {
     const text = await response.text().catch(() => '');
     console.error(`[ApiClient] Received non-JSON response from ${endpoint} (Correlation ID: ${serverCorrelationId}):`, text);
+    debugRecorder.apiEnd(dbgSeq, {
+      status: response.status,
+      ok: false,
+      clientMs: nowMs() - dbgStart,
+      ttfbMs: dbgTtfbMs,
+      serverMs: Number.isFinite(dbgServerMs) ? dbgServerMs : null,
+      resBytes: text.length,
+      errorCode: response.status === 429 ? 'RATE_LIMIT_EXCEEDED' : 'INVALID_RESPONSE',
+      errorMessage: 'non-JSON response',
+      correlationId: serverCorrelationId,
+    });
     if (response.status === 429 || text.toLowerCase().includes('rate exceeded') || text.toLowerCase().includes('too many requests')) {
       throw new ApiError('تم تجاوز حد الطلبات المسموح به مؤقتاً. يرجى الانتظار قليلاً.', {
         code: 'RATE_LIMIT_EXCEEDED',
@@ -237,14 +276,26 @@ export async function apiFetch<T = Record<string, any>>(endpoint: string, option
   }
 
   let result: unknown;
+  const dbgParseStart = nowMs();
   try {
     result = await response.json();
   } catch (cause) {
     console.error(`[ApiClient] JSON parse error for ${endpoint} (Correlation ID: ${serverCorrelationId}):`, cause);
+    debugRecorder.apiEnd(dbgSeq, {
+      status: response.status,
+      ok: false,
+      clientMs: nowMs() - dbgStart,
+      ttfbMs: dbgTtfbMs,
+      serverMs: Number.isFinite(dbgServerMs) ? dbgServerMs : null,
+      errorCode: 'INVALID_RESPONSE',
+      errorMessage: 'JSON parse error',
+      correlationId: serverCorrelationId,
+    });
     throw new ApiError(`خطأ في معالجة استجابة الخادم (ID: ${serverCorrelationId})`, {
       code: 'INVALID_RESPONSE', status: response.status, correlationId: serverCorrelationId, cause,
     });
   }
+  const dbgParseMs = nowMs() - dbgParseStart;
 
   const envelope = isRecord(result) ? result as ParsedApiError : {};
   const errorCode = typeof envelope.code === 'string' ? envelope.code : undefined;
@@ -264,6 +315,17 @@ export async function apiFetch<T = Record<string, any>>(endpoint: string, option
         detail: { status: response.status, error: message, code: errorCode || 'UNAUTHORIZED', correlationId: serverCorrelationId },
       }));
     }
+    debugRecorder.apiEnd(dbgSeq, {
+      status: response.status,
+      ok: false,
+      clientMs: nowMs() - dbgStart,
+      ttfbMs: dbgTtfbMs,
+      parseMs: dbgParseMs,
+      serverMs: Number.isFinite(dbgServerMs) ? dbgServerMs : null,
+      errorCode: errorCode || 'UNAUTHORIZED',
+      errorMessage: message.slice(0, 160),
+      correlationId: serverCorrelationId,
+    });
     throw new ApiError(message, {
       code: errorCode || 'UNAUTHORIZED', status: response.status, correlationId: serverCorrelationId, envelope,
     });
@@ -272,10 +334,43 @@ export async function apiFetch<T = Record<string, any>>(endpoint: string, option
   if (!response.ok) {
     const message = errorText(result, response.status);
     console.error(`[ApiClient] Error response from ${endpoint} (Correlation ID: ${serverCorrelationId}):`, message);
+    debugRecorder.apiEnd(dbgSeq, {
+      status: response.status,
+      ok: false,
+      clientMs: nowMs() - dbgStart,
+      ttfbMs: dbgTtfbMs,
+      parseMs: dbgParseMs,
+      serverMs: Number.isFinite(dbgServerMs) ? dbgServerMs : null,
+      errorCode: errorCode || null,
+      errorMessage: message.slice(0, 160),
+      correlationId: serverCorrelationId,
+    });
     throw new ApiError(message, {
       code: errorCode, status: response.status, correlationId: serverCorrelationId, envelope,
     });
   }
+
+  // DEBUG (owner audit 2026-11-17): settle the entry with timings and a
+  // PII-safe structural snapshot of the response (field names + sizes only).
+  let dbgResBytes: number | null = null;
+  try {
+    dbgResBytes = JSON.stringify(result).length;
+  } catch {
+    dbgResBytes = null;
+  }
+  debugRecorder.apiEnd(dbgSeq, {
+    status: response.status,
+    ok: true,
+    clientMs: nowMs() - dbgStart,
+    ttfbMs: dbgTtfbMs,
+    parseMs: dbgParseMs,
+    serverMs: Number.isFinite(dbgServerMs) ? dbgServerMs : null,
+    resBytes: dbgResBytes,
+    errorCode: null,
+    errorMessage: null,
+    correlationId: serverCorrelationId,
+    resFields: sanitizeValue(result),
+  });
 
   return result as T;
 }

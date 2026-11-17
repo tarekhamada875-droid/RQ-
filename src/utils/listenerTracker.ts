@@ -1,3 +1,5 @@
+import { debugRecorder } from '../debug/debugRecorder';
+
 class ListenerTracker {
   private activeListeners = new Map<string, number>();
   private peakActiveListeners = 0;
@@ -12,6 +14,10 @@ class ListenerTracker {
     if (current > 0 && process.env.NODE_ENV !== 'production') {
       console.warn(`[ListenerTracker] Warning: Duplicate active listener registered for key: "${key}" (Current count: ${current + 1})`);
     }
+    // DEBUG (owner audit 2026-11-17): feed listener lifecycle into the debug
+    // recorder so the exported file shows which collections each screen was
+    // listening to, duplicate registrations, and unsubscribe timing.
+    debugRecorder.record('listener', { ev: 'register', key, active: current + 1, duplicate: current > 0 });
     this.activeListeners.set(key, current + 1);
     this.peakActiveListeners = Math.max(this.peakActiveListeners, this.getActiveListenerCount());
 
@@ -21,6 +27,7 @@ class ListenerTracker {
       unsubscribed = true;
       this.unregistrationCount += 1;
       const count = this.activeListeners.get(key) || 0;
+      debugRecorder.record('listener', { ev: 'unregister', key, active: Math.max(0, count - 1) });
       if (count <= 1) {
         this.activeListeners.delete(key);
       } else {

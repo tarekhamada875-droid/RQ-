@@ -167,6 +167,40 @@ workerApp.use('*', async (c, next) => {
   c.res.headers.set('X-Operation-ID', operationId);
 });
 
+// 2b. DEBUG INSTRUMENTATION (owner full-project debug session, 2026-11-17).
+// Wraps every request: measures server-side processing time and payload
+// sizes, publishes them as X-Debug-* response headers (the frontend debug
+// recorder reads these so ONE exported file contains both client and server
+// timings), and emits one structured console line per request for Cloudflare
+// logs (visible via `wrangler tail` / dashboard). Purely observational:
+// never short-circuits, never mutates the body, and all failures inside it
+// are swallowed so traffic is unaffected. Remove after the audit.
+workerApp.use('*', async (c, next) => {
+  const debugStartedAt = Date.now();
+  await next();
+  try {
+    const debugServerMs = Date.now() - debugStartedAt;
+    const debugReqBytes = Number(c.req.header('content-length') || '') || null;
+    const debugResBytes = Number(c.res?.headers?.get?.('content-length') || '') || null;
+    c.res.headers.set('X-Debug-Server-Ms', String(debugServerMs));
+    if (debugReqBytes !== null) c.res.headers.set('X-Debug-Req-Bytes', String(debugReqBytes));
+    if (debugResBytes !== null) c.res.headers.set('X-Debug-Res-Bytes', String(debugResBytes));
+    console.log(JSON.stringify({
+      dbg: 1,
+      m: c.req.method,
+      p: c.req.path,
+      s: c.res.status,
+      ms: debugServerMs,
+      reqB: debugReqBytes,
+      resB: debugResBytes,
+      cid: c.get('correlationId') || null,
+      uid: c.get('user')?.uid || null,
+    }));
+  } catch {
+    // Debug telemetry must never break real traffic.
+  }
+});
+
 // 3. Global Error Normalization
 workerApp.onError((err, c) => {
   const correlationId = c.get('correlationId') || `corr_${Date.now()}`;
@@ -207,7 +241,10 @@ workerApp.use('*', cors({
     'X-Operation-ID',
     'Idempotency-Key',
     'x-idempotency-key',
-    'x-request-id'
+    'x-request-id',
+    'X-Debug-Server-Ms',
+    'X-Debug-Req-Bytes',
+    'X-Debug-Res-Bytes'
   ]
 }));
 
