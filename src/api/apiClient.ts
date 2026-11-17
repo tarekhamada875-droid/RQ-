@@ -11,6 +11,9 @@ export interface ApiClientOptions {
   headers?: Record<string, string>;
   signal?: AbortSignal;
   timeoutMs?: number;
+  // PERF (owner debug audit 2026-11-17, finding F7): opt-in stale-while-
+  // revalidate TTL for shareable GETs. See the SWR cache block below.
+  cacheTtlMs?: number;
 }
 
 /**
@@ -123,6 +126,73 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 let inFlightTokenFetch: Promise<string> | null = null;
 let inFlightTokenFetchUid: string | null = null;
 
+// PERF (owner debug audit 2026-11-17, finding F2): the first admin screen load
+// fired the SAME GETs twice at the same instant (garages list + delegates list,
+// started 3-4ms apart from two components mounting together) — two full round
+// trips and two copies of the same ~9KB answer. Identical in-flight GETs are
+// now shared ("single-flight"): a second caller with the same key receives the
+// same response instead of paying a second round trip. This is NOT a cache:
+// once the request settles the entry is dropped and the next call hits the
+// network exactly as before, so freshness semantics are unchanged. The key
+// includes the signed-in uid (different users never share a response — see
+// apiClient.test.ts "different users") plus custom headers/timeout so call
+// variants stay separate.
+// PERF (owner debug audit 2026-11-17, finding F7): every time the tab came
+// back (or the admin shell re-initialized), the app re-validated the session
+// and re-downloaded the same bootstrap reads (/api/system-config, admin
+// garages page, admin delegates page) — 6 full cycles in one 18-minute
+// session, ~1-1.5s of waiting each time, because config listeners refetch on
+// every rq-session-ready event. An opt-in stale-while-revalidate cache fixes
+// the wait:
+//   - opt-in per call via `cacheTtlMs` — all other endpoints behave as before
+//   - within the TTL the cached value answers IMMEDIATELY and a background
+//     revalidation refreshes the copy for the next caller (throttled so
+//     simultaneous mounts can't stampede the endpoint)
+//   - beyond the TTL the call falls through to a normal blocking fetch
+//   - every non-auth mutation (POST/PUT/PATCH/DELETE) bumps a generation
+//     counter AND clears the cache: in-flight GETs started before the
+//     mutation are split off (new single-flight key) so neither the cache nor
+//     a joining caller can ever serve pre-mutation data
+//   - memory-only, keyed per signed-in uid; never persisted
+const swrCache = new Map<string, { value: unknown; storedAt: number; revalidatedAt: number }>();
+let swrCacheGeneration = 0;
+const SWR_REVALIDATE_MIN_GAP_MS = 5000;
+
+const inFlightGets = new Map<string, Promise<unknown>>();
+
+function inFlightGetKey(endpoint: string, options: ApiClientOptions): string {
+  const uid = auth.currentUser?.uid || 'anon';
+  const variant = JSON.stringify({ h: options.headers || {}, t: options.timeoutMs ?? null });
+  return `${swrCacheGeneration}|${uid}|${endpoint}|${variant}`;
+}
+
+function startSharedGet<T>(key: string, endpoint: string, options: ApiClientOptions, ttl: number): Promise<T> {
+  const existing = inFlightGets.get(key);
+  if (existing) return existing as Promise<T>;
+  // Cache-write guard: a GET that started before a mutation must never
+  // populate the cache after that mutation bumped the generation.
+  const generationAtStart = swrCacheGeneration;
+  const request = apiFetchOnce<T>(endpoint, options)
+    .then((result) => {
+      if (ttl > 0 && swrCacheGeneration === generationAtStart) {
+        swrCache.set(key, { value: result, storedAt: nowMs(), revalidatedAt: nowMs() });
+      }
+      return result;
+    })
+    .finally(() => {
+      if (inFlightGets.get(key) === request) inFlightGets.delete(key);
+    });
+  inFlightGets.set(key, request);
+  return request;
+}
+
+// Test-only escape hatch: reset single-flight + SWR state between tests.
+export function __resetInFlightGetsForTests(): void {
+  inFlightGets.clear();
+  swrCache.clear();
+  swrCacheGeneration = 0;
+}
+
 function fetchTokenOnce(user: { uid?: string; getIdToken: () => Promise<string> }): Promise<string> {
   const uid = typeof user.uid === 'string' ? user.uid : null;
   if (inFlightTokenFetch && inFlightTokenFetchUid === uid) {
@@ -162,7 +232,7 @@ function makeRequestSignal(options: ApiClientOptions): { signal: AbortSignal; cl
   };
 }
 
-export async function apiFetch<T = Record<string, any>>(endpoint: string, options: ApiClientOptions = {}): Promise<T> {
+async function apiFetchOnce<T = Record<string, any>>(endpoint: string, options: ApiClientOptions = {}): Promise<T> {
   const method = options.method || 'GET';
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...options.headers };
 
@@ -373,4 +443,36 @@ export async function apiFetch<T = Record<string, any>>(endpoint: string, option
   });
 
   return result as T;
+}
+
+export async function apiFetch<T = Record<string, any>>(endpoint: string, options: ApiClientOptions = {}): Promise<T> {
+  const method = options.method || 'GET';
+  // Only body-less GETs without a caller-provided signal are shareable: an
+  // AbortSignal belongs to one caller, and aborting must not cancel others.
+  const shareable = method === 'GET' && options.body === undefined && options.signal === undefined;
+  // A business mutation may change anything → drop cached reads and split off
+  // any GET that started before it (generation counter in the single-flight key).
+  if (method !== 'GET' && !endpoint.includes('/api/auth/')) {
+    swrCacheGeneration += 1;
+    swrCache.clear();
+  }
+  if (!shareable) return apiFetchOnce<T>(endpoint, options);
+
+  const key = inFlightGetKey(endpoint, options);
+  const ttl = options.cacheTtlMs ?? 0;
+  if (ttl > 0) {
+    const entry = swrCache.get(key);
+    if (entry && (nowMs() - entry.storedAt) < ttl) {
+      const now = nowMs();
+      // Serve instantly; refresh quietly for the next caller (rate-limited).
+      if (now - entry.revalidatedAt > SWR_REVALIDATE_MIN_GAP_MS) {
+        entry.revalidatedAt = now;
+        void startSharedGet<T>(key, endpoint, options, ttl).catch(() => {
+          // Revalidation failed — keep serving the last good value.
+        });
+      }
+      return entry.value as T;
+    }
+  }
+  return startSharedGet<T>(key, endpoint, options, ttl);
 }

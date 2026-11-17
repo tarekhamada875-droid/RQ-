@@ -501,7 +501,7 @@ export function useGarageSync({
         requestGeneration !== delegateDashboardGenerationRef.current ||
         delegateDashboardOwnerRef.current !== delegateId
       ) return;
-      setAllGarages((previous) => Array.from(new Map([...previous, ...nextPage.items].map((garage) => [garage.id, garage])).values()));
+      setAllGarages((previous) => Array.from(new Map([...previous, ...nextPage.garages].map((garage) => [garage.id, garage])).values()));
       setDelegatePagination((previous) => ({ ...previous, [section]: { hasMore: nextPage.hasMore, nextCursor: nextPage.nextCursor } }));
     } catch (error) {
       if (requestGeneration === delegateDashboardGenerationRef.current) {

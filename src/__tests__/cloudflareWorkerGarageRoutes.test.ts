@@ -507,7 +507,8 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     const first = await firstResponse.json() as any;
     expect(firstResponse.status).toBe(200);
     expect(first.garages).toHaveLength(2);
-    expect(first.items).toEqual(first.garages);
+    // Perf audit F1: the duplicated `items` alias is no longer sent (50% payload cut).
+    expect(first.items).toBeUndefined();
     expect(first.hasMore).toBe(true);
     expect(mockDb.queryResultSizes.at(-1)).toBe(3);
 

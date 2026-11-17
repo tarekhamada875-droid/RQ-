@@ -366,23 +366,63 @@ app.post('/api/garages/:id/credit-corrections', requireWorkerAuth, async (c) => 
 });
 
 // Admin and the garage owner can inspect the same scoped, read-only credit history.
+//
+// PERF (owner debug audit 2026-11-17, finding F5): the recharge-history screen
+// only renders `paid_grant` rows but used to download EVERY ledger kind
+// (deductions, renewals, corrections, ...) — the measured response was 24KB
+// with most of it discarded client-side. `?kind=` filters on the server so
+// only the requested kinds cross the wire. Firestore may require a composite
+// index for (garageId, kind, occurredAt); until it exists the filtered query
+// can fail with FAILED_PRECONDITION, in which case we fall back to the
+// original unfiltered page (correct data, just bigger) so the screen never
+// breaks. The index definition is in firestore.indexes.json.
+const CREDIT_LEDGER_KINDS: ReadonlySet<string> = new Set([
+  'paid_grant', 'referral_award', 'trial_grant', 'regular_entry_debit',
+  'subscriber_renewal_debit', 'correction_delta', 'authorized_deletion_restore',
+]);
+
 app.get('/api/garages/:id/credit-ledger', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const scopedGarage = (user?.role === 'garage' || user?.role === 'staff') && (user?.garageId === garageId || user?.entityId === garageId);
     if (user?.role !== 'admin' && !scopedGarage) return c.json({ success: false, error: 'FORBIDDEN' }, 403);
+    const kindFilter = (c.req.query('kind') || '').trim();
+    if (kindFilter && !CREDIT_LEDGER_KINDS.has(kindFilter)) {
+      return c.json({ success: false, error: 'INVALID_LEDGER_KIND' }, 400);
+    }
     const pageRequest = parseFirestorePageRequest(c.req.query('limit'), c.req.query('cursor'), `credit-ledger:${garageId}`);
     const collection = adminDb.collection('credit_ledger');
-    let query = collection.where('garageId', '==', garageId).orderBy('occurredAt', 'desc').orderBy('__name__', 'desc');
-    query = firestorePageStartAfter(query, collection, pageRequest.cursor);
-    const snapshot = await query.limit(pageRequest.pageSize + 1).get();
+    const buildQuery = (withKind: boolean) => {
+      let q = collection.where('garageId', '==', garageId);
+      if (withKind) q = q.where('kind', '==', kindFilter);
+      q = q.orderBy('occurredAt', 'desc').orderBy('__name__', 'desc');
+      return firestorePageStartAfter(q, collection, pageRequest.cursor);
+    };
+    let snapshot;
+    let usedKindIndex = false;
+    if (kindFilter) {
+      try {
+        snapshot = await buildQuery(true).limit(pageRequest.pageSize + 1).get();
+        usedKindIndex = true;
+      } catch (indexError: any) {
+        // FAILED_PRECONDITION (code 9) = composite index not built yet.
+        const isIndexError = indexError?.code === 9 || /index/i.test(String(indexError?.message || ''));
+        if (!isIndexError) throw indexError;
+        console.warn('[credit-ledger] kind-filtered query needs the composite index yet; falling back to unfiltered page');
+      }
+    }
+    if (!snapshot) {
+      const unfiltered = collection.where('garageId', '==', garageId).orderBy('occurredAt', 'desc').orderBy('__name__', 'desc');
+      const q = firestorePageStartAfter(unfiltered, collection, pageRequest.cursor);
+      snapshot = await q.limit(pageRequest.pageSize + 1).get();
+    }
     const page = buildFirestorePage(snapshot.docs, pageRequest, 'occurredAt');
     const entries = page.documents.map((doc: any) => {
       const row = doc.data() || {};
       const common = { id: doc.id, entryId: row.entryId, garageId: row.garageId, kind: row.kind, amount: row.amount, balanceBefore: row.balanceBefore, balanceAfter: row.balanceAfter, occurredAt: row.occurredAt };
       return user?.role === 'admin' ? { ...common, paymentAmountEgp: row.paymentAmountEgp, actorUid: row.actorUid, actorRole: row.actorRole, reason: row.reason, idempotencyKey: row.idempotencyKey, source: row.source } : common;
-    });
+    }).filter((row: any) => usedKindIndex || !kindFilter || row.kind === kindFilter);
     return c.json({ success: true, data: entries, hasMore: page.hasMore, nextCursor: page.nextCursor });
   } catch (error: any) {
     const { statusCode, message } = mapDomainErrorToStatus(error);

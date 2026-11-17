@@ -32,7 +32,9 @@ export interface DelegateCreditRequest {
 }
 
 export interface DelegateDashboardPage {
-  items: Garage[];
+  // Perf audit F1: the Worker used to send the same page twice (`garages` + `items`);
+  // it now sends the named key only.
+  garages: Garage[];
   hasMore: boolean;
   nextCursor: string | null;
 }
@@ -111,7 +113,12 @@ export const delegateService = {
     try {
       const params = new URLSearchParams({ limit: String(pageSize) });
       if (lastDocRef) params.set('cursor', lastDocRef);
-      const page = await apiFetch<{ delegates: Delegate[]; hasMore: boolean; nextCursor: string | null }>(`/api/admin/delegates?${params.toString()}`);
+      // PERF (owner debug audit 2026-11-17, finding F7): 60s SWR cache on the
+      // reset fetch only (see garageService.getAdminGaragesPage).
+      const page = await apiFetch<{ delegates: Delegate[]; hasMore: boolean; nextCursor: string | null }>(
+        `/api/admin/delegates?${params.toString()}`,
+        lastDocRef ? {} : { cacheTtlMs: 60_000 }
+      );
       return { delegates: page.delegates, lastDoc: page.nextCursor, hasMore: page.hasMore };
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, 'delegates/admin-page');

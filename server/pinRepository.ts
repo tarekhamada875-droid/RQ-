@@ -232,13 +232,28 @@ export async function getAdminPin(): Promise<string> {
   }
 }
 
-export async function queryAccountWherePin(collName: string, normPin: string): Promise<Array<{ id: string; data: any; isLegacyMatch: boolean }>> {
-  const lookupHash = computeLookupHash(normPin);
+export interface PrecomputedPinLookupHashes {
+  active: string;
+  legacy?: string | null;
+}
+
+export async function queryAccountWherePin(
+  collName: string,
+  normPin: string,
+  precomputed?: PrecomputedPinLookupHashes
+): Promise<Array<{ id: string; data: any; isLegacyMatch: boolean }>> {
+  // PERF (owner debug audit 2026-11-17, finding F3): callers that query several
+  // collections for the same PIN (login flow, availability check) now pass the
+  // hashes computed once for the whole request, instead of re-running scrypt
+  // per collection.
+  const lookupHash = precomputed?.active ?? computeLookupHash(normPin);
   // Audit N22: when the operator has migrated PIN_LOOKUP_SALT, existing
   // private_pins docs have pinLookupHash computed with the LEGACY salt.
   // Lookups by the active salt would miss them. Fall back to the legacy
   // salt for read lookups so existing PINs continue to verify.
-  const legacyLookupHash = isPinLookupSaltMigrated() ? computeLegacyLookupHash(normPin) : null;
+  const legacyLookupHash = precomputed
+    ? (precomputed.legacy ?? null)
+    : (isPinLookupSaltMigrated() ? computeLegacyLookupHash(normPin) : null);
   const matches: Array<{ id: string; data: any; isLegacyMatch: boolean }> = [];
   const seenIds = new Set<string>();
 
@@ -326,12 +341,13 @@ export async function checkPinAvailabilityAcrossAll(
   // been written with the legacy salt. Check both paths so a previously-
   // retired PIN can't be silently reused just because the salt changed.
   const legacyLookupHash = isPinLookupSaltMigrated() ? computeLegacyLookupHash(normPin) : null;
+  const precomputed = { active: lookupHash, legacy: legacyLookupHash };
 
   const [adminPinStored, retiredSnap, retiredLegacySnap, ...collectionResults] = await Promise.all([
     getAdminPin(),
     adminDb ? adminDb.doc(`retired_pins/${lookupHash}`).get() : Promise.resolve(null),
     (adminDb && legacyLookupHash) ? adminDb.doc(`retired_pins/${legacyLookupHash}`).get() : Promise.resolve(null),
-    ...collectionsToCheck.map((coll) => queryAccountWherePin(coll.name, normPin))
+    ...collectionsToCheck.map((coll) => queryAccountWherePin(coll.name, normPin, precomputed))
   ]);
 
   // Permanent retirement check — this PIN was used by some entity in the

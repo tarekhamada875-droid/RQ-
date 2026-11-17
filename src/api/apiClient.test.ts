@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../firebase', () => ({ auth: { currentUser: null } }));
 
-import { ApiError, apiFetch, getApiUrl } from './apiClient';
+import { ApiError, apiFetch, __resetInFlightGetsForTests, getApiUrl } from './apiClient';
 import { auth } from '../firebase';
 
 function response(body: unknown, status = 200, contentType = 'application/json'): Response {
@@ -16,6 +16,7 @@ describe('frontend API boundary', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
+    __resetInFlightGetsForTests();
   });
 
   afterEach(() => {
@@ -122,6 +123,138 @@ describe('frontend API boundary', () => {
     // again (the Firebase SDK then serves its own cached token).
     await apiFetch('/api/health');
     expect(tokenFetches).toBe(2);
+  });
+
+  it('shares one in-flight GET across identical concurrent callers (single-flight, perf audit F2)', async () => {
+    // Owner debug audit 2026-11-17: the first admin load fired the same list
+    // GETs twice 3-4ms apart — two round trips for one answer. The second and
+    // third concurrent caller must now ride the first request.
+    let fetches = 0;
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise((resolve) => {
+      fetches += 1;
+      setTimeout(() => resolve(response({ success: true, garages: [{ id: 'g1' }], hasMore: false, nextCursor: null })), 20);
+    }));
+
+    const [a, b, c] = await Promise.all([
+      apiFetch('/api/garages?limit=50'),
+      apiFetch('/api/garages?limit=50'),
+      apiFetch('/api/garages?limit=50'),
+    ]);
+
+    expect(fetches).toBe(1);
+    expect(b).toEqual(a);
+    expect(c).toEqual(a);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Not a cache: once settled, the next call goes to the network again.
+    await apiFetch('/api/garages?limit=50');
+    expect(fetches).toBe(2);
+
+    // Different endpoints never share.
+    await apiFetch('/api/garages?limit=20');
+    expect(fetches).toBe(3);
+
+    // POSTs never share, even to the same URL.
+    await Promise.all([
+      apiFetch('/api/garages?limit=50', { method: 'POST', body: { id: 'g1' } }),
+      apiFetch('/api/garages?limit=50', { method: 'POST', body: { id: 'g1' } }),
+    ]);
+    expect(fetches).toBe(5);
+  });
+
+  it('serves cacheTtlMs GETs instantly and revalidates in the background (SWR, perf audit F7)', async () => {
+    // Owner debug audit 2026-11-17: every tab return re-downloaded the same
+    // bootstrap reads (~1-1.5s each). Within the TTL the cached value must
+    // answer immediately while a background revalidation refreshes the copy.
+    let current = 1_000_000;
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => current);
+    let fetches = 0;
+    let payload = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise((resolve) => {
+      fetches += 1;
+      const value = payload;
+      setTimeout(() => resolve(response({ success: true, config: { creditRate: value } })), 5);
+    }));
+
+    try {
+      const first = await apiFetch('/api/system-config', { cacheTtlMs: 60_000 });
+      expect(fetches).toBe(1);
+
+      // 6s later: still inside the 60s TTL and past the 5s revalidation gap
+      // → instant cached answer + a background refresh kicks off.
+      current += 6_000;
+      payload = 1;
+      const second = await apiFetch('/api/system-config', { cacheTtlMs: 60_000 });
+      expect(second).toEqual(first); // served instantly from cache
+      expect(fetches).toBe(2); // background revalidation started
+      await new Promise((resolve) => setTimeout(resolve, 30)); // let revalidation land
+      expect(fetches).toBe(2);
+
+      // The next caller sees the refreshed value with no extra fetch.
+      const third = await apiFetch('/api/system-config', { cacheTtlMs: 60_000 });
+      expect(third).toEqual({ success: true, config: { creditRate: 1 } });
+      expect(fetches).toBe(2);
+
+      // Beyond the TTL → blocking network fetch again.
+      current += 61_000;
+      payload = 2;
+      const fourth = await apiFetch('/api/system-config', { cacheTtlMs: 60_000 });
+      expect(fourth).toEqual({ success: true, config: { creditRate: 2 } });
+      expect(fetches).toBe(3);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it('drops cached reads after a business mutation but not after auth calls (perf audit F7)', async () => {
+    let current = 1_000_000;
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => current);
+    let fetches = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise((resolve) => {
+      fetches += 1;
+      setTimeout(() => resolve(response({ success: true })), 5);
+    }));
+
+    try {
+      await apiFetch('/api/garages?limit=50', { cacheTtlMs: 60_000 });
+      expect(fetches).toBe(1);
+
+      // Auth traffic must not invalidate (it fires on every heartbeat).
+      // fetches: 1 = GET, 2 = the auth POST itself, 3 = bg revalidation.
+      current += 6_000;
+      await apiFetch('/api/auth/validate-or-refresh-session', { method: 'POST', body: { uid: 'u1' } });
+      current += 1_000;
+      await apiFetch('/api/garages?limit=50', { cacheTtlMs: 60_000 });
+      expect(fetches).toBe(3); // served from cache; only the auth POST + bg revalidation fetched
+
+      // A business mutation invalidates → next read goes to the network.
+      current += 6_000;
+      await apiFetch('/api/garages/update', { method: 'POST', body: { id: 'g1', isLocked: true } });
+      current += 1_000;
+      await apiFetch('/api/garages?limit=50', { cacheTtlMs: 60_000 });
+      expect(fetches).toBe(5); // 4 = mutation POST, 5 = uncached GET
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it('does not share an in-flight GET across different signed-in users', async () => {
+    const authUser = { uid: 'user-1', getIdToken: vi.fn().mockResolvedValue('token-user-1') };
+    (auth as { currentUser: unknown }).currentUser = authUser;
+    let fetches = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise((resolve) => {
+      fetches += 1;
+      setTimeout(() => resolve(response({ success: true })), 20);
+    }));
+
+    const first = apiFetch('/api/garages?limit=50');
+    (auth as { currentUser: unknown }).currentUser = { uid: 'user-2', getIdToken: vi.fn().mockResolvedValue('token-user-2') };
+    const second = apiFetch('/api/garages?limit=50');
+    await Promise.all([first, second]);
+
+    // Two different users on the same endpoint must never ride each other's
+    // response — role-scoped data could differ.
+    expect(fetches).toBe(2);
   });
 
   it('does not share an in-flight token fetch across different users', async () => {

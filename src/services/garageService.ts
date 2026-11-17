@@ -57,7 +57,12 @@ export const garageService = {
     try {
       const params = new URLSearchParams({ limit: String(pageSize) });
       if (lastDocRef) params.set('cursor', lastDocRef);
-      const page = await apiFetch<WorkerGaragePage>(`/api/garages?${params.toString()}`);
+      // PERF (owner debug audit 2026-11-17, finding F7): the reset (first-page)
+      // fetch is the one repeated on every admin re-entry; a 60s SWR cache
+      // serves it instantly while a background revalidation refreshes it.
+      // Load-more pages always hit the network. Mutations clear the cache via
+      // apiClient, so post-edit refreshes stay fresh.
+      const page = await apiFetch<WorkerGaragePage>(`/api/garages?${params.toString()}`, lastDocRef ? {} : { cacheTtlMs: 60_000 });
       return { garages: page.garages, lastDoc: page.nextCursor, hasMore: page.hasMore };
     } catch (error) {
       console.warn('Failed to load admin garage page:', error);
