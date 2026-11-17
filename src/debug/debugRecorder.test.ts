@@ -56,6 +56,39 @@ describe('sanitizeValue (PII-safe structural snapshot)', () => {
     const outWide = sanitizeValue(wide) as Record<string, number>;
     expect(Object.keys(outWide).length).toBe(30);
   });
+
+  it('AUDIT FIX 2026-11-17: redacts singular *Number keys (wallet number leak)', () => {
+    // The owner's exported file contained paymentWalletNumber verbatim because
+    // the PII key pattern only matched plural `numbers`.
+    const out = sanitizeValue({ paymentWalletNumber: '01552411323', creditRate: 2 }) as Record<string, unknown>;
+    expect(out.paymentWalletNumber).toBe('«str:11»');
+    expect(out.creditRate).toBe(2);
+    expect(JSON.stringify(out)).not.toContain('01552411323');
+  });
+
+  it('AUDIT FIX 2026-11-17: init restores old entries BEFORE recording boot (no duplicate boot)', () => {
+    debugRecorder.resetForTests();
+    // Simulate a previous page load that persisted one entry.
+    const previous = [{
+      seq: 7,
+      t: '2026-11-17T06:00:00.000Z',
+      cat: 'note',
+      ev: 'from_previous_load',
+    }];
+    localStorage.setItem('rq_debug_recorder_v1', JSON.stringify({ savedAt: '2026-11-17T06:00:01.000Z', entries: previous }));
+
+    debugRecorder.init();
+    const exported = JSON.parse(debugRecorder.exportJson()) as { entries: Array<Record<string, unknown>> };
+    const boots = exported.entries.filter((e) => e.ev === 'boot');
+    // Exactly one boot entry; seq continues after the restored entry (7) and
+    // the restore marker (8).
+    expect(boots).toHaveLength(1);
+    expect(boots[0].seq).toBe(9);
+    expect(exported.entries[0].ev).toBe('from_previous_load');
+    const restoredCount = exported.entries.filter((e) => e.ev === 'from_previous_load').length;
+    expect(restoredCount).toBe(1);
+    debugRecorder.resetForTests();
+  });
 });
 
 describe('debugRecorder api entries', () => {

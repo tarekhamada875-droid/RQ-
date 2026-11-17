@@ -64,8 +64,10 @@ const MAX_BODY_STRING_FOR_PARSE = 64 * 1024;
 // Keys whose values are NEVER kept regardless of shape.
 const FORBIDDEN_KEY_RE = /token|pin|password|secret|salt|authorization|cookie|firebaseidtoken/i;
 // Keys whose string VALUES are personal data even if they look technically
-// safe (a phone number is just digits; a name is a short string).
-const PII_KEY_RE = /phone|mobile|whatsapp|name|email|address|notes?|plate|letters|numbers|customer|driver|subscriber|owner|display/i;
+// safe (a phone number is just digits; a name is a short string). AUDIT FIX
+// (2026-11-17): `number` singular — the owner's file leaked
+// paymentWalletNumber because the old pattern only matched plural `numbers`.
+const PII_KEY_RE = /phone|mobile|whatsapp|name|email|address|notes?|plate|letters|number|customer|driver|subscriber|owner|display|wallet/i;
 
 const SAFE_STRING_RE = /^[A-Za-z0-9_.:\-/@+]+$/;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?$/;
@@ -150,8 +152,13 @@ class DebugRecorder {
 
     window.addEventListener('pagehide', () => this.flush(true));
 
-    this.record('env', { ev: 'boot', ...this.collectEnvMeta() });
+    // AUDIT FIX (2026-11-17): restore BEFORE recording boot. The previous
+    // order (boot first) flushed the fresh boot entry to localStorage inside
+    // record(), then restore() immediately read it back — duplicating the
+    // boot entry and rewinding seq on every cold load (observed in the
+    // owner's exported debug file, rq-debug-2026-11-17-06-12-53.json).
     this.restoreFromLocalStorage();
+    this.record('env', { ev: 'boot', ...this.collectEnvMeta() });
   }
 
   private collectEnvMeta(): Record<string, unknown> {
@@ -257,6 +264,20 @@ class DebugRecorder {
       // storage unavailable — ignore
     }
     this.record('env', { ev: 'cleared' });
+  }
+
+  /** Test-only: full reset so init()/restore ordering can be regression-tested. */
+  resetForTests(): void {
+    this.entries = [];
+    this.seq = 0;
+    this.initialized = false;
+    this.lastFlushAt = 0;
+    this.startedAt = new Date().toISOString();
+    try {
+      localStorage.removeItem(LS_KEY);
+    } catch {
+      // ignore
+    }
   }
 
   /** Human-readable one-screen summary for clipboard sharing. */
