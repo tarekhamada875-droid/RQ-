@@ -69,6 +69,33 @@
         window.addEventListener('load', function() {
           navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function(reg) {
             console.log('PWA ServiceWorker registered with scope:', reg.scope);
+            // PWA shell freshness (owner debug rq-debug-2026-11-18-05-04-25):
+            // the garage device reopens through a browser tab discard, and the
+            // first reopen after a deploy was still running the PREVIOUS
+            // precached shell — that capture shows the pre-#771 boot waterfall
+            // (data listeners attaching after the session claim, T+3.7s) a full
+            // 12h after #771 shipped. This app sets skipWaiting + clientsClaim,
+            // so the freshly installed worker takes control of the live page
+            // seconds after registration; without a reload the whole session
+            // keeps running stale code until a SECOND manual reload. Reload
+            // once, guarded:
+            //   - only when an older controller was already serving this load
+            //     (an upgrade in progress) — never on a first-ever install,
+            //     where the page was just fetched fresh from the network;
+            //   - only once per page instance (the reloaded page runs the new
+            //     worker, so no further controllerchange fires — no loop).
+            // Mid-work deploys cannot trigger this: a long-lived tab does not
+            // re-check sw.js while it stays open, so controllerchange only
+            // ever lands right after a load (the reopen path), never hours
+            // into active use.
+            if (navigator.serviceWorker.controller) {
+              var shellRefreshing = false;
+              navigator.serviceWorker.addEventListener('controllerchange', function() {
+                if (shellRefreshing) return;
+                shellRefreshing = true;
+                window.location.reload();
+              });
+            }
             var updateOnForeground = function() {
               if (document.visibilityState === 'visible') reg.update();
             };
