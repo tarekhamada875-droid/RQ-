@@ -25,7 +25,16 @@ export interface DelegateCreditRequest {
   garageName: string;
   delegateId: string;
   delegateName: string;
+  /** EGP the delegate collected from the garage (request unit). */
   amount: number;
+  /**
+   * Per-garage pricing (owner decision 2026-11-18): credits approval will
+   * grant for `amount`, converted with THIS garage's pinned price (or the
+   * global one). Attached server-side on the admin pending list only —
+   * absent when the price can't be resolved, so the UI must treat it as
+   * optional and never display it as 0.
+   */
+  creditsPreview?: number;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: number;
   reviewedAt: number | null;

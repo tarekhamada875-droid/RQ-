@@ -139,6 +139,41 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
 
     const requests = snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
+    // Attach a per-request credits preview (per-garage pricing, owner decision
+    // 2026-11-18): the admin approves "X ج.م collected by the delegate", and
+    // the credits the garage will actually receive depend on THAT garage's
+    // price. Showing the conversion BEFORE the click prevents approvals made
+    // on a wrong 1:1 assumption. Cost is bounded: one system_config read plus
+    // one getAll for the distinct garage ids on this page (≤ pageSize, and
+    // only one pending request can exist per garage).
+    const previewGarageIds: string[] = [...new Set<string>(
+      requests.map((r: any) => String(r.garageId || '')).filter(Boolean)
+    )];
+    if (previewGarageIds.length) {
+      const rateConfigSnap = await adminDb.doc('system_config/global').get();
+      const globalRateRaw = rateConfigSnap.exists ? Number((rateConfigSnap.data() || {}).creditRate) : NaN;
+      const garageSnaps = await adminDb.getAll(
+        ...previewGarageIds.map((id: string) => adminDb.doc(`garages/${id}`))
+      );
+      const overrideByGarageId = new Map<string, number>();
+      garageSnaps.forEach((gs: any, i: number) => {
+        if (!gs?.exists) return;
+        const overrideRaw = Number((gs.data() || {}).creditRateOverride);
+        if (Number.isFinite(overrideRaw) && overrideRaw > 0) overrideByGarageId.set(previewGarageIds[i], overrideRaw);
+      });
+      for (const r of requests as any[]) {
+        const egp = Number(r.amount);
+        const rateRaw = overrideByGarageId.get(String(r.garageId));
+        const rate = (Number.isFinite(rateRaw) && rateRaw > 0)
+          ? rateRaw
+          : (Number.isFinite(globalRateRaw) && globalRateRaw > 0 ? globalRateRaw : 1);
+        if (Number.isSafeInteger(egp) && egp > 0) {
+          const credits = Math.round(egp * rate);
+          if (Number.isSafeInteger(credits) && credits > 0) r.creditsPreview = credits;
+        }
+      }
+    }
+
     return c.json({ success: true, requests });
   }, 'CreditRequest'));
 
@@ -167,8 +202,30 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
       const garage = garageSnap.data() || {};
       if (garage.billingModel !== 'prepaid_credits') throw new Error('GARAGE_NOT_PREPAID');
 
-      const amount = Number(requestData.amount);
+      const paymentAmountEgp = Number(requestData.amount);
+      if (!Number.isSafeInteger(paymentAmountEgp) || paymentAmountEgp <= 0) {
+        throw new Error('INVALID_CREDIT_AMOUNT');
+      }
       const currentBalance = Number(garage.credits ?? 0);
+
+      // ── Credit rate (per-garage pricing, owner decision 2026-11-18) ──────
+      // The request `amount` is the EGP the delegate collected from the
+      // garage — NOT the credit count. Approval converts it with THIS
+      // garage's price using the exact same selection + rounding as
+      // /api/garages/:id/credit-grants: the garage's creditRateOverride wins,
+      // the global system_config rate is the fallback. The old 1:1 behavior
+      // silently ignored pinned prices and recorded revenue that
+      // contradicted them.
+      const rateConfigSnap = await t.get(adminDb.doc('system_config/global'));
+      const rateConfigData = rateConfigSnap.exists ? (rateConfigSnap.data() || {}) : {};
+      const creditRate = Number(garage.creditRateOverride ?? rateConfigData.creditRate ?? 1);
+      if (!Number.isFinite(creditRate) || creditRate <= 0) {
+        throw new Error('INVALID_CREDIT_RATE_CONFIG');
+      }
+      const amount = Math.round(paymentAmountEgp * creditRate);
+      if (!Number.isSafeInteger(amount) || amount < 1) {
+        throw new Error('CREDIT_AMOUNT_BELOW_MINIMUM');
+      }
 
       // Grant the credits (same pattern as /api/garages/:id/credit-grants).
       const transition = grantPaidCredits({
@@ -177,7 +234,7 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
         garageId: requestData.garageId,
         actorUid: callerUid,
         actorRole: 'admin',
-        reason: `Credit request approved (${amount} EGP for ${garage.name || requestData.garageId})`,
+        reason: `Credit request approved (${paymentAmountEgp} EGP for ${garage.name || requestData.garageId})`,
         occurredAt: now.toISOString(),
         idempotencyKey: `credit-request-approve:${requestId}`,
       });
@@ -186,9 +243,10 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
       if (entry.ok === false) throw new Error(entry.error);
 
       // ── Delegate commission (rolling 30-day rule) ───────────────────
-      // Delegate commission (rolling 30-day rule) — shared with creditGrantRoutes.
+      // Trigger is the EGP collected (≥ 500), NOT the derived credit count.
+      // Shared with creditGrantRoutes.
       const { isCommissionDue, commissionDelegateId } = decideDelegateCommission(
-        amount, garage.createdByDelegateId, garage.lastCommissionGrantAt
+        paymentAmountEgp, garage.createdByDelegateId, garage.lastCommissionGrantAt
       );
 
       let nextLifetimeCommission: number | null = null;
@@ -210,7 +268,7 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
       const currentAdminRevenue = Number(garage.totalAdminRevenue || 0);
       t.set(garageRef, {
         credits: transition.value.balance,
-        totalAdminRevenue: currentAdminRevenue + amount,
+        totalAdminRevenue: currentAdminRevenue + paymentAmountEgp,
         // Stamp the badge trigger on the garage doc (mirrors
         // /api/garages/:id/credit-grants) so the client's notification
         // listener doesn't need a separate activity_logs subscription.
@@ -222,7 +280,7 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
         ...entry.value,
         source: 'credit_request_approval',
         paymentConfirmed: true,
-        paymentAmountEgp: amount
+        paymentAmountEgp
       });
 
       if (commissionDelegateRef && commissionDelegateId) {
@@ -267,8 +325,8 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
         timestamp: now,
         details: {
           amount,
-          paymentAmountEgp: amount,
-          reason: `Credit request approved (${amount} EGP for ${garage.name || requestData.garageId})`,
+          paymentAmountEgp,
+          reason: `Credit request approved (${paymentAmountEgp} EGP for ${garage.name || requestData.garageId})`,
           ledgerEntryId: entry.value.entryId,
           source: 'credit_request_approval'
         }
@@ -282,11 +340,13 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
         actorUid: callerUid,
         actorRole: 'admin',
         idempotencyKey: `credit-request-approve:${requestId}`,
-        payload: { amount, delegateId: requestData.delegateId }
+        payload: { amount, paymentAmountEgp, delegateId: requestData.delegateId }
       });
 
       grantedResult = {
         credits: transition.value.balance,
+        creditsGranted: amount,
+        paymentAmountEgp,
         commissionGranted: isCommissionDue,
         commissionAmount: isCommissionDue ? 100 : 0
       };

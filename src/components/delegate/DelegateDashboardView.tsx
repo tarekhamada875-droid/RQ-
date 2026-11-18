@@ -489,7 +489,7 @@ export const DelegateDashboardView = memo(({
 
             <form onSubmit={handleSubmitCreditRequest} className="space-y-4 text-right">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">قيمة الرصيد (50 إلى 2,000)</label>
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">المبلغ المحصل من الجراج (50 إلى 2,000 ج.م)</label>
                 <FastInput
                   type="text"
                   inputMode="numeric"

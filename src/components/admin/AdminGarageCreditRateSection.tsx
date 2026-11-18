@@ -7,7 +7,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Coins, Check, Loader2, RotateCcw } from 'lucide-react';
 import { Garage } from '../../types';
 import { adminService } from '../../services';
-import { apiFetch } from '../../api/apiClient';
 import {
   CREDIT_RATE_PRESETS,
   RATE_PREVIEW_EGP,
@@ -15,6 +14,7 @@ import {
   rateToEgpPerCredit,
   formatEgpPerCredit,
 } from '../../utils/creditRate';
+import { useGlobalCreditRate } from '../../hooks/useGlobalCreditRate';
 
 interface Props {
   garage: Garage;
@@ -62,7 +62,7 @@ export const AdminGarageCreditRateSection: React.FC<Props> = ({ garage }) => {
   const [ownEgpPerCredit, setOwnEgpPerCredit] = useState<number | null>(
     () => (garage.creditRateOverride ? rateToEgpPerCredit(garage.creditRateOverride) : null),
   );
-  const [globalEgpPerCredit, setGlobalEgpPerCredit] = useState<number | null>(null);
+  const globalEgpPerCredit = useGlobalCreditRate();
   const [selectedEgpPerCredit, setSelectedEgpPerCredit] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -75,23 +75,6 @@ export const AdminGarageCreditRateSection: React.FC<Props> = ({ garage }) => {
     setError('');
     setSuccess('');
   }, [garage.id, garage.creditRateOverride]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const data = await apiFetch<{ success?: boolean; config?: { creditRate?: number } }>('/api/system-config');
-        if (!cancelled && data?.success && data.config) {
-          setGlobalEgpPerCredit(rateToEgpPerCredit(data.config.creditRate));
-        } else if (!cancelled) {
-          setGlobalEgpPerCredit(1);
-        }
-      } catch {
-        if (!cancelled) setGlobalEgpPerCredit(1);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   const effectiveEgpPerCredit = ownEgpPerCredit ?? globalEgpPerCredit;
   const effectiveLabel = useMemo(() => {

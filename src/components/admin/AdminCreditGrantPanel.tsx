@@ -4,6 +4,8 @@ import { Garage } from '../../types';
 import { adminService } from '../../services';
 import { normalizeDigits } from '../../utils/plates';
 import { FastInput } from '../ui/FastInput';
+import { creditsForEgp, formatEgpPerCredit, rateToEgpPerCredit } from '../../utils/creditRate';
+import { useGlobalCreditRate } from '../../hooks/useGlobalCreditRate';
 
 const CREDIT_ERROR_MESSAGES: Record<string, string> = {
   ADMIN_ONLY: 'ليس لديك صلاحية لإدارة الرصيد.',
@@ -49,6 +51,24 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
   const [success, setSuccess] = useState('');
   const idempotencyIntentRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
+  // Per-garage pricing (owner decision 2026-11-18): what the admin types is
+  // the EGP collected from the garage — the server converts it to credits
+  // using THIS garage's price (pinned override, else the global one). The
+  // typed number equals the granted credits only when that price is 1, so
+  // the panel previews the real conversion instead of implying 1:1.
+  const globalEgpPerCredit = useGlobalCreditRate();
+  const ownEgpPerCredit = garage.creditRateOverride
+    ? rateToEgpPerCredit(garage.creditRateOverride)
+    : null;
+  const effectiveEgpPerCredit = ownEgpPerCredit ?? globalEgpPerCredit;
+  const parsedAmount = Number(amount.trim());
+  const showPreview = mode === 'grant'
+    && effectiveEgpPerCredit !== null
+    && Number.isSafeInteger(parsedAmount)
+    && parsedAmount >= 50
+    && parsedAmount <= 2_000;
+  const previewCredits = showPreview ? creditsForEgp(effectiveEgpPerCredit, parsedAmount) : null;
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (submitting) return;
@@ -56,9 +76,11 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
     const rawAmount = Number(amount.trim());
 
     if (mode === 'grant') {
-      // Grant: positive integer 50..2,000.
+      // Grant: the input is EGP collected from the garage (positive integer
+      // 50..2,000). The server derives credits from it with the garage's
+      // price — the preview below shows that conversion live.
       if (!Number.isSafeInteger(rawAmount) || rawAmount < 50 || rawAmount > 2_000) {
-        setError('أدخل عددًا صحيحًا من 50 إلى 2,000 جنيه.');
+        setError('أدخل مبلغًا صحيحًا من 50 إلى 2,000 ج.م.');
         setSuccess('');
         return;
       }
@@ -95,14 +117,24 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
         // paymentConfirmed is always true — the admin clicking "add balance"
         // IS the payment confirmation. The checkbox was removed per owner
         // request; the Worker still requires the field, so we send true.
-        await adminService.adminGrantGarageCredits(garage.id, {
+        // The Worker is authoritative for the conversion: its response carries
+        // the REAL granted credits + new balance, which we display instead of
+        // echoing the typed number (they differ whenever the price ≠ 1).
+        const result = await adminService.adminGrantGarageCredits(garage.id, {
           amount: creditAmount,
           paymentAmountEgp: creditAmount,
           reason,
           paymentConfirmed: true,
           idempotencyKey
         });
-        setSuccess(`${creditAmount.toLocaleString('en-US')} رصيد تمت إضافته.`);
+        const grantedCredits = Number(result?.amount);
+        const newBalance = Number(result?.balance);
+        setSuccess(
+          Number.isFinite(grantedCredits) && grantedCredits > 0
+            ? `${grantedCredits.toLocaleString('en-US')} رصيد تمت إضافته مقابل ${creditAmount.toLocaleString('en-US')} ج.م`
+              + (Number.isFinite(newBalance) ? ` — الرصيد الحالي: ${newBalance.toLocaleString('en-US')}` : '')
+            : `${creditAmount.toLocaleString('en-US')} رصيد تمت إضافته.`,
+        );
       } else {
         await adminService.adminCorrectGarageCredits(garage.id, {
           amount: creditAmount,
@@ -161,7 +193,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
 
       <form onSubmit={submit} className="space-y-3">
         <label htmlFor="credit-amount" className="block text-sm font-bold text-slate-800 dark:text-slate-100">
-          {mode === 'grant' ? 'الرصيد المراد إضافته (50 إلى 2,000)' : 'قيمة الخصم (سالبة، حتى -100,000)'}
+          {mode === 'grant' ? 'المبلغ المحصل من الجراج (50 إلى 2,000 ج.م)' : 'قيمة الخصم (سالبة، حتى -100,000)'}
         </label>
         <FastInput
           id="credit-amount"
@@ -171,10 +203,19 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
           onCommit={(v) => setAmount(normalizeDigits(v).replace(/[^\d-]/g, ''))}
           onLiveValue={(v) => setAmount(normalizeDigits(v).replace(/[^\d-]/g, ''))}
           mask={(v) => normalizeDigits(v).replace(/[^\d-]/g, '')}
-          placeholder={mode === 'grant' ? 'أدخل قيمة الرصيد' : 'مثال: -50'}
+          placeholder={mode === 'grant' ? 'أدخل المبلغ المحصل' : 'مثال: -50'}
           aria-describedby={error ? 'credit-amount-error' : success ? 'credit-amount-success' : undefined}
           className={`w-full rounded-xl border border-slate-300 bg-white p-3 text-lg font-bold text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none ${mode === 'grant' ? 'focus:border-emerald-500' : 'focus:border-amber-500'} dark:border-slate-700 dark:bg-slate-950 dark:text-white`}
         />
+        {mode === 'grant' && previewCredits !== null && (
+          <p aria-live="polite" className="text-center text-xs font-bold text-slate-500 dark:text-slate-400">
+            <span className="font-mono">{parsedAmount.toLocaleString('en-US')}</span> ج.م ←{' '}
+            <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">{previewCredits.toLocaleString('en-US')}</span> رصيد
+            {ownEgpPerCredit !== null && (
+              <span className="text-amber-600 dark:text-amber-400"> · سعر خاص {formatEgpPerCredit(ownEgpPerCredit)} ج.م/رصيد</span>
+            )}
+          </p>
+        )}
         {error && <p id="credit-amount-error" role="alert" className="text-sm text-red-600">{error}</p>}
         {success && <p id="credit-amount-success" role="status" className="text-sm font-semibold text-emerald-600">{success}</p>}
         <button type="submit" disabled={submitting} className={`w-full rounded-xl px-4 py-3 font-black text-white disabled:opacity-50 ${mode === 'grant' ? 'bg-emerald-600 ' : 'bg-amber-600 '}`}>
