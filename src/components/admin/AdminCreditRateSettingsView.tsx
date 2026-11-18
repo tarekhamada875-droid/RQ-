@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Coins, Check, Loader2, ChevronRight } from 'lucide-react';
 import { apiFetch } from '../../api/apiClient';
 import { adminService } from '../../services';
+import {
+  CREDIT_RATE_PRESETS,
+  RATE_PREVIEW_EGP,
+  creditsForEgp,
+  rateToEgpPerCredit,
+  egpPerCreditToRate,
+  formatEgpPerCredit,
+} from '../../utils/creditRate';
 
 interface AdminCreditRateSettingsViewProps {
   onBack: () => void;
@@ -35,20 +43,9 @@ interface AdminCreditRateSettingsViewProps {
  * security-sensitive operation. The admin is already authenticated.
  */
 
-const PRESETS: readonly number[] = [0.5, 0.65, 0.75, 0.8, 1, 2, 10];
+const PRESETS = CREDIT_RATE_PRESETS;
 
-const PREVIEW_EGP = 100;
-
-function creditsForEgp(egpPerCredit: number, egp: number): number {
-  if (!(egpPerCredit > 0)) return 0;
-  return Math.round(egp / egpPerCredit);
-}
-
-function rateToEgpPerCredit(creditRate: number | undefined | null): number {
-  const r = Number(creditRate ?? 1);
-  if (!Number.isFinite(r) || r <= 0) return 1;
-  return 1 / r;
-}
+const PREVIEW_EGP = RATE_PREVIEW_EGP;
 
 export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewProps> = ({ onBack }) => {
   // What the user picks (EGP-per-credit). Null until a preset is selected.
@@ -113,7 +110,7 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
     }
 
     // Convert to creditRate (credits-per-EGP) for the server.
-    const creditRate = 1 / selectedEgpPerCredit;
+    const creditRate = egpPerCreditToRate(selectedEgpPerCredit);
 
     setIsSaving(true);
     try {
@@ -155,7 +152,7 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
                 <p className="text-xs font-bold text-amber-800 dark:text-amber-300">
                   {'السعر الحالي مخصص: '}
                   <span className="font-mono text-amber-900 dark:text-amber-100 px-1">
-                    {currentEgpPerCredit} ج.م/رصيد
+                    {formatEgpPerCredit(currentEgpPerCredit)} ج.م/رصيد
                   </span>
                   {' — اختر أحد الخيارات أدناه لتحديد سعر قياسي.'}
                 </p>

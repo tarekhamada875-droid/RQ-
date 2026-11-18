@@ -20,6 +20,7 @@ import { AdminGarageHeroAndStats } from './garage-details/AdminGarageHeroAndStat
 import { AdminGarageFinancialsSection } from './garage-details/AdminGarageFinancialsSection';
 import { AdminGarageModals } from './garage-details/AdminGarageModals';
 import { AdminCreditGrantPanel } from './AdminCreditGrantPanel';
+import { AdminGarageCreditRateSection } from './AdminGarageCreditRateSection';
 
 interface AdminGarageDetailsViewProps {
   selectedGarageForDetails: Garage;
@@ -188,6 +189,11 @@ export const AdminGarageDetailsView = memo(({
           onToggleMonthlySubscribers={actions.handleToggleMonthlySubscribers}
         />
         <AdminCreditGrantPanel garage={selectedGarageForDetails} />
+
+        {/* Per-garage credit pricing (owner decision 2026-11-18): admin-only,
+            preset-only override of the global rate; renders nothing for
+            subscription garages. */}
+        <AdminGarageCreditRateSection garage={selectedGarageForDetails} />
 
         {/* Zone 3: Operations & Staff Management */}
         <AdminGarageSettingsSection

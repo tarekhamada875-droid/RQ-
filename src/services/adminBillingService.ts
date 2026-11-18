@@ -16,6 +16,17 @@ export const adminBillingService = {
     });
   },
 
+  // Per-garage credit price (owner decision 2026-11-18): admin-only, preset-only.
+  // `egpPerCredit` is the DISPLAY unit (e.g. 0.75); the Worker stores its inverse
+  // as garages/{id}.creditRateOverride. `clear: true` removes the override so the
+  // garage follows the global rate again. Garages never see this value.
+  setGarageCreditRate: async (garageId: string, command: { egpPerCredit?: number; clear?: boolean }): Promise<any> => {
+    return apiCall(`/api/garages/${encodeURIComponent(garageId)}/credit-rate`, {
+      method: 'POST',
+      body: command
+    });
+  },
+
   getGarageCreditLedger: async (garageId: string): Promise<any[]> => {
     // PERF (owner debug audit 2026-11-17, finding F5): the recharge-history
     // screen only renders paid_grant rows — ask the server to filter so the
