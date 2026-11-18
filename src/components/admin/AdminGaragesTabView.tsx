@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus, Search, ChevronLeft, Building2, Loader2, RefreshCw } from 'lucide-react';
 import { Garage } from '../../types';
 import { FastInput } from '../ui/FastInput';
+import { formatEgpPerCredit, rateToEgpPerCredit } from '../../utils/creditRate';
 
 interface AdminGaragesTabViewProps {
   displayedGarages: Garage[];
@@ -93,6 +94,16 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
                       {g.isLocked && (
                         <span className="shrink-0 text-[10px] font-black px-2 py-0.5 rounded-md bg-red-500/10 dark:bg-red-500/25 text-red-500 dark:text-red-400 border border-red-500/20 leading-none">
                           {'مغلق'}
+                        </span>
+                      )}
+                      {/* Per-garage pricing (owner decision 2026-11-18): amber
+                          pill marks garages pinned to their own credit rate so
+                          the admin can spot them without opening each one. The
+                          price uses the shared 2-decimal formatter — never the
+                          raw stored inverse. */}
+                      {typeof g.creditRateOverride === 'number' && g.creditRateOverride > 0 && (
+                        <span className="shrink-0 text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-500/10 dark:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/20 leading-none">
+                          {`سعر مخصص: ${formatEgpPerCredit(rateToEgpPerCredit(g.creditRateOverride))}`}
                         </span>
                       )}
                     </div>
