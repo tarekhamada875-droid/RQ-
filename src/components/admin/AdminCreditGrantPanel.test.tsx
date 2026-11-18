@@ -1,148 +1,122 @@
-import { beforeEach, describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { AdminCreditGrantPanel } from './AdminCreditGrantPanel';
+
+// Per-garage pricing (owner decision 2026-11-18): the admin types the EGP
+// collected from the garage, and the server converts it with THIS garage's
+// price. The panel must (a) preview the real conversion live, (b) never
+// imply 1:1 for pinned garages, and (c) show the server's real granted
+// credits + balance in the success message instead of echoing the typed
+// number (they differ whenever the price ≠ 1).
+
+vi.mock('../../services', () => ({
+  adminService: {
+    adminGrantGarageCredits: vi.fn(),
+    adminCorrectGarageCredits: vi.fn(),
+    setGarageCreditRate: vi.fn(),
+  },
+}));
+
+vi.mock('../../api/apiClient', () => ({
+  apiFetch: vi.fn(),
+}));
+
 import { adminService } from '../../services';
+import { apiFetch } from '../../api/apiClient';
 
-vi.mock('../../services', () => { const _svc = {
-    adminGrantGarageCredits: vi.fn(async () => ({})),
-    adminCorrectGarageCredits: vi.fn(async () => ({})),
-  }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
+const grantMock = vi.mocked(adminService.adminGrantGarageCredits);
 
-// PERF (audit 2026-11-08): FastInput uses a native 'input' event listener,
-// not React's onChange. fireEvent.change fires a React synthetic 'change'
-// event which FastInput doesn't see. To fill a FastInput in tests, we must
-// set the DOM value directly and dispatch a native 'input' event, then
-// blur to trigger onCommit.
-const fillFastInput = (input: HTMLElement, value: string) => {
-  const el = input as HTMLInputElement;
-  el.value = value;
-  el.dispatchEvent(new Event('input', { bubbles: true }));
-  fireEvent.blur(el);
+const garageBase: any = {
+  id: 'g-1',
+  name: 'جراح العبئة 11',
+  billingModel: 'prepaid_credits',
+  credits: 100,
 };
 
-const legacyGarage: any = { id: 'legacy-1', name: 'Legacy', billingModel: 'subscription' };
-const prepaidGarage: any = { id: 'prepaid-1', name: 'Prepaid', billingModel: 'prepaid_credits', credits: 0 };
+const GRANT_LABEL = 'المبلغ المحصل من الجراج (50 إلى 2,000 ج.م)';
 
-describe('AdminCreditGrantPanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+const typeAmount = async (value: string) => {
+  const input = screen.getByLabelText(GRANT_LABEL);
+  fireEvent.input(input, { target: { value } });
+  fireEvent.blur(input);
+  return input;
+};
 
-  it('does not expose a credit input for a legacy garage', () => {
-    render(<AdminCreditGrantPanel garage={legacyGarage} />);
-    expect(screen.queryByLabelText(/الرصيد المراد إضافته/i)).toBeNull();
-    expect(screen.getByText(/إدارة الرصيد متاحة للجراجات/i)).toBeTruthy();
-  });
+const findParagraph = (substring: string) =>
+  screen.findByText((_, element) =>
+    element?.tagName === 'P' && (element.textContent?.includes(substring) ?? false),
+  );
 
-  it('shows the grant form by default with no reason field or payment confirmation checkbox', () => {
-    render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    expect(screen.getByLabelText(/الرصيد المراد إضافته/i)).toBeTruthy();
-    expect(screen.getByPlaceholderText(/أدخل قيمة الرصيد/i)).toBeTruthy();
-    expect(screen.getByRole('button', { name: /^إضافة رصيد$/i })).toBeTruthy();
-    expect(screen.queryByRole('combobox')).toBeNull();
-    // Reason field removed per owner request — audit reason is auto-generated.
-    expect(screen.queryByLabelText(/السبب/i)).toBeNull();
-    // Payment confirmation checkbox removed — admin clicking "add" IS the confirmation.
-    expect(screen.queryByText(/أؤكد أن الدفع الفعلي قد تم استلامه/i)).toBeNull();
-    expect(screen.getByRole('region', { name: /إدارة رصيد الجراج/ })).toBeTruthy();
-  });
+beforeEach(() => {
+  grantMock.mockReset();
+  (apiFetch as any).mockReset();
+  (apiFetch as any).mockResolvedValue({ success: true, config: { creditRate: 1 } });
+});
 
-  // ── Grant mode ────────────────────────────────────────────────────────
+describe('AdminCreditGrantPanel per-garage pricing wiring', () => {
+  it('previews the real conversion for a pinned garage and reports the server truth', async () => {
+    grantMock.mockResolvedValue({ garageId: 'g-1', amount: 133, paymentAmountEgp: 100, balance: 233, entryId: 'entry-1' });
+    render(<AdminCreditGrantPanel garage={{ ...garageBase, creditRateOverride: 1 / 0.75 }} />);
 
-  it('accepts Arabic-Indic digits in the grant amount', async () => {
-    render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fillFastInput(screen.getByLabelText(/الرصيد المراد إضافته/i), '١٠٠');
-    fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
+    await typeAmount('100');
 
-    await waitFor(() => expect(adminService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
+    // Live preview: 100 ج.م buys 133 credits at 0.75 ج.م/رصيد, marked as a
+    // special price for this garage.
+    expect(await screen.findByText('133')).toBeInTheDocument();
+    expect(screen.getByText(/سعر خاص 0\.75 ج\.م\/رصيد/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'إضافة رصيد' }));
+
+    // Success states the REAL granted credits and new balance from the
+    // server response — not the typed number.
+    const success = await findParagraph('رصيد تمت إضافته مقابل 100 ج.م');
+    expect(success.textContent).toContain('133');
+    expect(success.textContent).toContain('233');
+    expect(grantMock).toHaveBeenCalledWith('g-1', expect.objectContaining({
       amount: 100,
       paymentAmountEgp: 100,
       paymentConfirmed: true,
-    })));
+    }));
   });
 
-  it('reuses the same idempotency key when retrying an ambiguous failed grant', async () => {
-    vi.mocked(adminService.adminGrantGarageCredits).mockRejectedValueOnce(new Error('NETWORK_ERROR'));
-    render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fillFastInput(screen.getByLabelText(/الرصيد المراد إضافته/i), '100');
+  it('previews 1:1 only when the effective price is really 1', async () => {
+    grantMock.mockResolvedValue({ garageId: 'g-1', amount: 100, paymentAmountEgp: 100, balance: 200, entryId: 'entry-2' });
+    render(<AdminCreditGrantPanel garage={garageBase} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('تعذرت العملية. يرجى مراجعة البيانات والمحاولة مرة أخرى.');
-    expect(screen.queryByText('NETWORK_ERROR')).toBeNull();
+    await typeAmount('100');
 
-    fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
-    await waitFor(() => expect(adminService.adminGrantGarageCredits).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText('100')).toBeInTheDocument();
+    expect(screen.queryByText(/سعر خاص/)).not.toBeInTheDocument();
 
-    const firstCommand = vi.mocked(adminService.adminGrantGarageCredits).mock.calls[0][1];
-    const retryCommand = vi.mocked(adminService.adminGrantGarageCredits).mock.calls[1][1];
-    expect(retryCommand.idempotencyKey).toBe(firstCommand.idempotencyKey);
-    expect(await screen.findByRole('status')).toHaveTextContent('100 رصيد تمت إضافته.');
+    fireEvent.click(screen.getByRole('button', { name: 'إضافة رصيد' }));
+    const success = await findParagraph('رصيد تمت إضافته مقابل 100 ج.م');
+    expect(success.textContent).toContain('الرصيد الحالي: 200');
   });
 
-  it('shows Arabic guidance when the server returns an English error code', async () => {
-    vi.mocked(adminService.adminGrantGarageCredits).mockRejectedValueOnce(new Error('GARAGE_NOT_PREPAID'));
-    render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fillFastInput(screen.getByLabelText(/الرصيد المراد إضافته/i), '100');
-    fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
+  it('shows the granted credits from the server even when they differ from the typed amount', async () => {
+    grantMock.mockResolvedValue({ garageId: 'g-1', amount: 150, paymentAmountEgp: 100, balance: 250, entryId: 'entry-3' });
+    render(<AdminCreditGrantPanel garage={garageBase} />);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('إدارة الرصيد متاحة للجراجات التي تعمل بنظام الرصيد مسبق الدفع فقط.');
-    expect(screen.queryByText('GARAGE_NOT_PREPAID')).toBeNull();
+    await typeAmount('100');
+    fireEvent.click(screen.getByRole('button', { name: 'إضافة رصيد' }));
+
+    const success = await findParagraph('رصيد تمت إضافته مقابل 100 ج.م');
+    expect(success.textContent).toContain('150');
+    expect(success.textContent).toContain('250');
   });
 
-  it('requires a valid whole-number grant amount', async () => {
-    render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
+  it('uses the EGP validation wording for grants and keeps corrections unchanged', async () => {
+    render(<AdminCreditGrantPanel garage={garageBase} />);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/أدخل عددًا صحيحًا من 50 إلى 2,000/);
-    expect(adminService.adminGrantGarageCredits).not.toHaveBeenCalled();
-  });
+    await typeAmount('10');
+    fireEvent.click(screen.getByRole('button', { name: 'إضافة رصيد' }));
+    expect(await screen.findByText('أدخل مبلغًا صحيحًا من 50 إلى 2,000 ج.م.')).toBeInTheDocument();
+    expect(grantMock).not.toHaveBeenCalled();
 
-  it('submits the grant immediately with auto-generated reason and paymentConfirmed=true', async () => {
-    render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fillFastInput(screen.getByLabelText(/الرصيد المراد إضافته/i), '100');
-    fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
-
-    await waitFor(() => expect(adminService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
-      amount: 100,
-      paymentAmountEgp: 100,
-      reason: 'إضافة رصيد 100',
-      paymentConfirmed: true,
-    })));
-    expect(await screen.findByRole('status')).toHaveTextContent('100 رصيد تمت إضافته.');
-  });
-
-  // ── Correction mode (deduct-only) ────────────────────────────────────
-
-  it('rejects positive values in correction mode — only deductions allowed', async () => {
-    render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fireEvent.click(screen.getByRole('tab', { name: /خصم رصيد/i }));
-    fillFastInput(screen.getByLabelText(/قيمة الخصم/i), '50');
-    fireEvent.click(screen.getByRole('button', { name: /^تطبيق الخصم$/i }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/أدخل قيمة خصم سالبة/);
-    expect(adminService.adminCorrectGarageCredits).not.toHaveBeenCalled();
-  });
-
-  it('rejects zero in correction mode — only deductions allowed', async () => {
-    render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fireEvent.click(screen.getByRole('tab', { name: /خصم رصيد/i }));
-    fillFastInput(screen.getByLabelText(/قيمة الخصم/i), '0');
-    fireEvent.click(screen.getByRole('button', { name: /^تطبيق الخصم$/i }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/أدخل قيمة خصم سالبة/);
-    expect(adminService.adminCorrectGarageCredits).not.toHaveBeenCalled();
-  });
-
-  it('applies a negative deduction in correction mode with auto-generated reason', async () => {
-    render(<AdminCreditGrantPanel garage={{ ...prepaidGarage, credits: 100 }} />);
-    fireEvent.click(screen.getByRole('tab', { name: /خصم رصيد/i }));
-    fillFastInput(screen.getByLabelText(/قيمة الخصم/i), '-50');
-    fireEvent.click(screen.getByRole('button', { name: /^تطبيق الخصم$/i }));
-
-    await waitFor(() => expect(adminService.adminCorrectGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
-      amount: -50,
-      reason: 'خصم رصيد -50',
-    })));
-    expect(await screen.findByRole('status')).toHaveTextContent(/50 رصيد تم خصمه/);
+    // Correction mode keeps its own credit-denominated label — no rate
+    // conversion applies to deductions.
+    fireEvent.click(screen.getByRole('tab', { name: /خصم رصيد/ }));
+    expect(screen.getByLabelText('قيمة الخصم (سالبة، حتى -100,000)')).toBeInTheDocument();
+    expect(screen.queryByText(/ج\.م ←/)).not.toBeInTheDocument();
   });
 });

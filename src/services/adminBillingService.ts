@@ -40,7 +40,10 @@ export const adminBillingService = {
     return res.requests || [];
   },
 
-  approveCreditRequest: async (requestId: string): Promise<{ credits: number; commissionGranted: boolean; commissionAmount: number }> => {
+  // Per-garage pricing: the response carries the real conversion —
+  // `creditsGranted` = round(paymentAmountEgp × this garage's rate), plus the
+  // resulting balance, so the UI never has to guess the 1:1 assumption.
+  approveCreditRequest: async (requestId: string): Promise<{ credits: number; creditsGranted?: number; paymentAmountEgp?: number; commissionGranted: boolean; commissionAmount: number }> => {
     return apiCall(`/api/admin/credit-requests/${encodeURIComponent(requestId)}/approve`, {
       method: 'POST',
     });
