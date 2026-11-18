@@ -84,10 +84,13 @@
             //     where the page was just fetched fresh from the network;
             //   - only once per page instance (the reloaded page runs the new
             //     worker, so no further controllerchange fires — no loop).
-            // Mid-work deploys cannot trigger this: a long-lived tab does not
-            // re-check sw.js while it stays open, so controllerchange only
-            // ever lands right after a load (the reopen path), never hours
-            // into active use.
+            // Since skipWaiting:false (vite.config), the worker never takes
+            // over a live page on its own: controllerchange fires only via
+            // the "new version ready" toast below (user taps -> SKIP_WAITING
+            // -> clientsClaim) — the reload is user-initiated, never
+            // mid-work. On the reopen path (upgrade already in flight at
+            // load time) the toast shows instead, and the update applies on
+            // the next full reopen even with no tap.
             if (navigator.serviceWorker.controller) {
               var shellRefreshing = false;
               navigator.serviceWorker.addEventListener('controllerchange', function() {
@@ -101,6 +104,61 @@
             };
             document.addEventListener('visibilitychange', updateOnForeground);
             window.addEventListener('pageshow', updateOnForeground);
+            // Non-blocking "new version ready" toast (owner complaint
+            // 2026-11-18: mid-work refreshes cut off data entry). The worker
+            // no longer auto-skips-waiting (vite.config skipWaiting:false), so
+            // a newly installed version waits; the running session is never
+            // interrupted. This toast lets the user apply the update NOW when
+            // convenient — tap posts SKIP_WAITING, the waiting worker
+            // activates, clientsClaim takes over the live page and the
+            // guarded controllerchange listener above performs the reload.
+            // No tap: the update still applies automatically on the next full
+            // reopen (discarded tab -> no clients -> waiting worker activates
+            // -> next navigation is served by the new precache).
+            var updateToastShown = false;
+            var showUpdateToast = function() {
+              if (updateToastShown || !document.body) return;
+              if (!reg.waiting && !reg.installing) return;
+              updateToastShown = true;
+              var bar = document.createElement('div');
+              bar.setAttribute('dir', 'rtl');
+              bar.style.cssText = 'position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:2147483000;background:#0f172a;color:#f1f5f9;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.28);display:flex;align-items:center;gap:10px;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;white-space:nowrap;';
+              var msg = document.createElement('span');
+              msg.textContent = 'إصدار جديد جاهز';
+              var apply = document.createElement('button');
+              apply.type = 'button';
+              apply.textContent = 'تحديث الآن';
+              apply.style.cssText = 'background:#10b981;color:#ffffff;border:none;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;';
+              apply.addEventListener('click', function() {
+                var w = reg.waiting || reg.installing;
+                if (w) { w.postMessage({ type: 'SKIP_WAITING' }); }
+                bar.remove();
+              });
+              var dismiss = document.createElement('button');
+              dismiss.type = 'button';
+              dismiss.setAttribute('aria-label', 'تجاهل');
+              dismiss.textContent = '\u00D7';
+              dismiss.style.cssText = 'background:transparent;color:#94a3b8;border:none;font-size:16px;line-height:1;padding:2px 4px;font-family:inherit;cursor:pointer;';
+              dismiss.addEventListener('click', function() { bar.remove(); });
+              bar.appendChild(msg);
+              bar.appendChild(apply);
+              bar.appendChild(dismiss);
+              document.body.appendChild(bar);
+            };
+            // A waiting worker may already exist before this script runs
+            // (update installed during an earlier session, or a very fast
+            // install right after navigation).
+            if (reg.waiting && navigator.serviceWorker.controller) showUpdateToast();
+            reg.addEventListener('updatefound', function() {
+              var fresh = reg.installing;
+              if (!fresh) return;
+              fresh.addEventListener('statechange', function() {
+                // controller non-null => this is an UPDATE of an existing
+                // worker, not a first-ever install (first install serves the
+                // page that fetched it, no toast needed).
+                if (fresh.state === 'installed' && navigator.serviceWorker.controller) showUpdateToast();
+              });
+            });
           }).catch(function(err) {
             console.warn('PWA ServiceWorker registration failed:', err);
           });

@@ -15,24 +15,44 @@ export default defineConfig(() => {
       react(), 
       tailwindcss(),
       VitePWA({
-        registerType: 'autoUpdate',
+        // Update handoff is now user-controlled (owner complaint 2026-11-18:
+        // "start entering data or deleting or checking in/out a car suddenly I
+        // get a refresh"). With skipWaiting:true the freshly installed worker
+        // took over the LIVE page mid-session and cleanupOutdatedCaches
+        // deleted the old precache while the old shell was still running —
+        // the next lazy import (CheckInModal/CheckOutModal/DeleteVehicle… are
+        // dynamic import() chunks) 404'd and lazyWithRetry/vite:preloadError
+        // reloaded the page right under the user's fingers. With
+        // skipWaiting:false the new worker WAITS: the running session keeps
+        // its intact precache (nothing is deleted, no chunk can 404) and the
+        // new version activates on the next full reopen — or immediately when
+        // the user taps the non-blocking "new version ready" toast added to
+        // the inline registration script in index.html (it posts SKIP_WAITING;
+        // the #772 controllerchange listener then performs the reload).
+        registerType: 'prompt',
         manifest: false, // We already have our own manifest.json in public/
         injectRegister: false, // Performance: don't inject registerSW.js as render-blocking script. We handle SW registration ourselves via the inline script in index.html (which runs after First Paint via window.addEventListener('load')).
         workbox: {
-          skipWaiting: true,
+          skipWaiting: false,
+          // clientsClaim stays true for the explicit update path: when the
+          // user taps the toast, SKIP_WAITING activates the waiting worker
+          // and clientsClaim takes over the live page, firing
+          // controllerchange -> the guarded one-shot reload in index.html.
+          // Auto-activation (all tabs closed) claims nothing, so it is a
+          // no-op for the reopen path.
           clientsClaim: true,
           cleanupOutdatedCaches: true,
+          // Precache ALL build chunks, including the lazy modals and admin
+          // tab views (reverts PR-G's globIgnores). Reason: a chunk that is
+          // NOT precached must come from the network, and Cloudflare Pages
+          // stops serving the previous deployment's hashed files after a
+          // deploy — so a session running the previous shell could not load
+          // a lazily-opened modal and was forced to reload mid-action. With
+          // everything precached, an older-but-still-live session serves
+          // every chunk from its own precache and never breaks; the extra
+          // install traffic (~240 KB) is a one-time background download per
+          // deploy.
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-          // PR-G: exclude lazy-loaded chunks from the SW precache. These
-          // chunks are fetched on demand via dynamic import() — precaching
-          // them would download ~238 KB of code the user may never need
-          // (e.g. admin tab views for non-admin users). The SW caches them
-          // at runtime when first requested via the default runtime caching
-          // behavior.
-          globIgnores: [
-            '**/Admin*View-*.js',   // 8 lazy admin tab chunks
-            '**/*Modal-*.js',       // 5 lazy modal chunks
-          ],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
