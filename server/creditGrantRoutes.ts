@@ -5,7 +5,7 @@
  * after the C1 part 3 dependency-injection conversion.
  */
 import type { WorkerApp } from './cloudflareWorker';
-import { adminDb } from './firebaseAdmin';
+import { adminDb, FieldValue } from './firebaseAdmin';
 import { requireWorkerAuth, WORKER_SESSION_DEFINITIONS } from './sessionInfrastructure';
 import { hashSessionId } from './auth/sessionMarkers';
 import { ValidationError, validateId, validateIdempotencyKey, validateNewPin, validateNumber, validateString, sanitizePayload } from './validation';
@@ -196,9 +196,16 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       // The client-sent `amount` field is ignored — the server is authoritative
       // for the EGP→credit conversion so the admin UI doesn't need to know the
       // rate. The client only sends paymentAmountEgp; credits are derived.
+      // Per-garage pricing (owner decision 2026-11-18): a garage-level
+      // `creditRateOverride` (set by the admin via POST /api/garages/:id/credit-rate)
+      // wins over the global system_config rate; garages without an override
+      // follow the global rate. Rounding stays server-side round(EGP x rate) —
+      // it may grant up to 1 extra credit, which the owner explicitly accepted.
+      // The ledger entry stores the EGP and credit amounts, so the effective
+      // rate stays auditable per grant even with mixed prices across garages.
       const configSnap = await t.get(adminDb.doc('system_config/global'));
       const configData = configSnap.exists ? (configSnap.data() || {}) : {};
-      const creditRate = Number(configData.creditRate ?? 1);
+      const creditRate = Number(garage.creditRateOverride ?? configData.creditRate ?? 1);
       if (!Number.isFinite(creditRate) || creditRate <= 0) {
         throw new Error('INVALID_CREDIT_RATE_CONFIG');
       }
@@ -364,6 +371,48 @@ app.post('/api/garages/:id/credit-corrections', requireWorkerAuth, async (c) => 
       storeIdempotencyInTransaction(t, idempotencyKey, correction, '/api/garages/:id/credit-corrections', callerUid, requestFingerprint);
     });
     return c.json({ success: true, data: correction });
+  } catch (error: any) {
+    const { statusCode, message } = mapDomainErrorToStatus(error);
+    return c.json({ success: false, error: message }, statusCode as any);
+  }
+});
+
+// -- Per-garage credit price (admin-only; preset-only in the UI) -------------
+// Owner decision 2026-11-18: each prepaid garage can carry its own
+// EGP-per-credit price, chosen by the admin from the same preset list as the
+// global screen. Storage keeps the inverse (credits-per-EGP) in
+// garages/{id}.creditRateOverride — mirroring system_config/global.creditRate —
+// so the grant transaction keeps a single conversion formula. Clearing the
+// override returns the garage to the global rate. Garages never see this
+// value: they receive balance silently, exactly as before. Profile updates
+// via /api/garages/update use a field whitelist + update(), so they can
+// neither set nor wipe this field — this endpoint is the only writer.
+app.post('/api/garages/:id/credit-rate', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') return c.json({ success: false, error: 'ADMIN_ONLY' }, 403);
+    const garageId = validateId(c.req.param('id'), 'garageId', true);
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const sanitized = sanitizePayload(body, ['egpPerCredit', 'clear'], false);
+    const garageRef = adminDb.doc(`garages/${garageId}`);
+    const garageSnap = await garageRef.get();
+    if (!garageSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
+    if (garageSnap.data()?.billingModel !== 'prepaid_credits') {
+      return c.json({ success: false, error: 'GARAGE_NOT_PREPAID' }, 400);
+    }
+    if (sanitized.clear === true) {
+      // Remove the override entirely — absence is the "follows the global
+      // price" state, so the garage automatically tracks future global changes.
+      await garageRef.update({ creditRateOverride: FieldValue.delete(), updatedAt: new Date() });
+      return c.json({ success: true, cleared: true });
+    }
+    const egpPerCredit = validateNumber(sanitized.egpPerCredit, 'egpPerCredit', { min: 0.01, max: 1000 });
+    const creditRate = 1 / egpPerCredit;
+    if (!Number.isFinite(creditRate) || creditRate <= 0) {
+      return c.json({ success: false, error: 'INVALID_CREDIT_RATE' }, 400);
+    }
+    await garageRef.update({ creditRateOverride: creditRate, updatedAt: new Date() });
+    return c.json({ success: true, cleared: false, creditRate, egpPerCredit });
   } catch (error: any) {
     const { statusCode, message } = mapDomainErrorToStatus(error);
     return c.json({ success: false, error: message }, statusCode as any);

@@ -40,6 +40,19 @@ export interface Garage {
   billingModel?: 'subscription' | 'prepaid_credits';
   /** Single prepaid credit balance (paid + referral + trial merged as of 2026-10-29). */
   credits?: number;
+  /**
+   * Per-garage credit price override (credits-per-EGP, same unit as
+   * system_config/global.creditRate — this field is the INVERSE of the
+   * EGP-per-credit price shown in the admin UI).
+   *
+   * Per-garage pricing (owner decision 2026-11-18): admin-only, preset-only.
+   * When set, paid credit grants for THIS garage convert EGP at this rate
+   * instead of the global one; when absent the garage follows the global
+   * rate. Set/cleared only by POST /api/garages/:id/credit-rate (admin
+   * session required). Garages never see this — they receive balance
+   * silently, exactly as before.
+   */
+  creditRateOverride?: number;
   isLocked?: boolean;
   isSuspended?: boolean;
   lockReason?: string;

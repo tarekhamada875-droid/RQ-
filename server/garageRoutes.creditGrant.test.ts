@@ -7,7 +7,7 @@ vi.mock('./firebaseAdmin', () => ({
     doc: vi.fn(),
     runTransaction: vi.fn(),
   },
-  FieldValue: { increment: (v: number) => ({ __op: 'increment', value: v }) },
+  FieldValue: { increment: (v: number) => ({ __op: 'increment', value: v }), delete: () => ({ __op: 'delete' }) },
 }));
 vi.mock('./sessionInfrastructure', () => ({
   requireWorkerAuth: vi.fn((_c, next) => next()),
@@ -220,5 +220,128 @@ describe('first paid credit grant delegate commission', () => {
     const stampWrite = garageWrites.find((w) => w.data && typeof w.data.lastCreditGrantAt !== 'undefined');
     expect(stampWrite).toBeDefined();
     expect(stampWrite!.data.lastCreditGrantAt).toBeInstanceOf(Date);
+  });
+});
+
+describe('per-garage credit rate override in the grant transaction (owner decision 2026-11-18)', () => {
+  it('converts EGP with the garage creditRateOverride when one is pinned', async () => {
+    const harness = createCreditGrantHarness();
+    harness.garage.creditRateOverride = 2; // 0.5 EGP per credit
+    const response = await harness.route(requestContext(grantBody(100, 'grant-override')));
+    expect(response.status).toBe(200);
+    // 100 EGP x 2 credits/EGP = 200 credits, regardless of the global rate.
+    expect(harness.grantPaidCredits).toHaveBeenCalled();
+    expect(grantPaidCreditsMock.mock.calls[0][0]).toMatchObject({ garageId: 'garage-1', amount: 200 });
+  });
+
+  it('falls back to the global system_config rate when the garage has no override', async () => {
+    const harness = createCreditGrantHarness();
+    // This harness serves system_config/global as non-existent, so the global
+    // rate falls back to the legacy default 1 (1 EGP = 1 credit).
+    const response = await harness.route(requestContext(grantBody(100, 'grant-global-fallback')));
+    expect(response.status).toBe(200);
+    expect(grantPaidCreditsMock.mock.calls[0][0]).toMatchObject({ garageId: 'garage-1', amount: 100 });
+  });
+
+  it('rejects a corrupt override instead of granting with a broken rate', async () => {
+    const harness = createCreditGrantHarness();
+    harness.garage.creditRateOverride = 0; // invalid — must fail closed
+    const response = await harness.route(requestContext(grantBody(100, 'grant-bad-override')));
+    expect(response.status).toBe(400);
+    expect(harness.grantPaidCredits).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/garages/:id/credit-rate (admin-only per-garage pricing)', () => {
+  function createCreditRateHarness(initialGarage: Record<string, any>) {
+    const routes = new Map<string, (context: any) => Promise<any>>();
+    const app: any = new Proxy({}, {
+      get: (_target, method: string | symbol) => (path: string, ...handlers: unknown[]) => {
+        const handler = handlers[handlers.length - 1];
+        if (typeof handler === 'function') routes.set(`${String(method).toUpperCase()} ${path}`, handler as (context: any) => Promise<any>);
+        return app;
+      }
+    });
+
+    const store = new Map<string, Record<string, any>>([
+      ['garages/garage-1', { ...initialGarage }],
+    ]);
+
+    (adminDb.doc as any).mockImplementation((path: string) => ({
+      path,
+      id: path.split('/').pop(),
+      get: async () => ({ exists: store.has(path), data: () => ({ ...(store.get(path) || {}) }) }),
+      update: async (data: any) => {
+        const current = store.get(path);
+        if (!current) throw new Error('No such document');
+        Object.assign(current, data);
+      },
+    }));
+
+    registerCreditGrantRoutes(app);
+    return { route: routes.get('POST /api/garages/:id/credit-rate')!, store };
+  }
+
+  function rateRequestContext(body: Record<string, unknown>, role = 'admin') {
+    return {
+      get: (key: string) => key === 'user' ? { role, uid: 'admin-1', displayName: 'Admin' } : undefined,
+      req: {
+        param: () => 'garage-1',
+        json: async () => body,
+        header: () => undefined
+      },
+      json: (responseBody: unknown, status = 200) => ({ body: responseBody, status })
+    };
+  }
+
+  const prepaidGarage = { id: 'garage-1', name: 'جراج الاختبار', billingModel: 'prepaid_credits' };
+
+  it('pins a preset price: stores the inverse as creditRateOverride', async () => {
+    const harness = createCreditRateHarness(prepaidGarage);
+    const response = await harness.route(rateRequestContext({ egpPerCredit: 0.75 }));
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ success: true, cleared: false });
+    expect(response.body.creditRate).toBeCloseTo(1 / 0.75, 12);
+    const stored = harness.store.get('garages/garage-1')!;
+    expect(stored.creditRateOverride).toBeCloseTo(1 / 0.75, 12);
+    expect(stored.updatedAt).toBeInstanceOf(Date);
+  });
+
+  it('clears the override so the garage follows the global rate again', async () => {
+    const harness = createCreditRateHarness({ ...prepaidGarage, creditRateOverride: 1.33 });
+    const response = await harness.route(rateRequestContext({ clear: true }));
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ success: true, cleared: true });
+    const stored = harness.store.get('garages/garage-1')!;
+    expect(stored.creditRateOverride).toEqual({ __op: 'delete' }); // FieldValue.delete() sentinel
+  });
+
+  it('rejects non-admin callers', async () => {
+    const harness = createCreditRateHarness(prepaidGarage);
+    const response = await harness.route(rateRequestContext({ egpPerCredit: 0.75 }, 'garage'));
+    expect(response.status).toBe(403);
+    expect(response.body).toMatchObject({ success: false, error: 'ADMIN_ONLY' });
+  });
+
+  it('returns 404 for an unknown garage', async () => {
+    const harness = createCreditRateHarness(prepaidGarage);
+    const context = rateRequestContext({ egpPerCredit: 0.75 });
+    context.req.param = () => 'garage-404';
+    const response = await harness.route(context);
+    expect(response.status).toBe(404);
+    expect(response.body).toMatchObject({ success: false, error: 'GARAGE_NOT_FOUND' });
+  });
+
+  it('rejects subscription garages and out-of-range prices', async () => {
+    const harness = createCreditRateHarness({ ...prepaidGarage, billingModel: 'subscription' });
+    const response = await harness.route(rateRequestContext({ egpPerCredit: 0.75 }));
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({ success: false, error: 'GARAGE_NOT_PREPAID' });
+
+    const harness2 = createCreditRateHarness(prepaidGarage);
+    const zero = await harness2.route(rateRequestContext({ egpPerCredit: 0 }));
+    expect(zero.status).toBe(400);
+    const huge = await harness2.route(rateRequestContext({ egpPerCredit: 5000 }));
+    expect(huge.status).toBe(400);
   });
 });
