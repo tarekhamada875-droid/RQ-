@@ -142,23 +142,23 @@ describe('Parking Duration & Cost Calculation Comprehensive Scenarios', () => {
     expect(calculateCost(vehicle, baseGarage)).toBe(0);
   });
 
-  it('scenario 7: hourly billing has no cap — keeps climbing past overnight rate', () => {
-    // Owner directive: hourly and overnight are independent. An hourly car pays
-    // hours × rate indefinitely — no ceiling, no cap, no switching to overnight.
-    // With hourlyRate=20 and overnightRate=100, the hourly total exceeds the
-    // overnight rate at 5h (5*20=100) and keeps climbing.
+  it('scenario 7: hourly never switches to the overnight rate — independent billing (total still clamped at 999)', () => {
+    // Owner directives: hourly and overnight are independent — an hourly car
+    // NEVER re-bills at the overnight rate. The money TOTAL is separately
+    // clamped at 999 EGP (directive 2026-11-19); every value below stays
+    // under the ceiling, so hourly costs keep climbing here.
     const entry = new Date('2026-08-01T10:00:00Z');
 
-    // 5h: 5 × 20 = 100 (equals overnight, but NOT capped — it's hourly)
+    // 5h: 5 × 20 = 100 (equals overnight, but NOT switched — it's hourly)
     expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-01T15:00:00Z'))).toBe(100);
 
-    // 6h: 6 × 20 = 120 (exceeds overnight, but NOT capped — keeps climbing)
+    // 6h: 6 × 20 = 120 (exceeds overnight, but NOT switched — keeps climbing)
     expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-01T16:00:00Z'))).toBe(120);
 
     // 23h: 23 × 20 = 460 (way past overnight=100, but still climbing)
     expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T09:00:00Z'))).toBe(460);
 
-    // 24h: 24 × 20 = 480 (no dip, no cap)
+    // 24h: 24 × 20 = 480 (no dip, no overnight switch)
     expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T10:00:00Z'))).toBe(480);
 
     // 25h: 25 × 20 = 500 (keeps going)
@@ -173,6 +173,22 @@ describe('Parking Duration & Cost Calculation Comprehensive Scenarios', () => {
 
     // Overnight car at 25h: 2 days × 100 = 200 (completely independent)
     expect(calculateCost({ entryTime: entry, type: 'overnight' }, baseGarage, new Date('2026-08-02T11:00:00Z'))).toBe(200);
+  });
+
+  it('scenario 8: money total is clamped at 999 EGP (owner directive 2026-11-19)', () => {
+    const entry = new Date('2026-08-01T10:00:00Z');
+
+    // Hourly: 100h × 20 = 2,000 → clamped to exactly 999
+    expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-05T14:00:00Z'))).toBe(999);
+
+    // Overnight: 19 days × 100 = 1,900 → clamped to exactly 999
+    expect(calculateCost({ entryTime: entry, type: 'overnight' }, baseGarage, new Date('2026-08-20T11:00:00Z'))).toBe(999);
+
+    // Exactly 999 stays 999 (no clamp needed): 3h × 333
+    expect(calculateCost({ entryTime: entry, type: 'hourly' }, { hourlyRate: 333 }, new Date('2026-08-01T13:00:00Z'))).toBe(999);
+
+    // Fractional total above the ceiling also clamps: 3h × 333.5 = 1,000.5 → 999
+    expect(calculateCost({ entryTime: entry, type: 'hourly' }, { hourlyRate: 333.5 }, new Date('2026-08-01T13:00:00Z'))).toBe(999);
   });
 
   it('formats getDuration output in Arabic for various time spans (audit N20 pluralization)', () => {

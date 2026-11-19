@@ -5,6 +5,7 @@ import { Spinner } from '../ui/Spinner';
 import { IconButton } from '../ui/IconButton';
 import { safeDate, formatEntryTimeParts, AR_DAY } from '../../utils/dates';
 import { calculateCost } from '../../utils/cost';
+import { formatArabicDigits } from '../../utils/plates';
 import { isWithinEntryErrorWindow } from '../../utils/graceWindow';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
 import { useServerTimeNow } from '../../hooks/serverTimeContext';
@@ -208,7 +209,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                   ) : (
                     <>
                       <span className="text-[5rem] sm:text-[7rem] md:text-[8rem] lg:text-[9rem] font-black text-slate-900 dark:text-slate-100 font-mono tracking-tighter leading-none">
-                        {calculateCost(selectedVehicle, garage, now)}
+                        {formatArabicDigits(calculateCost(selectedVehicle, garage, now))}
                       </span>
                     </>
                   )}
@@ -261,11 +262,11 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                           'مشترك'
                         ) : selectedVehicle.type === 'overnight' ? (
                           <>
-                            {garage.overnightRate} <span className="text-xs sm:text-lg font-black font-sans">× المبيت</span>
+                            {formatArabicDigits(garage.overnightRate)} <span className="text-xs sm:text-lg font-black font-sans">× المبيت</span>
                           </>
                         ) : (
                           <>
-                            {garage.hourlyRate} <span className="text-xs sm:text-lg font-black font-sans">× الساعة</span>
+                            {formatArabicDigits(garage.hourlyRate)} <span className="text-xs sm:text-lg font-black font-sans">× الساعة</span>
                           </>
                         )}
                       </span>
@@ -291,11 +292,11 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                           if (days > 0) {
                             return (
                               <>
-                                <span>{days} {AR_DAY(days)}</span>
+                                <span>{formatArabicDigits(days)} {AR_DAY(days)}</span>
                                 {(hours > 0 || minutes > 0) && (
                                   <span className="text-xs sm:text-sm md:text-base text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center gap-1.5">
-                                    {hours > 0 && <span>{hours} س</span>}
-                                    {minutes > 0 && <span>{minutes} د</span>}
+                                    {hours > 0 && <span>{formatArabicDigits(hours)} س</span>}
+                                    {minutes > 0 && <span>{formatArabicDigits(minutes)} د</span>}
                                   </span>
                                 )}
                               </>
@@ -305,13 +306,13 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                           if (hours > 0) {
                             return (
                               <>
-                                <span>{hours} س</span>
-                                {minutes > 0 && <span className="text-xs sm:text-sm md:text-base text-emerald-600 dark:text-emerald-400 font-bold">{minutes} د</span>}
+                                <span>{formatArabicDigits(hours)} س</span>
+                                {minutes > 0 && <span className="text-xs sm:text-sm md:text-base text-emerald-600 dark:text-emerald-400 font-bold">{formatArabicDigits(minutes)} د</span>}
                               </>
                             );
                           }
 
-                          return <span>{minutes} د</span>;
+                          return <span>{formatArabicDigits(minutes)} د</span>;
                         })()}
                       </div>
                     </div>

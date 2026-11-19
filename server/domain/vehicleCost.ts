@@ -7,7 +7,18 @@
  *   - invalid entryTime (NaN timestamp)
  *   - entryTime within the 5-minute grace period
  *   - subscriber vehicles
+ * Both must also clamp the final amount to MAX_STAY_COST_EGP.
  */
+
+/**
+ * Owner directive (2026-11-19): a single stay can never cost more than
+ * 999 EGP. The receipt shows exactly this amount and the garage collects
+ * it in cash, so any total above 999 is clamped to exactly 999 — for BOTH
+ * hourly and overnight billing. This is a hard money ceiling on the TOTAL,
+ * not a rate switch (the earlier day-cap that re-billed hourly cars at the
+ * overnight rate was removed separately and stays removed).
+ */
+export const MAX_STAY_COST_EGP = 999;
 
 export function calculateVehicleCost(
   vehicleData: { isSubscriber?: boolean; type?: string; entryTime: any },
@@ -36,12 +47,14 @@ export function calculateVehicleCost(
   if (type === 'overnight') {
     const overnightRate = Number(garageData.overnightRate || 0);
     const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-    return Number((days * overnightRate).toFixed(2));
+    return Math.min(MAX_STAY_COST_EGP, Number((days * overnightRate).toFixed(2)));
   }
 
   const hourlyRate = Number(garageData.hourlyRate || 0);
   const hours = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60)));
-  // Hourly billing is independent of overnight — no cap, no ceiling.
-  const total = hours * hourlyRate;
+  // Hourly billing is independent of overnight — no day-rate switch — but the
+  // money TOTAL is clamped to MAX_STAY_COST_EGP like overnight (owner
+  // directive 2026-11-19, supersedes the previous "no cap" directive here).
+  const total = Math.min(MAX_STAY_COST_EGP, hours * hourlyRate);
   return Number(total.toFixed(2));
 }
