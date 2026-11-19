@@ -6,9 +6,12 @@
 import { useState, memo, useRef, useEffect } from 'react';
 import { useBackHandler } from '../../hooks/backHandler';
 import {
+  BadgeCheck,
   ChevronRight,
   Trash2,
-  MoreVertical
+  MoreVertical,
+  Wallet,
+  Settings
 } from 'lucide-react';
 import { isHashedPin } from '../../utils/pins';
 import { Garage, Staff } from '../../types';
@@ -18,6 +21,7 @@ import { useToast } from '../../hooks/toast';
 import { AdminGarageSettingsSection } from './AdminGarageSettingsSection';
 import { AdminGarageHeroAndStats } from './garage-details/AdminGarageHeroAndStats';
 import { AdminGarageFinancialsSection } from './garage-details/AdminGarageFinancialsSection';
+import { AdminGarageZoneHead } from './garage-details/AdminGarageZoneHead';
 import { AdminGarageModals } from './garage-details/AdminGarageModals';
 import { AdminCreditGrantPanel } from './AdminCreditGrantPanel';
 import { AdminGarageCreditRateSection } from './AdminGarageCreditRateSection';
@@ -169,34 +173,46 @@ export const AdminGarageDetailsView = memo(({
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-6 space-y-8">
-        {/* Zone 1: Status & Key Information */}
-        <AdminGarageHeroAndStats
-          garage={selectedGarageForDetails}
-          isUpdatingLock={actions.isUpdatingLock}
-          onToggleLock={actions.handleToggleLock}
-          onOpenEditPin={() => {
-            const p = selectedGarageForDetails.pin || selectedGarageForDetails.ownerPin || '';
-            actions.setGaragePinInput(isHashedPin(p) ? '' : p);
-            actions.setPinError('');
-            setShowEditGaragePinModal(true);
-          }}
-        />
+      {/* Three scannable zones with thin divider heads (owner pick: Option B,
+          2026-11-19). Order inside the billing zone follows task frequency:
+          top-up first, then per-garage price, then the quiet monthly toggle. */}
+      <div className="max-w-5xl mx-auto px-6 space-y-6">
+        {/* Zone 1: Status & identity */}
+        <section className="space-y-3">
+          <AdminGarageZoneHead icon={BadgeCheck} label={'الحالة والهوية'} />
+          <AdminGarageHeroAndStats
+            garage={selectedGarageForDetails}
+            isUpdatingLock={actions.isUpdatingLock}
+            onToggleLock={actions.handleToggleLock}
+            onOpenEditPin={() => {
+              const p = selectedGarageForDetails.pin || selectedGarageForDetails.ownerPin || '';
+              actions.setGaragePinInput(isHashedPin(p) ? '' : p);
+              actions.setPinError('');
+              setShowEditGaragePinModal(true);
+            }}
+          />
+        </section>
 
-        {/* Zone 2: Subscription, Financials & Recharge */}
-        <AdminGarageFinancialsSection
-          garage={selectedGarageForDetails}
-          onToggleMonthlySubscribers={actions.handleToggleMonthlySubscribers}
-        />
-        <AdminCreditGrantPanel garage={selectedGarageForDetails} />
+        {/* Zone 2: Balance & billing */}
+        <section className="space-y-3">
+          <AdminGarageZoneHead icon={Wallet} label={'الرصيد والفوترة'} />
+          <AdminCreditGrantPanel garage={selectedGarageForDetails} />
 
-        {/* Per-garage credit pricing (owner decision 2026-11-18): admin-only,
-            preset-only override of the global rate; renders nothing for
-            subscription garages. */}
-        <AdminGarageCreditRateSection garage={selectedGarageForDetails} />
+          {/* Per-garage credit pricing (owner decision 2026-11-18): admin-only,
+              preset-only override of the global rate; renders nothing for
+              subscription garages. */}
+          <AdminGarageCreditRateSection garage={selectedGarageForDetails} />
 
-        {/* Zone 3: Operations & Staff Management */}
-        <AdminGarageSettingsSection
+          <AdminGarageFinancialsSection
+            garage={selectedGarageForDetails}
+            onToggleMonthlySubscribers={actions.handleToggleMonthlySubscribers}
+          />
+        </section>
+
+        {/* Zone 3: Operations & staff */}
+        <section className="space-y-3">
+          <AdminGarageZoneHead icon={Settings} label={'التشغيل والطاقم'} />
+          <AdminGarageSettingsSection
           isZone3Open={isZone3Open}
           setIsZone3Open={setIsZone3Open}
           rateCheck={actions.rateCheck}
@@ -218,6 +234,7 @@ export const AdminGarageDetailsView = memo(({
           setIsUpdatingStaffPin={setIsUpdatingStaffPin}
           setStaffToDelete={setStaffToDelete}
         />
+        </section>
       </div>
 
       {/* Modals */}
