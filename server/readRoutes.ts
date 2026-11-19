@@ -12,6 +12,8 @@ import {
 } from './workerMaintenance';
 import { lookupSubscriber, safeDateMillis, sanitizeDelegateDoc } from './workerReadHelpers';
 import { getCairoDateKey } from './projections';
+import { CREDIT_PRICE_MAX, CREDIT_PRICE_MIN, PAYMENT_WALLET_NUMBER_MAX_LENGTH } from './domain/limits';
+import { roundCreditRateForStorage } from './domain/creditRateStorage';
 
 const ACTIVE_SYSTEM_CONFIG_FIELDS = ['adminColor', 'paymentWalletNumber', 'creditRate'] as const;
 
@@ -63,7 +65,7 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
       throw new ValidationError('Retired configuration field', 'RETIRED_CONFIG_FIELD', 400);
     }
     if (body.paymentWalletNumber !== undefined) {
-      if (typeof body.paymentWalletNumber !== 'string' || body.paymentWalletNumber.length > 120) {
+      if (typeof body.paymentWalletNumber !== 'string' || body.paymentWalletNumber.length > PAYMENT_WALLET_NUMBER_MAX_LENGTH) {
         throw new ValidationError('Invalid paymentWalletNumber', 'INVALID_PAYMENT_WALLET_NUMBER', 400);
       }
       updatePayload.paymentWalletNumber = body.paymentWalletNumber.trim();
@@ -93,13 +95,15 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
       updatePayload.adminColor = body.adminColor.trim();
     }
     if (body.creditRate !== undefined) {
-      // Allow 0.01 to 1000. Below 0.01 is effectively free; above 1000 is nonsensical.
-      // Integer 1 (default) preserves the legacy 1 EGP = 1 credit behavior.
-      // PERF audit F6 (owner debug session 2026-11-17): the client computed
-      // 1.3333333333333333 from a division and the raw float was stored.
-      // Round to 2 decimals so the config stays clean.
-      const rate = validateNumber(body.creditRate, 'creditRate', { min: 0.01, max: 1000 });
-      updatePayload.creditRate = Math.round(rate * 100) / 100;
+      // Allow 0.01 to 1000 (shared bounds in server/domain/limits.ts). Below
+      // 0.01 is effectively free; above 1000 is nonsensical. Integer 1
+      // (default) preserves the legacy 1 EGP = 1 credit behavior.
+      // P0-2 storage convention (audit, owner-approved plan 2026-11-19):
+      // both price writers round the credits-per-EGP rate to 12 decimals —
+      // see server/domain/creditRateStorage.ts for why the old 2-decimal
+      // rule was replaced.
+      const rate = validateNumber(body.creditRate, 'creditRate', { min: CREDIT_PRICE_MIN, max: CREDIT_PRICE_MAX });
+      updatePayload.creditRate = roundCreditRateForStorage(rate);
     }
 
     await adminDb.doc('system_config/global').set(updatePayload, { merge: true });

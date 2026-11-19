@@ -27,6 +27,7 @@ import { DelayedFallback, ModalSuspenseBackdrop } from '../layout/LoadingFallbac
 const TermsAndConditionsModal = lazyWithRetry(() => import('../modals/TermsAndConditionsModal').then(m => ({ default: m.TermsAndConditionsModal })));
 import { DelegateDashboardOverlays } from './DelegateDashboardOverlays';
 import { delegateService, type DelegateCreditRequest } from '../../services/delegateService';
+import { CREDIT_AMOUNT_MAX_EGP, CREDIT_AMOUNT_MIN_EGP } from '../../utils/limits';
 import { useDelegateDashboard } from '../../hooks/delegateDashboardContext';
 import { useToast } from '../../hooks/toast';
 import { FastInput } from '../ui/FastInput';
@@ -159,7 +160,7 @@ export const DelegateDashboardView = memo(({
     e.preventDefault();
     if (!creditRequestGarage || submittingCreditRequest) return;
     const amount = Number(creditRequestAmount.trim());
-    if (!Number.isSafeInteger(amount) || amount < 50 || amount > 2000) return;
+    if (!Number.isSafeInteger(amount) || amount < CREDIT_AMOUNT_MIN_EGP || amount > CREDIT_AMOUNT_MAX_EGP) return;
     setSubmittingCreditRequest(true);
     try {
       await delegateService.createCreditRequest(creditRequestGarage.id, amount);
@@ -489,7 +490,7 @@ export const DelegateDashboardView = memo(({
 
             <form onSubmit={handleSubmitCreditRequest} className="space-y-4 text-right">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">المبلغ المحصل من الجراج (50 إلى 2,000 ج.م)</label>
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">المبلغ المحصل من الجراج ({CREDIT_AMOUNT_MIN_EGP} إلى {CREDIT_AMOUNT_MAX_EGP.toLocaleString('en-US')} ج.م)</label>
                 <FastInput
                   type="text"
                   inputMode="numeric"
