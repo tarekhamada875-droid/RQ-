@@ -22,8 +22,12 @@ interface TermsAndConditionsModalProps {
  *   approval button is legally redundant and actually weakens the position
  *   (implies the user MUST click agree). The header back button is the only
  *   way out — same as every other fullscreen view.
- * - Legal text is unchanged — already in the owner's favor (full liability
- *   waiver, indemnification, Egyptian jurisdiction).
+ * - Legal text unchanged in intent (full liability waiver, indemnification,
+ *   Egyptian jurisdiction). Proofread 2026-11-19: fixed broken grammar
+ *   ("المنشأة التابع لها"), parallel-case list in Article 3, "العارضة" legal
+ *   term, and rewrote the delegate commission note to match the actual server
+ *   rule (single payment ≥ 500 EGP, max one commission per 30 days per garage
+ *   — see server/domain/delegateCommission.ts).
  */
 export const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = memo(({ onClose }) => {
   const handleClose = () => {
@@ -75,7 +79,7 @@ export const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = m
           {/* Legal Notice Box */}
           <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 flex items-start gap-3">
             <p className="text-[11px] sm:text-xs opacity-90 leading-normal">
-              باستخدامك أو تسجيلك للدخول في هذه المنظومة الإلكترونية، فإنك تقر وتوافق دون قيد أو شرط على كافة البنود والالتزامات وإخلاء المسؤولية القانونية الواردة أدناه، وتعد هذه الوثيقة عقداً قانونياً ملزماً ونهائياً لك وللمنشأة التابع لها.
+              باستخدامك أو تسجيلك للدخول في هذه المنظومة الإلكترونية، فإنك تقر وتوافق دون قيد أو شرط على كافة البنود والالتزامات وإخلاء المسؤولية القانونية الواردة أدناه، وتعد هذه الوثيقة عقداً قانونياً ملزماً ونهائياً لك وللمنشأة التي تتبعها.
             </p>
           </div>
 
@@ -86,7 +90,7 @@ export const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = m
               للمندوبين
             </h4>
             <p className="text-[11px] sm:text-xs opacity-90 leading-normal">
-              دورك هو إنشاء جراجات جديدة. تكسب ١٠٠ ج.م كل ٣٠ يومًا لكل جراج أنشأته، عندما يدفع الجراج ٥٠٠ ج.م أو أكثر خلال تلك الفترة. يتم دفع عمولاتك يدويًا من الإدارة.
+              دورك هو إنشاء جراجات جديدة. تكسب ١٠٠ ج.م عن كل دفعة شحن بقيمة ٥٠٠ ج.م أو أكثر يدفعها الجراج، بحد أقصى عمولة واحدة كل ٣٠ يومًا لكل جراج أنشأته. يتم دفع عمولاتك يدويًا من الإدارة.
             </p>
           </div>
 
@@ -121,7 +125,7 @@ export const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = m
             <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400 pr-10 text-[11px] sm:text-xs">
               <li>سرقة أي مركبة أو محاولة سرقتها، أو تعرضها للتلف أو الكسر أو الحريق أو الخدش أو الحوادث المرورية داخل الجراج أو على مداخله ومخارجه.</li>
               <li>فقدان أو سرقة أو تلف أي مبالغ مالية أو متعلقات شخصية أو أجهزة أو بضائع أو وثائق تترك داخل أي مركبة.</li>
-              <li>أي أضرار مادية أو بشرية أو إصابات جسدية ناتجة عن الكوارث الطبيعية، القوة القاهرة، الحوادث العرضية، أو الانهيارات والحرائق والتماس الكهربائي في منشأة الجراج.</li>
+              <li>أي أضرار مادية أو بشرية أو إصابات جسدية ناتجة عن الكوارث الطبيعية، القوة القاهرة، الحوادث العارضة، أو الانهيارات والحرائق والتماس الكهربائي في منشأة الجراج.</li>
             </ul>
             <p className="text-slate-600 dark:text-slate-400 pr-8 text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-300">
               تقع المسؤولية المدنية والجنائية الكاملة عن أمان وسلامة وحراسة المركبات على عاتق مالك/مشغل الجراج الفعلي والقائمين عليه بموجب القوانين العامة المعمول بها.
@@ -135,8 +139,8 @@ export const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = m
               <h4>المادة الثالثة: سلوك المستخدمين، صحة البيانات، والمخالفات القانونية</h4>
             </div>
             <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400 pr-8 text-[11px] sm:text-xs">
-              <li>يقر المستخدم (سواء كان مالك جراج، مشرفاً، موظفاً، مندوباً، أو أي طرف مستخدم للمنظومة) بأنه المسؤول شخصياً وحصرياً عن صحة ومشروعية كافة البيانات المدخلة، بما في ذلك أرقام اللوحات المعدنية، أسماء المشتركين، أرقام الهواتف، وأوقات الدخول والخروج.</li>
-              <li>يُحظر حظراً باتاً استخدام المنظومة في أي غرض غير مشروع، بما في ذلك إيواء أو تسهيل حركة مركبات مسروقة، أو مركبات ذات لوحات مزورة أو مطموسة، أو تخزين مواد مجرمة قانوناً.</li>
+              <li>يقر المستخدم (سواء كان مالكاً لجراج، أو مشرفاً، أو موظفاً، أو مندوباً، أو أي طرف مستخدم للمنظومة) بأنه المسؤول شخصياً وحصرياً عن صحة ومشروعية كافة البيانات المدخلة، بما في ذلك أرقام اللوحات المعدنية، أسماء المشتركين، أرقام الهواتف، وأوقات الدخول والخروج.</li>
+              <li>يُحظر حظراً باتاً استخدام المنظومة في أي غرض غير مشروع، بما في ذلك إيواء أو تسهيل حركة مركبات مسروقة، أو مركبات ذات لوحات مزورة أو مطموسة، أو تخزين أي مواد يجرّمها القانون.</li>
               <li>في حال ارتكاب أي مستخدم لأي مخالفة قانونية أو جريمة أو تدليس، تقع المسؤولية القانونية الجنائية والمدنية كاملة على عاتق مرتكبها ومسؤول الجراج، وتتحصن المنظومة ومالكها بحصانة تامة من أي تبعة أو تضامن أو مشاركة.</li>
             </ul>
           </section>
@@ -165,7 +169,7 @@ export const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = m
             </div>
             <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400 pr-8 text-[11px] sm:text-xs">
               <li>المنظومة لا تتقاضى أو تحصّل أو تحتفظ بأي رسوم انتظار يدفعها قائدو المركبات للجراجات؛ وكل ما يتعلق بالتعريفة المالية ورسوم الانتظار والاشتراكات الشهرية ونزاعات التذاكر المفقودة هو علاقة مالية مباشرة ومستقلة تماماً بين قائد المركبة وإدارة الجراج دون أدنى تدخل أو التزام من جانب المنظومة.</li>
-              <li>باقات الاشتراك في المنظومة هي مقابل استغلال البرمجية السحابية فقط، وتخضع لسياسات الشحن والحدود التشغيلية المعلنة دون أي حق في المطالبة بأرباح أو تعويضات تشغيلية في حال تعطل أو إغلاق الجراج.</li>
+              <li>باقات الاشتراك في المنظومة هي مقابل استغلال البرمجية السحابية فقط، وتخضع لسياسات الشحن والحدود التشغيلية المعلنة دون أي حق في المطالبة بأرباح أو تعويضات تشغيلية في حال تعطل المنظومة أو إغلاق الجراج.</li>
             </ul>
           </section>
 
