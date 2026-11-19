@@ -2,6 +2,45 @@ import { auth } from '../firebase';
 import { normalizeDigits } from '../utils/plates';
 import { releaseEntitySession, getCanonicalSessionId } from './authSessionService';
 import { apiFetch } from '../api/apiClient';
+import { debugRecorder } from '../debug/debugRecorder';
+
+/**
+ * AUDIT EXTENSION (2026-11-19, owner login-hang investigation):
+ * Wrap auth.currentUser.getIdToken() with debug-recorder visibility. The
+ * previous call sites used `await auth.currentUser.getIdToken().catch(() => '')`
+ * — silent, no timing, no event when it hung. A hung token refresh was the
+ * prime suspect in the owner's login-hang incident (rq-debug-2026-11-19
+ * file showed 0 API calls past boot, no JS errors, no listener registration
+ * past system_config_worker_api — pointing at this exact call as the stall).
+ *
+ * Behavior is identical: on error or no-current-user, returns ''. PR 1 is
+ * observation-only; PR 2 will add a Promise.race timeout so a hung call
+ * rejects and lets the coordinator's existing error path bail to login.
+ *
+ * The `label` argument flows into the debug event so a single debug file
+ * shows which of the 4 call sites a hung token refresh originated from.
+ */
+async function getAuthIdTokenForDebug(label: string): Promise<string> {
+  const hasUser = typeof auth.currentUser?.getIdToken === 'function';
+  if (!hasUser) {
+    debugRecorder.authEvent('get_id_token_skipped', { label, reason: 'no_current_user' });
+    return '';
+  }
+  const startMs = Date.now();
+  try {
+    const token = await auth.currentUser!.getIdToken();
+    debugRecorder.authEvent('get_id_token_success', { label, ms: Date.now() - startMs });
+    return token;
+  } catch (err: any) {
+    debugRecorder.authEvent('get_id_token_error', {
+      label,
+      ms: Date.now() - startMs,
+      code: err?.code || null,
+      msg: String(err?.message || '').slice(0, 200),
+    });
+    return '';
+  }
+}
 
 export const authService = {
   checkPinAvailability: async (normalizedPinVal: string, excludeId?: string): Promise<{ taken: boolean; role?: string; roleKey?: 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage' | 'retired'; name?: string }> => {
@@ -36,7 +75,7 @@ export const authService = {
       let token = credentials.firebaseIdToken;
       if (!token && auth && auth.currentUser) {
         try {
-          token = await auth.currentUser.getIdToken();
+          token = await getAuthIdTokenForDebug('authenticateUserCredentials');
         } catch (tErr) {
           console.warn('[AuthService] Could not obtain ID token:', tErr);
         }
@@ -65,7 +104,7 @@ export const authService = {
   claimAdminSessionOnServer: async (uid: string, sessionId: string, pin?: string): Promise<{ success: boolean; error?: string }> => {
     if (!uid || !sessionId) return { success: false, error: 'INVALID_PARAMS' };
     try {
-      const firebaseIdToken = typeof auth.currentUser?.getIdToken === 'function' ? await auth.currentUser.getIdToken().catch(() => '') : '';
+      const firebaseIdToken = await getAuthIdTokenForDebug('claimAdminSessionOnServer');
       const data = await apiFetch('/api/auth/claim-admin-session', {
         method: 'POST',
         body: { uid, sessionId, pin, firebaseIdToken }
@@ -80,7 +119,7 @@ export const authService = {
   validateOrRefreshSessionOnServer: async (uid: string, sessionId: string, role: string, entityId: string): Promise<boolean> => {
     if (!uid || !sessionId || !role) return false;
     try {
-      const firebaseIdToken = typeof auth.currentUser?.getIdToken === 'function' ? await auth.currentUser.getIdToken().catch(() => '') : '';
+      const firebaseIdToken = await getAuthIdTokenForDebug('validateOrRefreshSessionOnServer');
       const data = await apiFetch<{ valid?: boolean }>('/api/auth/validate-or-refresh-session', {
         method: 'POST',
         body: { uid, sessionId, role, entityId, firebaseIdToken }
@@ -99,7 +138,7 @@ export const authService = {
   releaseSessionOnServer: async (uid: string, sessionId: string, role: string, entityId: string): Promise<void> => {
     if (!uid || !sessionId || !role) return;
     try {
-      const firebaseIdToken = typeof auth.currentUser?.getIdToken === 'function' ? await auth.currentUser.getIdToken().catch(() => '') : '';
+      const firebaseIdToken = await getAuthIdTokenForDebug('releaseSessionOnServer');
       await apiFetch('/api/auth/release-session', {
         method: 'POST',
         body: { uid, sessionId, role, entityId, firebaseIdToken }
