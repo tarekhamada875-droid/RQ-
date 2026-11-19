@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Wallet, Check, Loader2, ChevronRight } from 'lucide-react';
 import { apiFetch } from '../../api/apiClient';
 import { adminService } from '../../services';
 import { FastInput } from '../ui/FastInput';
 import { normalizeDigits } from '../../utils/plates';
 import { PAYMENT_WALLET_NUMBER_MAX_LENGTH } from '../../utils/limits';
+import { useSettingSave } from '../../hooks/useSettingSave';
 
 interface AdminWalletSettingsViewProps {
   onBack: () => void;
@@ -25,31 +26,29 @@ interface AdminWalletSettingsViewProps {
  * non-digits instead of silently saving it.
  */
 export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = ({ onBack }) => {
-  const [paymentWalletNumber, setPaymentWalletNumber] = useState<string>('');
-  const [originalWalletNumber, setOriginalWalletNumber] = useState<string>('');
-  const [saveError, setSaveError] = useState<string>('');
-  const [saveSuccess, setSaveSuccess] = useState<string>('');
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const data = await apiFetch<{ success?: boolean; config?: { paymentWalletNumber?: string } }>('/api/system-config');
-        if (!cancelled && data?.success && data.config) {
-          const wallet = data.config.paymentWalletNumber || '';
-          setPaymentWalletNumber(wallet);
-          setOriginalWalletNumber(wallet);
-        }
-      } catch (err) {
-        console.warn('Failed to load paymentWalletNumber:', err);
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  // Shared save-state machine (audit P2-3). The editable value is the raw
+  // digits string; null until loaded (rendered as an empty input).
+  const {
+    value: loadedWalletNumber,
+    setValue: setPaymentWalletNumber,
+    original: originalWalletNumber,
+    saveError,
+    setSaveError,
+    saveSuccess,
+    setSaveSuccess,
+    isSaving,
+    isLoading,
+    clearMessages,
+    save,
+  } = useSettingSave<string>({
+    fetcher: async () => {
+      const data = await apiFetch<{ success?: boolean; config?: { paymentWalletNumber?: string } }>('/api/system-config');
+      return data?.success && data.config ? (data.config.paymentWalletNumber || '') : null;
+    },
+    saver: (wallet) => adminService.updateSystemConfig({ paymentWalletNumber: wallet }),
+  });
+  const paymentWalletNumber = loadedWalletNumber ?? '';
+  const persistedWalletNumber = originalWalletNumber ?? '';
 
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -71,23 +70,14 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
       setSaveError('رقم المحفظة طويل جداً.');
       return;
     }
-    if (normalized === originalWalletNumber) {
+    if (normalized === persistedWalletNumber) {
       setSaveSuccess('لم يتم تغيير الرقم.');
       return;
     }
-    setIsSaving(true);
-    try {
-      await adminService.updateSystemConfig({ paymentWalletNumber: normalized });
-      setOriginalWalletNumber(normalized);
-      setSaveSuccess('تم حفظ رقم محفظة الدفع بنجاح.');
-    } catch (err: any) {
-      setSaveError('تعذّر حفظ رقم المحفظة. حاول مرة أخرى.');
-    } finally {
-      setIsSaving(false);
-    }
+    await save(normalized, 'تم حفظ رقم محفظة الدفع بنجاح.', 'تعذّر حفظ رقم المحفظة. حاول مرة أخرى.');
   };
 
-  const hasChanges = paymentWalletNumber.trim() !== originalWalletNumber;
+  const hasChanges = paymentWalletNumber.trim() !== persistedWalletNumber;
 
   return (
     <div className="max-w-2xl mx-auto font-sans" dir="rtl">
@@ -123,13 +113,11 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
                 defaultValue={paymentWalletNumber}
                 onCommit={(v) => {
                   setPaymentWalletNumber(normalizeDigits(v).replace(/\D/g, ''));
-                  setSaveError('');
-                  setSaveSuccess('');
+                  clearMessages();
                 }}
                 onLiveValue={(v) => {
                   setPaymentWalletNumber(normalizeDigits(v).replace(/\D/g, ''));
-                  setSaveError('');
-                  setSaveSuccess('');
+                  clearMessages();
                 }}
                 mask={(v) => normalizeDigits(v).replace(/\D/g, '')}
                 maxLength={PAYMENT_WALLET_NUMBER_MAX_LENGTH}

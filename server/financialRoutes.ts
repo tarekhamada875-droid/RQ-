@@ -6,7 +6,7 @@ import { validateIdempotencyKey } from './validation';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { recordDomainEventInTransaction } from './events';
 import { parseFirestorePageRequest } from './firestorePagination';
-import { withErrorHandler } from './routes/combinators';
+import { withAdmin, withErrorHandler } from './routes/combinators';
 import { sanitizeDelegateDoc } from './workerReadHelpers';
 
 export function registerFinancialRoutes(app: WorkerApp): void {
@@ -90,12 +90,9 @@ app.get('/api/delegate/commission-earnings', requireWorkerAuth, handleDelegateDa
 app.get('/api/delegates/dashboard', requireWorkerAuth, handleDelegateDashboard);
 
 // Handler 8: Settle Delegate Commission / Withdrawal (POST /api/delegate/withdraw-commission & POST /api/delegates/settle-account)
-const handleSettleDelegateAccount = async (c: any) => {
+const handleSettleDelegateAccount = withAdmin(async (c: any) => {
   try {
     const user = c.get('user');
-    if (user?.role !== 'admin') {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
     const body = await c.req.json().catch(() => ({}));
     const id = body.id || body.delegateId;
     if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
@@ -178,7 +175,7 @@ const handleSettleDelegateAccount = async (c: any) => {
     }
     return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
   }
-};
+});
 
 app.post('/api/delegate/withdraw-commission', requireWorkerAuth, handleSettleDelegateAccount);
 app.post('/api/delegates/settle-account', requireWorkerAuth, handleSettleDelegateAccount);

@@ -4,18 +4,18 @@ import { normalizeDigits } from '../utils/plates';
 import { canChangeGarageRates } from '../utils/businessRules';
 import { useAsyncAction } from './useAsyncAction';
 import { generateSafePin } from '../utils/pins';
+import { getDomainErrorMessage } from '../utils/domainErrors';
 import type { Garage, Staff } from '../types';
 
+const PIN_UPDATE_ERROR_MESSAGES: Record<string, string> = {
+  PIN_ALREADY_TAKEN: 'الرمز مستخدم بالفعل',
+  'الرمز مستخدم بالفعل': 'الرمز مستخدم بالفعل',
+  PIN_PREVIOUSLY_USED: 'هذا الرمز مستخدم سابقًا ولا يمكن إعادة استخدامه. يرجى اختيار رمز آخر.',
+  'الرمز مستخدم سابقًا': 'هذا الرمز مستخدم سابقًا ولا يمكن إعادة استخدامه. يرجى اختيار رمز آخر.',
+};
+
 export function getGaragePinUpdateErrorMessage(error: unknown): string {
-  const message = error instanceof Error ? error.message : '';
-  if (message === 'PIN_ALREADY_TAKEN' || message === 'الرمز مستخدم بالفعل') {
-    return 'الرمز مستخدم بالفعل';
-  }
-  if (message === 'PIN_PREVIOUSLY_USED' || message === 'الرمز مستخدم سابقًا') {
-    return 'هذا الرمز مستخدم سابقًا ولا يمكن إعادة استخدامه. يرجى اختيار رمز آخر.';
-  }
-  if (message && /[\u0600-\u06FF]/.test(message)) return message;
-  return 'تعذر تحديث رمز دخول الجراج. يرجى المحاولة مرة أخرى.';
+  return getDomainErrorMessage(error, PIN_UPDATE_ERROR_MESSAGES, 'تعذر تحديث رمز دخول الجراج. يرجى المحاولة مرة أخرى.');
 }
 
 interface UseAdminGarageDetailsActionsArgs {

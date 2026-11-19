@@ -7,6 +7,7 @@
  * and contains only the route handler registrations.
  */
 import type { WorkerApp } from './cloudflareWorker';
+import { withAdmin } from './routes/combinators';
 import { adminDb } from './firebaseAdmin';
 import { computeLookupHash, computeLegacyLookupHash, isPinLookupSaltMigrated } from './pinCrypto';
 import {
@@ -266,8 +267,8 @@ workerApp.post('/api/auth/check-pin-availability', async (c) => {
 workerApp.post('/api/admin/update-pin', async (c) => {
   const authResult = await requireWorkerAuth(c, async () => undefined);
   if (authResult instanceof Response) return authResult;
+  return withAdmin(async () => {
   try {
-    if (c.get('user')?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const normalizedNewPin = validateNewPin(body.newPin, 'newPin');
     const normalizedCurrentPin = cleanPin(body.currentPin);
@@ -310,6 +311,7 @@ workerApp.post('/api/admin/update-pin', async (c) => {
     console.error('[Worker Admin] Error updating PIN:', error?.message || 'unknown');
     return c.json({ success: false, error: error?.message || 'SERVER_ERROR' }, 400);
   }
+  })(c);
 });
 
 workerApp.post('/api/auth/claim-admin-session', async (c) => {

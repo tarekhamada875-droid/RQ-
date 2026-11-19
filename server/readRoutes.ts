@@ -3,7 +3,7 @@ import { adminDb } from './firebaseAdmin';
 import { requireWorkerAuth } from './sessionInfrastructure';
 import { ValidationError, validateNumber } from './validation';
 import { mapDomainErrorToStatus } from './routes/helpers';
-import { withErrorHandler } from './routes/combinators';
+import { withAdmin, withErrorHandler } from './routes/combinators';
 import {
   maintainedGarageSummaryRef,
   maintainedGarageDailySummaryRef,
@@ -49,13 +49,8 @@ app.get('/api/system-config', requireWorkerAuth, withErrorHandler(async (c) => {
 }, 'Read'));
 
 // Foundation Route: POST /api/admin/update-system-config
-app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
+app.post('/api/admin/update-system-config', requireWorkerAuth, withAdmin(async (c) => {
   try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
-
     const body = await c.req.json().catch(() => ({}));
     const updatePayload: Record<string, any> = {
       updatedAt: new Date()
@@ -113,7 +108,7 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
     const { statusCode, code, message } = mapDomainErrorToStatus(e);
     return c.json({ success: false, code, error: message, statusCode }, statusCode as any);
   }
-});
+}));
 
 // 6. Authenticated and Read-Heavy Business Routes (CF4)
 
@@ -313,11 +308,7 @@ app.get('/api/garage-summary', requireWorkerAuth, withErrorHandler(async (c) => 
 // Route: GET /api/admin/delegates — paginated delegates list for the admin panel.
 // Returns delegates without PIN/hash fields. Admin-only.
 // Called by getAdminDelegatesPage in delegateService.ts.
-app.get('/api/admin/delegates', requireWorkerAuth, withErrorHandler(async (c) => {
-  const user = c.get('user') as WorkerUser | undefined;
-  if (user?.role !== 'admin') {
-    return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-  }
+app.get('/api/admin/delegates', requireWorkerAuth, withErrorHandler(withAdmin(async (c) => {
   // Simple cursor pagination: cursor is base64(`${createdAtMillis},${docId}`).
   const limitParam = parseInt(c.req.query('limit') || '50', 10);
   const pageSize = Number.isSafeInteger(limitParam) && limitParam > 0 && limitParam <= 100 ? limitParam : 50;
@@ -365,5 +356,5 @@ app.get('/api/admin/delegates', requireWorkerAuth, withErrorHandler(async (c) =>
     hasMore,
     nextCursor
   });
-}, 'Read'));
+}), 'Read'));
 }

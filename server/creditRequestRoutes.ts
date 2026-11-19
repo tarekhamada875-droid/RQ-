@@ -7,7 +7,7 @@ import { recordDomainEventInTransaction } from './events';
 import { decideDelegateCommission, COMMISSION_AMOUNT_EGP } from './domain/delegateCommission';
 import { CREDIT_AMOUNT_MAX_EGP, CREDIT_AMOUNT_MIN_EGP } from './domain/limits';
 import { parseMoneyAmount } from './money';
-import { withErrorHandler } from './routes/combinators';
+import { withAdmin, withErrorHandler } from './routes/combinators';
 
 
 /**
@@ -118,11 +118,7 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
   }, 'CreditRequest'));
 
   // ── Admin lists pending credit requests ──────────────────────────────
-  app.get('/api/admin/credit-requests', requireWorkerAuth, withErrorHandler(async (c: any) => {
-    const user = c.get('user') as WorkerUser | undefined;
-    if (user?.role !== 'admin') {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
+  app.get('/api/admin/credit-requests', requireWorkerAuth, withErrorHandler(withAdmin(async (c: any) => {
     const status = c.req.query('status') || 'pending';
     if (!['pending', 'approved', 'rejected'].includes(status)) {
       return c.json({ success: false, error: 'INVALID_STATUS' }, 400);
@@ -176,14 +172,11 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
     }
 
     return c.json({ success: true, requests });
-  }, 'CreditRequest'));
+  }), 'CreditRequest'));
 
   // ── Admin approves a credit request ──────────────────────────────────
-  app.post('/api/admin/credit-requests/:id/approve', requireWorkerAuth, withErrorHandler(async (c: any) => {
+  app.post('/api/admin/credit-requests/:id/approve', requireWorkerAuth, withErrorHandler(withAdmin(async (c: any) => {
     const user = c.get('user') as WorkerUser | undefined;
-    if (user?.role !== 'admin') {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
     const requestId = validateId(c.req.param('id'), 'id', true);
     const callerUid = user.uid;
     const now = new Date();
@@ -354,14 +347,11 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
     });
 
     return c.json({ success: true, ...grantedResult });
-  }, 'CreditRequest'));
+  }), 'CreditRequest'));
 
   // ── Admin rejects a credit request ───────────────────────────────────
-  app.post('/api/admin/credit-requests/:id/reject', requireWorkerAuth, withErrorHandler(async (c: any) => {
+  app.post('/api/admin/credit-requests/:id/reject', requireWorkerAuth, withErrorHandler(withAdmin(async (c: any) => {
     const user = c.get('user') as WorkerUser | undefined;
-    if (user?.role !== 'admin') {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
     const requestId = validateId(c.req.param('id'), 'id', true);
     const callerUid = user.uid;
     const now = new Date();
@@ -383,5 +373,5 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
     });
 
     return c.json({ success: true });
-  }, 'CreditRequest'));
+  }), 'CreditRequest'));
 }
