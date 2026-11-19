@@ -5,6 +5,7 @@ import { adminService } from '../../services';
 import { normalizeDigits } from '../../utils/plates';
 import { FastInput } from '../ui/FastInput';
 import { creditsForEgp, formatEgpPerCredit, rateToEgpPerCredit } from '../../utils/creditRate';
+import { CREDIT_AMOUNT_MAX_EGP, CREDIT_AMOUNT_MIN_EGP, CREDIT_CORRECTION_MAX_CREDITS } from '../../utils/limits';
 import { useGlobalCreditRate } from '../../hooks/useGlobalCreditRate';
 
 const CREDIT_ERROR_MESSAGES: Record<string, string> = {
@@ -65,8 +66,8 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
   const showPreview = mode === 'grant'
     && effectiveEgpPerCredit !== null
     && Number.isSafeInteger(parsedAmount)
-    && parsedAmount >= 50
-    && parsedAmount <= 2_000;
+    && parsedAmount >= CREDIT_AMOUNT_MIN_EGP
+    && parsedAmount <= CREDIT_AMOUNT_MAX_EGP;
   const previewCredits = showPreview ? creditsForEgp(effectiveEgpPerCredit, parsedAmount) : null;
 
   const submit = async (event: React.FormEvent) => {
@@ -79,8 +80,8 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
       // Grant: the input is EGP collected from the garage (positive integer
       // 50..2,000). The server derives credits from it with the garage's
       // price — the preview below shows that conversion live.
-      if (!Number.isSafeInteger(rawAmount) || rawAmount < 50 || rawAmount > 2_000) {
-        setError('أدخل مبلغًا صحيحًا من 50 إلى 2,000 ج.م.');
+      if (!Number.isSafeInteger(rawAmount) || rawAmount < CREDIT_AMOUNT_MIN_EGP || rawAmount > CREDIT_AMOUNT_MAX_EGP) {
+        setError(`أدخل مبلغًا صحيحًا من ${CREDIT_AMOUNT_MIN_EGP} إلى ${CREDIT_AMOUNT_MAX_EGP.toLocaleString('en-US')} ج.م.`);
         setSuccess('');
         return;
       }
@@ -88,7 +89,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
       // Correction: DEDUCT-ONLY. Must be a negative integer within -100,000..-1.
       // Positive values are rejected — adding positive balance happens through
       // the grant mode above, not through correction.
-      if (!Number.isSafeInteger(rawAmount) || rawAmount >= 0 || Math.abs(rawAmount) > 100_000) {
+      if (!Number.isSafeInteger(rawAmount) || rawAmount >= 0 || Math.abs(rawAmount) > CREDIT_CORRECTION_MAX_CREDITS) {
         setError('أدخل قيمة خصم سالبة (مثال: -50). الخصم فقط مسموح.');
         setSuccess('');
         return;

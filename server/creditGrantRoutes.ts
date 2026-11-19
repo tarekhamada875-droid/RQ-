@@ -14,6 +14,8 @@ import { checkPinAvailabilityAcrossAll, saveEntityPin } from './pinRepository';
 import { applyCorrection, awardReferralCredits, grantPaidCredits, materializeCreditLedgerEntry } from './domain/prepaidCreditLedger';
 import { canRunGarageMaintenance, canUpdateEntityPin } from './domain/authorization';
 import { decideDelegateCommission, COMMISSION_AMOUNT_EGP } from './domain/delegateCommission';
+import { CREDIT_AMOUNT_MAX_EGP, CREDIT_AMOUNT_MIN_EGP, CREDIT_CORRECTION_MAX_CREDITS, CREDIT_PRICE_MAX, CREDIT_PRICE_MIN } from './domain/limits';
+import { roundCreditRateForStorage } from './domain/creditRateStorage';
 import { recordDomainEventInTransaction } from './events';
 import { mapDomainErrorToStatus } from './routes/helpers';
 import { withErrorHandler } from './routes/combinators';
@@ -139,7 +141,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
     const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || c.req.header('idempotency-key') || c.req.header('x-idempotency-key'));
     if (!idempotencyKey) return c.json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' }, 400);
     if (sanitized.amount === undefined) return c.json({ success: false, error: 'CREDIT_AMOUNT_REQUIRED' }, 400);
-    const paymentAmountEgp = validateNumber(sanitized.paymentAmountEgp, 'paymentAmountEgp', { min: 50, max: 2_000, integerOnly: true });
+    const paymentAmountEgp = validateNumber(sanitized.paymentAmountEgp, 'paymentAmountEgp', { min: CREDIT_AMOUNT_MIN_EGP, max: CREDIT_AMOUNT_MAX_EGP, integerOnly: true });
     const callerUid = user.uid;
     const requestFingerprint = createRequestFingerprint({ garageId, amount: sanitized.amount, paymentAmountEgp, reason });
     let granted: any = null;
@@ -346,7 +348,7 @@ app.post('/api/garages/:id/credit-corrections', requireWorkerAuth, async (c) => 
     if (!idempotencyKey) return c.json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' }, 400);
     if (sanitized.amount === undefined) return c.json({ success: false, error: 'CREDIT_AMOUNT_REQUIRED' }, 400);
     // Allow any non-zero integer amount, positive or negative, within a sane bound.
-    const amount = validateNumber(sanitized.amount, 'amount', { min: -100_000, max: 100_000, integerOnly: true });
+    const amount = validateNumber(sanitized.amount, 'amount', { min: -CREDIT_CORRECTION_MAX_CREDITS, max: CREDIT_CORRECTION_MAX_CREDITS, integerOnly: true });
     if (amount === 0) return c.json({ success: false, error: 'INVALID_CREDIT_AMOUNT' }, 400);
     const callerUid = user.uid;
     const requestFingerprint = createRequestFingerprint({ garageId, amount, reason, kind: 'correction' });
@@ -406,8 +408,10 @@ app.post('/api/garages/:id/credit-rate', requireWorkerAuth, async (c) => {
       await garageRef.update({ creditRateOverride: FieldValue.delete(), updatedAt: new Date() });
       return c.json({ success: true, cleared: true });
     }
-    const egpPerCredit = validateNumber(sanitized.egpPerCredit, 'egpPerCredit', { min: 0.01, max: 1000 });
-    const creditRate = 1 / egpPerCredit;
+    const egpPerCredit = validateNumber(sanitized.egpPerCredit, 'egpPerCredit', { min: CREDIT_PRICE_MIN, max: CREDIT_PRICE_MAX });
+    // P0-2 storage convention: both writers round the credits-per-EGP rate to
+    // 12 decimals (see server/domain/creditRateStorage.ts).
+    const creditRate = roundCreditRateForStorage(1 / egpPerCredit);
     if (!Number.isFinite(creditRate) || creditRate <= 0) {
       return c.json({ success: false, error: 'INVALID_CREDIT_RATE' }, 400);
     }

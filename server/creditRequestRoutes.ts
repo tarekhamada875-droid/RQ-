@@ -5,6 +5,7 @@ import { validateId, validateNumber } from './validation';
 import { grantPaidCredits, materializeCreditLedgerEntry } from './domain/prepaidCreditLedger';
 import { recordDomainEventInTransaction } from './events';
 import { decideDelegateCommission, COMMISSION_AMOUNT_EGP } from './domain/delegateCommission';
+import { CREDIT_AMOUNT_MAX_EGP, CREDIT_AMOUNT_MIN_EGP } from './domain/limits';
 import { parseMoneyAmount } from './money';
 import { withErrorHandler } from './routes/combinators';
 
@@ -36,7 +37,7 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
       return c.json({ success: false, error: 'GARAGE_ID_REQUIRED' }, 400);
     }
     const validatedGarageId = validateId(garageId, 'garageId', true);
-    const amount = validateNumber(rawAmount, 'amount', { min: 50, max: 2_000, integerOnly: true });
+    const amount = validateNumber(rawAmount, 'amount', { min: CREDIT_AMOUNT_MIN_EGP, max: CREDIT_AMOUNT_MAX_EGP, integerOnly: true });
 
     const delegateId = user.entityId || user.uid;
 

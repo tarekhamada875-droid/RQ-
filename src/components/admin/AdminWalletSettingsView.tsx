@@ -4,6 +4,7 @@ import { apiFetch } from '../../api/apiClient';
 import { adminService } from '../../services';
 import { FastInput } from '../ui/FastInput';
 import { normalizeDigits } from '../../utils/plates';
+import { PAYMENT_WALLET_NUMBER_MAX_LENGTH } from '../../utils/limits';
 
 interface AdminWalletSettingsViewProps {
   onBack: () => void;
@@ -66,7 +67,7 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
       setSaveError('رقم المحفظة لازم يكون أرقام فقط (بدون حروف أو رموز).');
       return;
     }
-    if (normalized.length > 120) {
+    if (normalized.length > PAYMENT_WALLET_NUMBER_MAX_LENGTH) {
       setSaveError('رقم المحفظة طويل جداً.');
       return;
     }
@@ -131,7 +132,7 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
                   setSaveSuccess('');
                 }}
                 mask={(v) => normalizeDigits(v).replace(/\D/g, '')}
-                maxLength={120}
+                maxLength={PAYMENT_WALLET_NUMBER_MAX_LENGTH}
                 aria-label={'رقم محفظة الدفع'}
                 required
                 placeholder={'01012345678'}
