@@ -2,7 +2,16 @@ import { performance } from 'node:perf_hooks';
 import { aggregateProjectionBuckets } from '../server/dashboardSummary';
 import { listenerTracker } from '../src/utils/listenerTracker';
 
-const GARAGE_COUNT = 10;
+// Synthetic fleet size. Default 10 = the historical readiness baseline.
+// Override for scale-linearity runs, e.g.
+//   RQ_READINESS_GARAGE_COUNT=400 npm run ten-garage:readiness
+const GARAGE_COUNT = (() => {
+  const raw = Number(process.env.RQ_READINESS_GARAGE_COUNT ?? 10);
+  if (!Number.isInteger(raw) || raw < 1 || raw > 2000) {
+    throw new Error('RQ_READINESS_GARAGE_COUNT must be an integer between 1 and 2000');
+  }
+  return raw;
+})();
 const LISTENERS_PER_GARAGE = 4;
 // PR-C: TODAY_ACTIVITY_LOG_LIMIT in src/services/vehicleService.ts was trimmed
 // 200 → 50. This model now reflects the actual per-refresh fetch.
@@ -93,7 +102,7 @@ assert(modeledReads.todayActivityPerGarage === DAILY_ACTIVITY_LIMIT, 'daily acti
 assert(modeledReads.subscriberFirstPagePerGarage === SUBSCRIBER_PAGE_SIZE + 1, 'subscriber page sentinel model changed');
 
 console.log(JSON.stringify({
-  benchmark: 'RQ synthetic ten-garage load-readiness',
+  benchmark: `RQ synthetic load-readiness (${GARAGE_COUNT} garages)`,
   node: process.version,
   syntheticOnly: true,
   productionReads: false,
