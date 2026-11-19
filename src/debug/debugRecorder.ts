@@ -20,7 +20,13 @@
  * most recent LS_FLUSH_KEEP entries, throttled.
  */
 
-export type DebugCategory = 'api' | 'error' | 'listener' | 'nav' | 'env' | 'note';
+// AUDIT EXTENSION (2026-11-19, owner login-hang investigation): the recorder
+// was blind to the Firebase Auth + session-coordinator pipeline. A hung login
+// produced a debug file with 0 API calls and 0 errors — no signal at all.
+// `auth` and `session` categories expose onAuthStateChanged, signInAnonymously,
+// getIdToken, and the runCoordinator phase progression so the next hung-login
+// file shows exactly which promise is not resolving.
+export type DebugCategory = 'api' | 'error' | 'listener' | 'nav' | 'env' | 'note' | 'auth' | 'session';
 
 export interface DebugEntry {
   seq: number;
@@ -250,6 +256,32 @@ class DebugRecorder {
     });
   }
 
+  /**
+   * AUDIT EXTENSION (2026-11-19): Auth + session-coordinator event helpers.
+   *
+   * These cover the Firebase Auth + session-coordinator pipeline that lives
+   * outside apiFetch — signInAnonymously, getIdToken, onAuthStateChanged,
+   * claimEntitySession, the runCoordinator state machine. Without these the
+   * recorder could only see apiFetch traffic; a hung Firebase Auth call
+   * produced a debug file with zero events past boot, leaving the hang
+   * invisible (owner incident 2026-11-19, rq-debug-2026-11-19-16-26-39.json).
+   *
+   * Both helpers stamp `msSinceBoot` so a stuck phase is immediately visible
+   * as the gap between `*_begin` and the next event. They also collect into
+   * getSummary() so the clipboard view shows auth/session counts at a glance.
+   */
+  authEvent(ev: string, data: Record<string, unknown> = {}): void {
+    this.record('auth', { ev, msSinceBoot: this.msSinceBoot(), ...data });
+  }
+
+  sessionEvent(ev: string, data: Record<string, unknown> = {}): void {
+    this.record('session', { ev, msSinceBoot: this.msSinceBoot(), ...data });
+  }
+
+  private msSinceBoot(): number {
+    return Date.now() - new Date(this.startedAt).getTime();
+  }
+
   get count(): number {
     return this.entries.length;
   }
@@ -291,9 +323,22 @@ class DebugRecorder {
     const errors = this.entries.filter((e) => e.cat === 'error');
     const failed = apiEntries.filter((e) => e.ok === false || (typeof e.status === 'number' && e.status >= 400));
     const pending = apiEntries.filter((e) => e.pending);
+    // AUDIT EXTENSION (2026-11-19): surface auth + session-coordinator state.
+    // A hang here looks like "auth: 1 begin, 0 success" or "session:
+    // coordinator_start, coordinator_signin_attempt, NO coordinator_signin_done".
+    const authEntries = this.entries.filter((e) => e.cat === 'auth');
+    const sessionEntries = this.entries.filter((e) => e.cat === 'session');
+    const authPhase = authEntries.length
+      ? authEntries.map((e) => String(e.ev)).join(', ')
+      : '—';
+    const sessionPhase = sessionEntries.length
+      ? sessionEntries.map((e) => String(e.ev)).join(', ')
+      : '—';
     return [
       `RQ Debug Summary (${this.entries.length} events, since ${this.startedAt})`,
       `API calls: ${apiEntries.length} | failed: ${failed.length} | still-pending: ${pending.length} | JS errors: ${errors.length}`,
+      `Auth events: ${authEntries.length} | ${authPhase}`,
+      `Session events: ${sessionEntries.length} | ${sessionPhase}`,
       slowest.length ? `Slowest:\n  ${slowest.join('\n  ')}` : '',
     ].filter(Boolean).join('\n');
   }

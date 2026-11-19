@@ -13,6 +13,7 @@ import {
 } from '../services/authSessionService';
 import { signInAnonymouslyOnce } from '../services/anonymousAuth';
 import { listenerTracker } from '../utils/listenerTracker';
+import { debugRecorder } from '../debug/debugRecorder';
 
 // A malformed persisted entity must not be mistaken for a session still hydrating.
 const hasValidStoredEntity = (key: string): boolean => {
@@ -83,17 +84,26 @@ export function useGarageSession({
   // Auth state listener
   useEffect(() => {
     logDiagnostic('AUTH_LISTENER_MOUNTED');
+    debugRecorder.authEvent('auth_listener_mounted');
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       logDiagnostic('ON_AUTH_STATE_CHANGED', {
         userPresent: Boolean(u),
         uid: u?.uid || null,
         isAnonymous: u?.isAnonymous || false,
       });
+      debugRecorder.authEvent('auth_state_changed', {
+        userPresent: Boolean(u),
+        isAnonymous: u?.isAnonymous || false,
+        uid: u?.uid || null,
+      });
       setUser(u);
       setIsAuthReady(true);
     });
     const timer = setTimeout(() => {
       logDiagnostic('AUTH_TIMEOUT_FALLBACK_TRIGGERED');
+      debugRecorder.authEvent('auth_timeout_fallback', {
+        hadUser: Boolean(auth.currentUser),
+      });
       setIsAuthReady(true);
     }, 4500);
     return () => {
@@ -259,15 +269,33 @@ export function useGarageSession({
 
     const runCoordinator = async () => {
       isDeliberateLogoutRef.current = false;
+      debugRecorder.sessionEvent('coordinator_start', {
+        view,
+        hasStoredGarage: hasValidStoredEntity('app_garage'),
+        hasStoredStaff: hasValidStoredEntity('app_staff'),
+        hasStoredDelegate: hasValidStoredEntity('app_delegate'),
+        hasCurrentUser: Boolean(auth.currentUser),
+      });
       let currentUser = auth.currentUser;
       if (!currentUser) {
+        debugRecorder.sessionEvent('coordinator_signin_attempt');
         try {
           currentUser = await signInAnonymouslyOnce();
           if (!isMounted) return;
-          if (isMounted) setUser(currentUser);
+          if (isMounted) {
+            setUser(currentUser);
+            debugRecorder.sessionEvent('coordinator_signin_done', {
+              uid: currentUser?.uid || null,
+              isAnonymous: currentUser?.isAnonymous ?? null,
+            });
+          }
         } catch (authErr: any) {
           if (!isMounted) return;
           console.error("Anonymous authentication failed:", authErr);
+          debugRecorder.sessionEvent('coordinator_signin_error', {
+            code: authErr?.code || null,
+            msg: String(authErr?.message || '').slice(0, 200),
+          });
           const errMsg = authErr?.message || String(authErr);
           if (errMsg.includes('permission') || errMsg.includes('Permission')) {
             showLogoutToastOnce('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً');
@@ -279,6 +307,11 @@ export function useGarageSession({
           if (isMounted) setIsSessionReady(false);
           return;
         }
+      } else {
+        debugRecorder.sessionEvent('coordinator_signin_skipped', {
+          reason: 'already_authenticated',
+          uid: currentUser.uid,
+        });
       }
 
       let activeRole: EntityRole | null = null;
@@ -312,6 +345,12 @@ export function useGarageSession({
         const hasStoredGarage = hasValidStoredEntity('app_garage');
         const hasStoredStaff = hasValidStoredEntity('app_staff');
         const hasStoredDelegate = hasValidStoredEntity('app_delegate');
+        debugRecorder.sessionEvent('coordinator_no_active_role', {
+          view,
+          hasStoredGarage,
+          hasStoredStaff,
+          hasStoredDelegate,
+        });
         if (
           (view === 'garage' && (hasStoredGarage || hasStoredStaff)) ||
           (view === 'delegate_dashboard' && hasStoredDelegate)
@@ -328,6 +367,11 @@ export function useGarageSession({
 
       const uid = currentUser.uid;
 
+      debugRecorder.sessionEvent('coordinator_claim_attempt', {
+        role: activeRole,
+        entityId: activeEntityId,
+        docCollection,
+      });
       try {
         await claimEntitySession({
           role: activeRole,
@@ -336,11 +380,18 @@ export function useGarageSession({
           uid
         });
         if (!isMounted) return;
-        if (isMounted) setIsSessionReady(true);
+        if (isMounted) {
+          setIsSessionReady(true);
+          debugRecorder.sessionEvent('coordinator_claim_done');
+        }
       } catch (err: any) {
         if (!isMounted) return;
         console.warn('Session claim error in coordinator:', err);
         const errMsg = err?.message || String(err);
+        debugRecorder.sessionEvent('coordinator_claim_error', {
+          code: err?.code || null,
+          msg: String(errMsg).slice(0, 200),
+        });
         if (
           errMsg === 'SESSION_OCCUPIED' ||
           errMsg === 'DELEGATE_SESSION_OCCUPIED' ||
@@ -489,6 +540,40 @@ export function useGarageSession({
       }
     };
   }, [view, isAuthReady, sessionId, garage?.id, delegate?.id, currentStaff?.id]);
+
+  // AUDIT EXTENSION (2026-11-19, owner login-hang investigation):
+  // Coordinator-stuck watchdog. Purely observational — does NOT change app
+  // behavior. After isAuthReady flips true on a protected view, if
+  // isSessionReady is still false 15s later, emit a coordinator_stuck event
+  // with a snapshot of why the gate might be stuck (which storage entity is
+  // holding the gate open, whether auth.currentUser is set). The next debug
+  // file from a hung login will then show the exact moment the coordinator
+  // stalled and the state at that moment — no more "0 events past boot"
+  // mystery files. The 15s window is generous: normal coordinator flow
+  // completes in 1-3s; anything past 15s is a real hang worth flagging.
+  useEffect(() => {
+    if (!isAuthReady) return;
+    if (isSessionReady) return;
+    // Public views set isSessionReady=true immediately (see coordinator effect
+    // above); the watchdog would never fire on them. Skip to avoid spurious
+    // timers in the deps array.
+    if (view === 'login' || view === 'admin_login' || view === 'delegate_login') return;
+
+    const stuckTimer = setTimeout(() => {
+      debugRecorder.sessionEvent('coordinator_stuck', {
+        view,
+        msSinceAuthReady: 15_000,
+        hasStoredGarage: hasValidStoredEntity('app_garage'),
+        hasStoredStaff: hasValidStoredEntity('app_staff'),
+        hasStoredDelegate: hasValidStoredEntity('app_delegate'),
+        hasCurrentUser: Boolean(auth.currentUser),
+        uid: auth.currentUser?.uid || null,
+        isAnonymous: auth.currentUser?.isAnonymous ?? null,
+      });
+    }, 15_000);
+
+    return () => clearTimeout(stuckTimer);
+  }, [isAuthReady, isSessionReady, view]);
 
   // PR-H: memoize the session context bucket. Without useMemo, this
   // return creates a new object on every render, causing ALL useSession()

@@ -192,6 +192,91 @@ describe('debugRecorder summary and hygiene', () => {
   });
 });
 
+// AUDIT EXTENSION (2026-11-19): auth + session helpers cover the Firebase
+// Auth + session-coordinator pipeline that lives outside apiFetch. A hung
+// login previously produced a debug file with 0 API calls + 0 errors + 0
+// auth/session events — no signal at all. These tests pin the contract:
+// events land in the right category, msSinceBoot is stamped so the gap
+// between *_begin and the next event is the actual hang duration, and
+// getSummary surfaces them so a clipboard-share shows the hang too.
+describe('debugRecorder auth + session helpers (audit extension)', () => {
+  beforeEach(() => {
+    debugRecorder.clear();
+  });
+
+  it('authEvent emits a cat=auth entry with ev, msSinceBoot and passthrough fields', () => {
+    debugRecorder.authEvent('auth_state_changed', { userPresent: true, isAnonymous: false, uid: 'uid_abc' });
+    const exported = JSON.parse(debugRecorder.exportJson()) as { entries: Array<Record<string, unknown>> };
+    const entry = exported.entries.find((e) => e.cat === 'auth');
+    expect(entry).toBeDefined();
+    expect(entry!.ev).toBe('auth_state_changed');
+    expect(entry!.userPresent).toBe(true);
+    expect(entry!.isAnonymous).toBe(false);
+    expect(entry!.uid).toBe('uid_abc');
+    expect(typeof entry!.msSinceBoot).toBe('number');
+    expect(entry!.msSinceBoot).toBeGreaterThanOrEqual(0);
+  });
+
+  it('sessionEvent emits a cat=session entry with ev, msSinceBoot and passthrough fields', () => {
+    debugRecorder.sessionEvent('coordinator_stuck', { view: 'garage', hasStoredGarage: true, hasCurrentUser: false });
+    const exported = JSON.parse(debugRecorder.exportJson()) as { entries: Array<Record<string, unknown>> };
+    const entry = exported.entries.find((e) => e.cat === 'session');
+    expect(entry).toBeDefined();
+    expect(entry!.ev).toBe('coordinator_stuck');
+    expect(entry!.view).toBe('garage');
+    expect(entry!.hasStoredGarage).toBe(true);
+    expect(entry!.hasCurrentUser).toBe(false);
+    expect(typeof entry!.msSinceBoot).toBe('number');
+  });
+
+  it('authEvent and sessionEvent land in distinct categories', () => {
+    debugRecorder.authEvent('signin_anon_begin');
+    debugRecorder.sessionEvent('coordinator_start');
+    debugRecorder.authEvent('signin_anon_success', { ms: 320 });
+    const exported = JSON.parse(debugRecorder.exportJson()) as { entries: Array<Record<string, unknown>> };
+    const authEvents = exported.entries.filter((e) => e.cat === 'auth');
+    const sessionEvents = exported.entries.filter((e) => e.cat === 'session');
+    expect(authEvents).toHaveLength(2);
+    expect(sessionEvents).toHaveLength(1);
+    expect(authEvents[0].ev).toBe('signin_anon_begin');
+    expect(authEvents[1].ev).toBe('signin_anon_success');
+  });
+
+  it('getSummary surfaces auth + session event counts and phase names', () => {
+    debugRecorder.authEvent('signin_anon_begin');
+    debugRecorder.authEvent('signin_anon_success', { ms: 250 });
+    debugRecorder.sessionEvent('coordinator_start');
+    debugRecorder.sessionEvent('coordinator_claim_attempt', { role: 'garage' });
+
+    const summary = debugRecorder.getSummary();
+    expect(summary).toContain('Auth events: 2');
+    expect(summary).toContain('signin_anon_begin, signin_anon_success');
+    expect(summary).toContain('Session events: 2');
+    expect(summary).toContain('coordinator_start, coordinator_claim_attempt');
+  });
+
+  it('a hang shows up as begin with no matching success — the core regression this extension fixes', () => {
+    // Simulates the owner's login-hang incident: the recorder saw begin
+    // but no success. The debug file should preserve the begin event so
+    // the auditor can see exactly where the hang is.
+    debugRecorder.authEvent('signin_anon_begin');
+    debugRecorder.sessionEvent('coordinator_start', { view: 'garage' });
+    debugRecorder.sessionEvent('coordinator_signin_attempt');
+
+    const exported = JSON.parse(debugRecorder.exportJson()) as { entries: Array<Record<string, unknown>> };
+    const authEvents = exported.entries.filter((e) => e.cat === 'auth');
+    const sessionEvents = exported.entries.filter((e) => e.cat === 'session');
+    expect(authEvents).toHaveLength(1);
+    expect(authEvents[0].ev).toBe('signin_anon_begin');
+    expect(sessionEvents.map((e) => e.ev)).toEqual(['coordinator_start', 'coordinator_signin_attempt']);
+    // No success or error events — the hang signature.
+    expect(authEvents.find((e) => e.ev === 'signin_anon_success')).toBeUndefined();
+    expect(authEvents.find((e) => e.ev === 'signin_anon_error')).toBeUndefined();
+    expect(sessionEvents.find((e) => e.ev === 'coordinator_signin_done')).toBeUndefined();
+    expect(sessionEvents.find((e) => e.ev === 'coordinator_signin_error')).toBeUndefined();
+  });
+});
+
 afterEach(() => {
   // Keep tests isolated from persisted state.
   try {
