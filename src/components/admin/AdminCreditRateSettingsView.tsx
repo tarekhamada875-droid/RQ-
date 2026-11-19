@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Coins, Check, Loader2, ChevronRight } from 'lucide-react';
 import { apiFetch } from '../../api/apiClient';
 import { adminService } from '../../services';
+import { useSettingSave } from '../../hooks/useSettingSave';
 import {
   CREDIT_RATE_PRESETS,
   RATE_PREVIEW_EGP,
@@ -48,45 +49,40 @@ const PRESETS = CREDIT_RATE_PRESETS;
 const PREVIEW_EGP = RATE_PREVIEW_EGP;
 
 export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewProps> = ({ onBack }) => {
-  // What the user picks (EGP-per-credit). Null until a preset is selected.
-  const [selectedEgpPerCredit, setSelectedEgpPerCredit] = useState<number | null>(null);
-  // What's currently persisted (EGP-per-credit). Null until loaded.
-  const [currentEgpPerCredit, setCurrentEgpPerCredit] = useState<number | null>(null);
-  const [saveError, setSaveError] = useState<string>('');
-  const [saveSuccess, setSaveSuccess] = useState<string>('');
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
+  // Shared save-state machine (audit P2-3). The editable value is the
+  // picked EGP-per-credit preset; the persisted one is the stored price.
+  const {
+    value: selectedEgpPerCredit,
+    setValue: setSelectedEgpPerCredit,
+    original: currentEgpPerCredit,
+    saveError,
+    setSaveError,
+    saveSuccess,
+    setSaveSuccess,
+    isSaving,
+    isLoading,
+    clearMessages,
+    save,
+  } = useSettingSave<number | null>({
+    // No config yet (or load failure) → the legacy default 1 EGP/credit.
+    fetcher: async () => {
       try {
         const data = await apiFetch<{ success?: boolean; config?: { creditRate?: number } }>('/api/system-config');
-        if (!cancelled && data?.success && data.config) {
-          const egpPerCredit = rateToEgpPerCredit(data.config.creditRate);
-          setCurrentEgpPerCredit(egpPerCredit);
-          // If current value matches a preset, pre-select it. Otherwise leave
-          // unselected so the admin must explicitly pick a preset to save.
-          if (PRESETS.includes(egpPerCredit)) {
-            setSelectedEgpPerCredit(egpPerCredit);
-          }
-        } else if (!cancelled) {
-          // No config yet → default rate is 1 EGP/credit.
-          setCurrentEgpPerCredit(1);
-          setSelectedEgpPerCredit(1);
+        if (data?.success && data.config && data.config.creditRate != null) {
+          return rateToEgpPerCredit(data.config.creditRate);
         }
+        return 1;
       } catch (err) {
         console.warn('Failed to load creditRate:', err);
-        if (!cancelled) {
-          setCurrentEgpPerCredit(1);
-          setSelectedEgpPerCredit(1);
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
+        return 1;
       }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+    },
+    // The editable unit is EGP-per-credit; the server stores the inverse.
+    saver: (egpPerCredit) => adminService.updateSystemConfig({ creditRate: egpPerCreditToRate(egpPerCredit) }),
+    // Pre-select the persisted price only when it matches a preset; for a
+    // custom stored price the admin must explicitly pick a preset to save.
+    selectLoaded: (loaded) => (PRESETS.includes(loaded) ? loaded : null),
+  });
 
   const isCustomCurrent =
     currentEgpPerCredit !== null && !PRESETS.includes(currentEgpPerCredit);
@@ -109,19 +105,7 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
       return;
     }
 
-    // Convert to creditRate (credits-per-EGP) for the server.
-    const creditRate = egpPerCreditToRate(selectedEgpPerCredit);
-
-    setIsSaving(true);
-    try {
-      await adminService.updateSystemConfig({ creditRate });
-      setCurrentEgpPerCredit(selectedEgpPerCredit);
-      setSaveSuccess('تم حفظ سعر الصرف بنجاح.');
-    } catch (err: any) {
-      setSaveError('تعذّر حفظ السعر. حاول مرة أخرى.');
-    } finally {
-      setIsSaving(false);
-    }
+    await save(selectedEgpPerCredit, 'تم حفظ سعر الصرف بنجاح.', 'تعذّر حفظ السعر. حاول مرة أخرى.');
   };
 
   return (
@@ -177,8 +161,7 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
                         aria-checked={isSelected}
                         onClick={() => {
                           setSelectedEgpPerCredit(egpPerCredit);
-                          setSaveError('');
-                          setSaveSuccess('');
+                          clearMessages();
                         }}
                         className={`relative w-full p-4 rounded-2xl border-2 cursor-pointer text-right flex flex-col gap-2 ${
                           isSelected

@@ -5,6 +5,7 @@ import { adminService } from '../../services';
 import { normalizeDigits } from '../../utils/plates';
 import { FastInput } from '../ui/FastInput';
 import { creditsForEgp, formatEgpPerCredit, rateToEgpPerCredit } from '../../utils/creditRate';
+import { getDomainErrorMessage } from '../../utils/domainErrors';
 import { CREDIT_AMOUNT_MAX_EGP, CREDIT_AMOUNT_MIN_EGP, CREDIT_CORRECTION_MAX_CREDITS } from '../../utils/limits';
 import { useGlobalCreditRate } from '../../hooks/useGlobalCreditRate';
 
@@ -29,13 +30,7 @@ const CREDIT_ERROR_MESSAGES: Record<string, string> = {
 };
 
 function getCreditErrorMessage(cause: unknown): string {
-  const error = cause as { message?: unknown; code?: unknown } | null;
-  const message = typeof error?.message === 'string' ? error.message : '';
-  const code = typeof error?.code === 'string' ? error.code : '';
-  const knownMessage = CREDIT_ERROR_MESSAGES[message] || CREDIT_ERROR_MESSAGES[code];
-  if (knownMessage) return knownMessage;
-  if (/[\u0600-\u06FF]/.test(message)) return message;
-  return 'تعذرت العملية. يرجى مراجعة البيانات والمحاولة مرة أخرى.';
+  return getDomainErrorMessage(cause, CREDIT_ERROR_MESSAGES, 'تعذرت العملية. يرجى مراجعة البيانات والمحاولة مرة أخرى.');
 }
 
 interface Props {

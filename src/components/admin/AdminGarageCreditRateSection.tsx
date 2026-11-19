@@ -14,6 +14,7 @@ import {
   rateToEgpPerCredit,
   formatEgpPerCredit,
 } from '../../utils/creditRate';
+import { getDomainErrorMessage } from '../../utils/domainErrors';
 import { useGlobalCreditRate } from '../../hooks/useGlobalCreditRate';
 
 interface Props {
@@ -28,13 +29,7 @@ const RATE_ERROR_MESSAGES: Record<string, string> = {
 };
 
 function getRateErrorMessage(cause: unknown): string {
-  const error = cause as { message?: unknown; code?: unknown } | null;
-  const message = typeof error?.message === 'string' ? error.message : '';
-  const code = typeof error?.code === 'string' ? error.code : '';
-  const knownMessage = RATE_ERROR_MESSAGES[message] || RATE_ERROR_MESSAGES[code];
-  if (knownMessage) return knownMessage;
-  if (/[\u0600-\u06FF]/.test(message)) return message;
-  return 'تعذرت العملية. حاول مرة أخرى.';
+  return getDomainErrorMessage(cause, RATE_ERROR_MESSAGES, 'تعذرت العملية. حاول مرة أخرى.');
 }
 
 /**

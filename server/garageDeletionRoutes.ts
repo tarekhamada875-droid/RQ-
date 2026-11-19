@@ -16,9 +16,6 @@ function deletionRateLimitScope(context: any, user: any): { actorKey: string; co
 export async function startGarageDeletionRoute(context: any) {
   try {
     const user = context.get('user');
-    if (user?.role !== 'admin') {
-      return context.json({ success: false, code: 'FORBIDDEN', error: 'FORBIDDEN: Admin role required', statusCode: 403 }, 403);
-    }
     const body = await context.req.json().catch(() => ({}));
     const garageId = validateId(body?.garageId, 'garageId', true);
     if (!adminDb) {
@@ -77,9 +74,6 @@ export async function startGarageDeletionRoute(context: any) {
 
 export async function advanceGarageDeletionRoute(context: any) {
   const user = context.get('user');
-  if (user?.role !== 'admin') {
-    return context.json({ success: false, code: 'FORBIDDEN', error: 'FORBIDDEN: Admin role required', statusCode: 403 }, 403);
-  }
   if (!adminDb) {
     return context.json({ success: false, code: 'ADMIN_SDK_NOT_INITIALIZED', error: 'ADMIN_SDK_NOT_INITIALIZED', statusCode: 500 }, 500);
   }
@@ -130,10 +124,6 @@ export async function advanceGarageDeletionRoute(context: any) {
 
 export async function readGarageDeletionStatusRoute(context: any) {
   try {
-    const user = context.get('user');
-    if (user?.role !== 'admin') {
-      return context.json({ success: false, code: 'FORBIDDEN', error: 'FORBIDDEN: Admin role required', statusCode: 403 }, 403);
-    }
     if (!adminDb) {
       return context.json({ success: false, code: 'ADMIN_SDK_NOT_INITIALIZED', error: 'ADMIN_SDK_NOT_INITIALIZED', statusCode: 500 }, 500);
     }

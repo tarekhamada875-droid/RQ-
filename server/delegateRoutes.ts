@@ -13,16 +13,13 @@ import { checkPinAvailabilityAcrossAll, deleteEntityPinInTransaction, saveEntity
 import { canManageDelegates } from './domain/authorization';
 import { normalizePhone } from './pinCrypto';
 import { writeMaintainedAdminDelta } from './workerMaintenance';
-import { withErrorHandler } from './routes/combinators';
+import { withAdmin, withErrorHandler } from './routes/combinators';
 
 export function registerDelegateRoutes(app: WorkerApp): void {
 
-app.post('/api/delegates/create', requireWorkerAuth, async (c) => {
+app.post('/api/delegates/create', requireWorkerAuth, withAdmin(async (c) => {
   try {
     const user = c.get('user');
-    if (user?.role !== 'admin') {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const retiredField = ['commissionRate', 'commissions', 'balance', 'totalEarned']
       .find((field) => body[field] !== undefined);
@@ -95,7 +92,7 @@ app.post('/api/delegates/create', requireWorkerAuth, async (c) => {
     }
     return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
   }
-});
+}));
 
 app.post('/api/delegates/update', requireWorkerAuth, async (c) => {
   try {

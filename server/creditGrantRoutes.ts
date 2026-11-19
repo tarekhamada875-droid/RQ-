@@ -18,7 +18,7 @@ import { CREDIT_AMOUNT_MAX_EGP, CREDIT_AMOUNT_MIN_EGP, CREDIT_CORRECTION_MAX_CRE
 import { roundCreditRateForStorage } from './domain/creditRateStorage';
 import { recordDomainEventInTransaction } from './events';
 import { mapDomainErrorToStatus } from './routes/helpers';
-import { withErrorHandler } from './routes/combinators';
+import { withAdmin, withErrorHandler } from './routes/combinators';
 import { parseMoneyAmount } from './money';
 import { parseFirestorePageRequest, firestorePageStartAfter, buildFirestorePage } from './firestorePagination';
 import { writeMaintainedAdminDelta } from './workerMaintenance';
@@ -129,10 +129,9 @@ app.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
 // just an amount + reason. The 50-2,000 EGP range is enforced. Delegate commission
 // (100 EGP once, when the first qualifying paid grant >= 500 EGP) and the
 // referral reward (10 credits to the referring garage, same trigger) still fire.
-app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
+app.post('/api/garages/:id/credit-grants', requireWorkerAuth, withAdmin(async (c) => {
   try {
     const user = c.get('user');
-    if (user?.role !== 'admin') return c.json({ success: false, error: 'ADMIN_ONLY' }, 403);
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const body = await c.req.json().catch(() => ({}));
     const sanitized = sanitizePayload(body, ['amount', 'paymentAmountEgp', 'paymentConfirmed', 'reason', 'idempotencyKey'], false);
@@ -330,16 +329,15 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
     const { statusCode, message } = mapDomainErrorToStatus(error);
     return c.json({ success: false, error: message }, statusCode as any);
   }
-});
+}, { error: 'ADMIN_ONLY' }));
 
 // Admin credit correction: adds or removes credits from a garage outside the
 // normal 50-2,000 EGP grant flow, for fixing mistakes. Positive amount adds,
 // negative amount removes (cannot drive balance below zero). A typed reason is
 // required and recorded in the ledger as kind='correction_delta'.
-app.post('/api/garages/:id/credit-corrections', requireWorkerAuth, async (c) => {
+app.post('/api/garages/:id/credit-corrections', requireWorkerAuth, withAdmin(async (c) => {
   try {
     const user = c.get('user');
-    if (user?.role !== 'admin') return c.json({ success: false, error: 'ADMIN_ONLY' }, 403);
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const body = await c.req.json().catch(() => ({}));
     const sanitized = sanitizePayload(body, ['amount', 'reason', 'idempotencyKey'], false);
@@ -377,7 +375,7 @@ app.post('/api/garages/:id/credit-corrections', requireWorkerAuth, async (c) => 
     const { statusCode, message } = mapDomainErrorToStatus(error);
     return c.json({ success: false, error: message }, statusCode as any);
   }
-});
+}, { error: 'ADMIN_ONLY' }));
 
 // -- Per-garage credit price (admin-only; preset-only in the UI) -------------
 // Owner decision 2026-11-18: each prepaid garage can carry its own
@@ -389,10 +387,8 @@ app.post('/api/garages/:id/credit-corrections', requireWorkerAuth, async (c) => 
 // value: they receive balance silently, exactly as before. Profile updates
 // via /api/garages/update use a field whitelist + update(), so they can
 // neither set nor wipe this field — this endpoint is the only writer.
-app.post('/api/garages/:id/credit-rate', requireWorkerAuth, async (c) => {
+app.post('/api/garages/:id/credit-rate', requireWorkerAuth, withAdmin(async (c) => {
   try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') return c.json({ success: false, error: 'ADMIN_ONLY' }, 403);
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const sanitized = sanitizePayload(body, ['egpPerCredit', 'clear'], false);
@@ -421,7 +417,7 @@ app.post('/api/garages/:id/credit-rate', requireWorkerAuth, async (c) => {
     const { statusCode, message } = mapDomainErrorToStatus(error);
     return c.json({ success: false, error: message }, statusCode as any);
   }
-});
+}, { error: 'ADMIN_ONLY' }));
 
 // Admin and the garage owner can inspect the same scoped, read-only credit history.
 //

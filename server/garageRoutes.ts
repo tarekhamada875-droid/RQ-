@@ -1,7 +1,7 @@
 import type { WorkerApp } from './cloudflareWorker';
 import { enforceWorkerFinancialRateLimit } from './cloudflareWorker';
 import { adminDb } from './firebaseAdmin';
-import { withErrorHandler } from './routes/combinators';
+import { withAdmin, withErrorHandler } from './routes/combinators';
 import { requireWorkerAuth } from './sessionInfrastructure';
 import { canSubmitGarageApplication, canManageGarageScopedData as decideGarageScope, canRunGarageMaintenance } from './domain/authorization';
 import { grantTrialCredits, materializeCreditLedgerEntry } from './domain/prepaidCreditLedger';
@@ -354,11 +354,8 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
 });
 
 // Handler 2: Update Garage (POST /api/garages/update)
-app.post('/api/garages/update', requireWorkerAuth, withErrorHandler(async (c) => {
+app.post('/api/garages/update', requireWorkerAuth, withErrorHandler(withAdmin(async (c) => {
     const user = c.get('user');
-    if (user?.role !== 'admin') {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
     const body = await c.req.json().catch(() => ({}));
     const { id: rawId, ...data } = body || {};
     // Audit N11 (Phase 1, 2026-11-06): validate the id using validateId
@@ -511,12 +508,12 @@ app.post('/api/garages/update', requireWorkerAuth, withErrorHandler(async (c) =>
     }
     return c.json({ success: true });
   // withErrorHandler handles try/catch + RATE_CHANGE_COOLDOWN_ACTIVE (C3)
-}, 'Garage'));
+}), 'Garage'));
 
 // Garage deletion handlers live in a dedicated module; all three routes share the same server authority.
-app.post('/api/garages/delete', requireWorkerAuth, startGarageDeletionRoute);
-app.post('/api/garages/delete-step', requireWorkerAuth, advanceGarageDeletionRoute);
-app.get('/api/garages/delete-status', requireWorkerAuth, readGarageDeletionStatusRoute);
+app.post('/api/garages/delete', requireWorkerAuth, withAdmin(startGarageDeletionRoute, { withCodeAndStatus: true }));
+app.post('/api/garages/delete-step', requireWorkerAuth, withAdmin(advanceGarageDeletionRoute, { withCodeAndStatus: true }));
+app.get('/api/garages/delete-status', requireWorkerAuth, withAdmin(readGarageDeletionStatusRoute, { withCodeAndStatus: true }));
 
 // Handler 4 & 5: Query Garages (GET /api/garages & GET /api/garages/:id)
 app.get('/api/garages', requireWorkerAuth, withErrorHandler(async (c) => {
