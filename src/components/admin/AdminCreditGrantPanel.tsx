@@ -159,67 +159,81 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
 
   const currentBalance = Number(garage.credits ?? 0);
 
+  // Money-bar layout (owner pick: Option B, 2026-11-19): on desktop the whole
+  // top-up operation is one row — big balance | pill tabs | input + button —
+  // so the most frequent action needs no scrolling. On phones it stacks in
+  // the same order (balance row → tabs → label → input → full-width button).
+  // Labels, roles, preview and messages are pinned by tests and unchanged.
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900" aria-label="إدارة رصيد الجراج">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 font-black"><Coins className="h-4 w-4" />رصيد الجراج</h3>
-        <div className="text-sm text-slate-500">الرصيد الحالي: <span className="font-mono font-black text-slate-900 dark:text-white">{currentBalance.toLocaleString('en-US')}</span></div>
-      </div>
+    <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900" aria-label="إدارة رصيد الجراج">
+      <h3 className="flex items-center gap-2 font-black mb-3.5"><Coins className="h-4 w-4" />رصيد الجراج</h3>
 
-      <div className="mb-4 flex gap-2" role="tablist" aria-label="وضع الإدارة">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'grant'}
-          onClick={() => { setMode('grant'); setError(''); setSuccess(''); setAmount(''); }}
-          className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold ${mode === 'grant' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
-        >
-          <span className="inline-flex items-center gap-1"><Coins className="h-3.5 w-3.5" />إضافة رصيد</span>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'correction'}
-          onClick={() => { setMode('correction'); setError(''); setSuccess(''); setAmount(''); }}
-          className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold ${mode === 'correction' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
-        >
-          <span className="inline-flex items-center gap-1"><Wrench className="h-3.5 w-3.5" />خصم رصيد</span>
-        </button>
-      </div>
+      <div className="flex flex-col sm:flex-row sm:items-end gap-3.5">
+        {/* Big balance block */}
+        <div className="flex sm:flex-col items-baseline sm:items-start gap-x-1.5 sm:gap-y-0.5 sm:pl-3.5 sm:border-l sm:border-slate-200 dark:sm:border-slate-800 shrink-0">
+          <span className="text-[11px] font-black text-slate-500 dark:text-slate-400">الرصيد الحالي</span>
+          <span className="font-mono text-2xl font-black text-emerald-600 dark:text-emerald-400 leading-none">{currentBalance.toLocaleString('en-US')}</span>
+          <span className="text-[10px] font-black text-slate-500 dark:text-slate-400">رصيد</span>
+        </div>
 
-      <form onSubmit={submit} className="space-y-3">
-        <label htmlFor="credit-amount" className="block text-sm font-bold text-slate-800 dark:text-slate-100">
-          {mode === 'grant' ? 'المبلغ المحصل من الجراج (50 إلى 2,000 ج.م)' : 'قيمة الخصم (سالبة، حتى -100,000)'}
-        </label>
-        <FastInput
-          id="credit-amount"
-          type="text"
-          inputMode="numeric"
-          defaultValue={amount}
-          onCommit={(v) => setAmount(normalizeDigits(v).replace(/[^\d-]/g, ''))}
-          onLiveValue={(v) => setAmount(normalizeDigits(v).replace(/[^\d-]/g, ''))}
-          mask={(v) => normalizeDigits(v).replace(/[^\d-]/g, '')}
-          placeholder={mode === 'grant' ? 'أدخل المبلغ المحصل' : 'مثال: -50'}
-          aria-describedby={error ? 'credit-amount-error' : success ? 'credit-amount-success' : undefined}
-          className={`w-full rounded-xl border border-slate-300 bg-white p-3 text-lg font-bold text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none ${mode === 'grant' ? 'focus:border-emerald-500' : 'focus:border-amber-500'} dark:border-slate-700 dark:bg-slate-950 dark:text-white`}
-        />
-        {mode === 'grant' && previewCredits !== null && (
-          <p aria-live="polite" className="text-center text-xs font-bold text-slate-500 dark:text-slate-400">
-            <span className="font-mono">{parsedAmount.toLocaleString('en-US')}</span> ج.م ←{' '}
-            <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">{previewCredits.toLocaleString('en-US')}</span> رصيد
-            {ownEgpPerCredit !== null && (
-              <span className="text-amber-600 dark:text-amber-400"> · سعر خاص {formatEgpPerCredit(ownEgpPerCredit)} ج.م/رصيد</span>
-            )}
-          </p>
-        )}
-        {error && <p id="credit-amount-error" role="alert" className="text-sm text-red-600">{error}</p>}
-        {success && <p id="credit-amount-success" role="status" className="text-sm font-semibold text-emerald-600">{success}</p>}
-        <button type="submit" disabled={submitting} className={`w-full rounded-xl px-4 py-3 font-black text-white disabled:opacity-50 ${mode === 'grant' ? 'bg-emerald-600 ' : 'bg-amber-600 '}`}>
-          {submitting
-            ? (mode === 'grant' ? 'جارٍ إضافة الرصيد…' : 'جارٍ تطبيق الخصم…')
-            : (mode === 'grant' ? 'إضافة رصيد' : 'تطبيق الخصم')}
-        </button>
-      </form>
+        {/* Inline segmented mode tabs */}
+        <div className="flex rounded-full bg-slate-100 dark:bg-slate-800 p-1 w-full sm:w-auto shrink-0" role="tablist" aria-label="وضع الإدارة">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'grant'}
+            onClick={() => { setMode('grant'); setError(''); setSuccess(''); setAmount(''); }}
+            className={`flex-1 sm:flex-none rounded-full px-3.5 py-1.5 text-[11.5px] font-black inline-flex items-center justify-center gap-1.5 cursor-pointer ${mode === 'grant' ? 'bg-emerald-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}
+          >
+            <Coins className="h-3.5 w-3.5" />إضافة رصيد
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'correction'}
+            onClick={() => { setMode('correction'); setError(''); setSuccess(''); setAmount(''); }}
+            className={`flex-1 sm:flex-none rounded-full px-3.5 py-1.5 text-[11.5px] font-black inline-flex items-center justify-center gap-1.5 cursor-pointer ${mode === 'correction' ? 'bg-amber-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}
+          >
+            <Wrench className="h-3.5 w-3.5" />خصم رصيد
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="flex-1 min-w-0 space-y-2">
+          <label htmlFor="credit-amount" className="block text-[11.5px] font-black text-slate-800 dark:text-slate-100">
+            {mode === 'grant' ? 'المبلغ المحصل من الجراج (50 إلى 2,000 ج.م)' : 'قيمة الخصم (سالبة، حتى -100,000)'}
+          </label>
+          <div className="flex flex-col sm:flex-row gap-2.5">
+            <FastInput
+              id="credit-amount"
+              type="text"
+              inputMode="numeric"
+              defaultValue={amount}
+              onCommit={(v) => setAmount(normalizeDigits(v).replace(/[^\d-]/g, ''))}
+              onLiveValue={(v) => setAmount(normalizeDigits(v).replace(/[^\d-]/g, ''))}
+              mask={(v) => normalizeDigits(v).replace(/[^\d-]/g, '')}
+              placeholder={mode === 'grant' ? 'أدخل المبلغ المحصل' : 'مثال: -50'}
+              aria-describedby={error ? 'credit-amount-error' : success ? 'credit-amount-success' : undefined}
+              className={`flex-1 min-w-0 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-[15px] font-bold text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none ${mode === 'grant' ? 'focus:border-emerald-500' : 'focus:border-amber-500'} dark:border-slate-700 dark:bg-slate-950 dark:text-white`}
+            />
+            <button type="submit" disabled={submitting} className={`w-full sm:w-auto sm:min-w-[130px] rounded-xl px-5 py-2.5 text-xs font-black text-white disabled:opacity-50 shrink-0 ${mode === 'grant' ? 'bg-emerald-600 ' : 'bg-amber-600 '}`}>
+              {submitting
+                ? (mode === 'grant' ? 'جارٍ إضافة الرصيد…' : 'جارٍ تطبيق الخصم…')
+                : (mode === 'grant' ? 'إضافة رصيد' : 'تطبيق الخصم')}
+            </button>
+          </div>
+          {mode === 'grant' && previewCredits !== null && (
+            <p aria-live="polite" className="text-center text-xs font-bold text-slate-500 dark:text-slate-400">
+              <span className="font-mono">{parsedAmount.toLocaleString('en-US')}</span> ج.م ←{' '}
+              <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">{previewCredits.toLocaleString('en-US')}</span> رصيد
+              {ownEgpPerCredit !== null && (
+                <span className="text-amber-600 dark:text-amber-400"> · سعر خاص {formatEgpPerCredit(ownEgpPerCredit)} ج.م/رصيد</span>
+              )}
+            </p>
+          )}
+          {error && <p id="credit-amount-error" role="alert" className="text-sm text-red-600">{error}</p>}
+          {success && <p id="credit-amount-success" role="status" className="text-sm font-semibold text-emerald-600">{success}</p>}
+        </form>
+      </div>
     </section>
   );
 };
