@@ -1,4 +1,5 @@
 import { safeDate } from './dates';
+import { MAX_STAY_COST_EGP } from '../../server/domain/vehicleCost';
 
 /**
  * Client-side vehicle cost calculation.
@@ -6,6 +7,8 @@ import { safeDate } from './dates';
  * Mirrors server/domain/vehicleCost.ts calculateVehicleCost() — keep the
  * two in sync if either changes. The server is authoritative at checkout;
  * this function is used for live cost previews in the UI.
+ * The MAX_STAY_COST_EGP (999) ceiling is imported from the server module so
+ * there is exactly one place defining the cap (owner directive 2026-11-19).
  */
 
 const MS_PER_HOUR = 3600000;
@@ -37,17 +40,17 @@ export const calculateCost = (vehicle: any, garage: any, referenceNow?: Date): n
     const overnightRate = garage.overnightRate || 0;
     const days = Math.ceil(diffMs / MS_PER_DAY);
     const total = Math.max(1, days) * overnightRate;
-    return Math.round(total * 100) / 100;
+    return Math.min(MAX_STAY_COST_EGP, Math.round(total * 100) / 100);
   }
 
   if (type === 'hourly') {
     const hourlyRate = garage.hourlyRate || 0;
     const hours = Math.ceil(diffMs / MS_PER_HOUR);
-    // Hourly billing is independent of overnight — no cap, no ceiling.
-    // A car checked in as hourly pays hours × rate indefinitely. The overnight
-    // rate only applies to cars explicitly checked in as 'overnight'.
+    // Hourly billing is independent of overnight — no day-rate switch — but
+    // the money TOTAL is clamped to MAX_STAY_COST_EGP like overnight (owner
+    // directive 2026-11-19, supersedes the previous "no cap" directive).
     // (Previous day-cap logic removed per owner directive.)
-    const total = Math.max(1, hours) * hourlyRate;
+    const total = Math.min(MAX_STAY_COST_EGP, Math.max(1, hours) * hourlyRate);
     return Math.round(total * 100) / 100;
   }
   return 0;
