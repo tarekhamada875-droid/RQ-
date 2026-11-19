@@ -13,7 +13,6 @@ import {
   Wallet,
   Settings
 } from 'lucide-react';
-import { isHashedPin } from '../../utils/pins';
 import { Garage, Staff } from '../../types';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useAdminGarageDetailsActions } from '../../hooks/useAdminGarageDetailsActions';
@@ -185,8 +184,11 @@ export const AdminGarageDetailsView = memo(({
             isUpdatingLock={actions.isUpdatingLock}
             onToggleLock={actions.handleToggleLock}
             onOpenEditPin={() => {
-              const p = selectedGarageForDetails.pin || selectedGarageForDetails.ownerPin || '';
-              actions.setGaragePinInput(isHashedPin(p) ? '' : p);
+              // Owner request 2026-11-19: the modal is connected to the PIN
+              // generator — it opens with a fresh safe PIN (never the current
+              // one), and the admin can regenerate or still type their own.
+              // Duplicates (active or previously-used) are refused at save.
+              actions.setGaragePinInput(actions.generateNewGaragePin());
               actions.setPinError('');
               setShowEditGaragePinModal(true);
             }}
@@ -256,6 +258,10 @@ export const AdminGarageDetailsView = memo(({
         onDeleteStaff={handleDeleteStaff}
         showEditGaragePinModal={showEditGaragePinModal}
         setShowEditGaragePinModal={setShowEditGaragePinModal}
+        onRegeneratePin={() => {
+          actions.setGaragePinInput(actions.generateNewGaragePin(actions.garagePinInput));
+          actions.setPinError('');
+        }}
         garagePinInput={actions.garagePinInput}
         setGaragePinInput={actions.setGaragePinInput}
         pinError={actions.pinError}

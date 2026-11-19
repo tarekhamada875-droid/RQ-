@@ -7,7 +7,8 @@ import { memo } from 'react';
 import {
   Trash2,
   Loader2,
-  Key
+  Key,
+  RefreshCw
 } from 'lucide-react';
 import { normalizeDigits } from '../../../utils/plates';
 import { Garage, Staff } from '../../../types';
@@ -29,6 +30,8 @@ interface AdminGarageModalsProps {
   // Edit Owner PIN Modal
   showEditGaragePinModal: boolean;
   setShowEditGaragePinModal: (val: boolean) => void;
+  /** Generates a fresh safe PIN suggestion into the input (owner request 2026-11-19). */
+  onRegeneratePin: () => void;
   garagePinInput: string;
   setGaragePinInput: (pin: string) => void;
   pinError: string;
@@ -50,6 +53,7 @@ export const AdminGarageModals = memo(({
   onDeleteStaff,
   showEditGaragePinModal,
   setShowEditGaragePinModal,
+  onRegeneratePin,
   garagePinInput,
   setGaragePinInput,
   pinError,
@@ -212,6 +216,25 @@ export const AdminGarageModals = memo(({
                       {pinError}
                     </p>
                   )}
+                </div>
+
+                {/* Generator row (owner request 2026-11-19): the modal is
+                    connected to the PIN generator — one tap replaces the
+                    field with a fresh safe suggestion. Typing stays possible;
+                    active + previously-used PINs are refused at save. */}
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={onRegeneratePin}
+                    disabled={isUpdatingGaragePin}
+                    className="flex items-center gap-1.5 text-[11px] font-black text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 px-3 py-1.5 rounded-xl cursor-pointer disabled:opacity-50 shrink-0"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>{'توليد رمز آخر'}</span>
+                  </button>
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 leading-relaxed">
+                    {'الرمز المولّد غير مستخدم. يمكنك أيضًا كتابة رمز من اختيارك — سيُرفض تلقائيًا إن كان مستخدمًا من قبل.'}
+                  </p>
                 </div>
               </div>
 

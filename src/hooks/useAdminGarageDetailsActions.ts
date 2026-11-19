@@ -3,7 +3,7 @@ import { adminService, authService, garageService } from '../services';
 import { normalizeDigits } from '../utils/plates';
 import { canChangeGarageRates } from '../utils/businessRules';
 import { useAsyncAction } from './useAsyncAction';
-import { generateSafePin } from '../utils/pins';
+import { generateSafePin, isHashedPin } from '../utils/pins';
 import { getDomainErrorMessage } from '../utils/domainErrors';
 import type { Garage, Staff } from '../types';
 
@@ -55,6 +55,8 @@ interface UseAdminGarageDetailsActionsResult {
   handleAddStaffSubmit: (e: React.FormEvent, staffForm: { name: string; pin: string }, resetForm: () => void, closeModal: () => void) => Promise<void>;
   handleDeleteStaff: (staffId: string) => Promise<void>;
   generateNewStaffPin: () => string;
+  /** @param alsoExclude keeps the suggestion from matching what's already in the field. */
+  generateNewGaragePin: (alsoExclude?: string) => string;
 }
 
 /**
@@ -183,7 +185,12 @@ export function useAdminGarageDetailsActions({
     try {
       const pinCheck = await authService.isPinTaken(garagePinInput, garage.id);
       if (pinCheck.taken) {
-        setPinError(`الرمز مستخدم بالفعل لدى (${pinCheck.name})`);
+        // The availability endpoint distinguishes an ACTIVE holder (name it,
+        // so the admin knows who owns the collision) from a RETIRED one
+        // (used once in the past — permanently blocked by the server).
+        setPinError(pinCheck.roleKey === 'retired'
+          ? PIN_UPDATE_ERROR_MESSAGES.PIN_PREVIOUSLY_USED
+          : `الرمز مستخدم بالفعل لدى (${pinCheck.name})`);
         setIsUpdatingGaragePin(false);
         return;
       }
@@ -259,6 +266,20 @@ export function useAdminGarageDetailsActions({
     return generateSafePin(staffList.map((staff) => staff.pin));
   }, [staffList]);
 
+  // Owner-PIN generator (owner request 2026-11-19): the edit modal opens
+  // with a generated suggestion instead of asking the admin to invent one.
+  // Same crypto-safe generator as staff PINs; excludes this garage's staff
+  // PINs and the garage's own current (plaintext) PIN so the suggestion is
+  // always a change. Global uniqueness (active + retired PINs) stays
+  // enforced by the server at save time.
+  const generateNewGaragePin = useCallback((alsoExclude?: string) => {
+    const excluded = new Set<string>(staffList.map((staff) => staff.pin));
+    if (garage.pin && !isHashedPin(garage.pin)) excluded.add(garage.pin);
+    if (garage.ownerPin && !isHashedPin(garage.ownerPin)) excluded.add(garage.ownerPin);
+    if (alsoExclude) excluded.add(alsoExclude);
+    return generateSafePin(excluded);
+  }, [staffList, garage.pin, garage.ownerPin]);
+
   return {
     hourlyRateInput,
     setHourlyRateInput,
@@ -280,5 +301,6 @@ export function useAdminGarageDetailsActions({
     handleAddStaffSubmit,
     handleDeleteStaff,
     generateNewStaffPin,
+    generateNewGaragePin,
   };
 }
