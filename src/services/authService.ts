@@ -4,7 +4,7 @@ import { releaseEntitySession, getCanonicalSessionId } from './authSessionServic
 import { apiFetch } from '../api/apiClient';
 
 export const authService = {
-  checkPinAvailability: async (normalizedPinVal: string, excludeId?: string): Promise<{ taken: boolean; role?: string; name?: string }> => {
+  checkPinAvailability: async (normalizedPinVal: string, excludeId?: string): Promise<{ taken: boolean; role?: string; roleKey?: 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage' | 'retired'; name?: string }> => {
     const data = await apiFetch<{ taken: boolean; role?: string; name?: string }>('/api/auth/check-pin-availability', {
       method: 'POST',
       body: { pin: normalizedPinVal, excludeId }
@@ -13,7 +13,7 @@ export const authService = {
     return data;
   },
 
-  isPinTaken: async (pin: string, excludeId?: string): Promise<{ taken: boolean; role?: string; name?: string }> => {
+  isPinTaken: async (pin: string, excludeId?: string): Promise<{ taken: boolean; role?: string; roleKey?: 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage' | 'retired'; name?: string }> => {
     return authService.checkPinAvailability(pin, excludeId);
   },
 
