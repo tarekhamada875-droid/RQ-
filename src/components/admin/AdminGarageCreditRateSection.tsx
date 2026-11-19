@@ -144,8 +144,15 @@ export const AdminGarageCreditRateSection: React.FC<Props> = ({ garage }) => {
       <fieldset>
         <legend className="mb-3 block text-xs font-black text-slate-700 dark:text-slate-300">
           {'اختر سعرًا خاصًا بهذا الجراج'}
+          <span className="mr-2 text-[10.5px] font-bold text-slate-400 dark:text-slate-500">
+            {'الرقم الأخضر = الرصيد مقابل ١٠٠ ج.م'}
+          </span>
         </legend>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" role="radiogroup" aria-label="سعر الرصيد لهذا الجراج">
+        {/* Compact tiles (owner pick 2026-11-19, "Option A" mockup): 3 per row on
+            phones, 4 on desktop — replaces the old 1/2-column full-width cards
+            that left ~75% of each desktop card empty. Pure layout change: same
+            presets, same selection/clear behaviour, same a11y roles. */}
+        <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4" role="radiogroup" aria-label="سعر الرصيد لهذا الجراج">
           {CREDIT_RATE_PRESETS.map((preset) => {
             const isSelected = selectedEgpPerCredit === preset;
             const isOwn = ownEgpPerCredit === preset;
@@ -157,34 +164,33 @@ export const AdminGarageCreditRateSection: React.FC<Props> = ({ garage }) => {
                 role="radio"
                 aria-checked={isSelected}
                 onClick={() => { setSelectedEgpPerCredit(preset); setError(''); setSuccess(''); }}
-                className={`relative flex w-full cursor-pointer flex-col gap-2 rounded-2xl border-2 p-4 text-right ${
+                className={`relative flex w-full cursor-pointer flex-col items-center gap-0.5 rounded-xl border-2 px-1.5 pb-3 pt-6 ${
                   isSelected
                     ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30'
                     : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/40'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <span className={`font-mono text-lg font-black ${isSelected ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-white'}`}>
-                    {formatEgpPerCredit(preset)}
-                    <span className="mr-1 text-xs font-bold">ج.م/رصيد</span>
+                {isOwn && (
+                  <span className="absolute right-1.5 top-1.5 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                    {'الحالي'}
                   </span>
-                  {isOwn && (
-                    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                      {'الحالي'}
-                    </span>
-                  )}
-                  {isSelected && (
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white">
-                      <Check className="h-3.5 w-3.5 stroke-[3]" />
-                    </span>
-                  )}
-                </div>
-                <div className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400">
-                  {RATE_PREVIEW_EGP.toLocaleString('ar-EG')} ج.م ←{' '}
-                  <span className="text-emerald-600 dark:text-emerald-400">
-                    {previewCredits.toLocaleString('ar-EG')} رصيد
+                )}
+                {isSelected && (
+                  <span className="absolute left-1.5 top-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-emerald-500 text-white">
+                    <Check className="h-3 w-3 stroke-[3]" />
                   </span>
-                </div>
+                )}
+                <span className={`font-mono text-xl font-black leading-tight ${isSelected ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-white'}`}>
+                  {formatEgpPerCredit(preset)}
+                </span>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">ج.م/رصيد</span>
+                <span className={`mt-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-extrabold ${
+                  isSelected
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+                    : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
+                }`}>
+                  {previewCredits.toLocaleString('ar-EG')} رصيد
+                </span>
               </button>
             );
           })}
