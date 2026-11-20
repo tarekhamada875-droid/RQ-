@@ -64,13 +64,43 @@ describe('Worker session lifecycle routes', () => {
   });
 
   it('revokes one own device and updates root/entity markers', async () => {
+    // SCHEMA-MIGRATION (2026-11-19): the seed at L50 uses the new-schema
+    // Array<{sessionId, lastActive}> because removeActiveSession prunes
+    // legacy bare-string entries (treats them as stale). With new-schema
+    // entries the test asserts the actual production behavior: revoking
+    // one device leaves the other entries intact.
+    const now = new Date().toISOString();
+    mockDb.records.set('admin_sessions/admin-uid', {
+      uid: 'admin-uid',
+      role: 'admin',
+      entityId: 'auth_pin',
+      sessionId: 'session-a',
+      currentSessionId: 'session-a',
+      activeSessionIds: [
+        { sessionId: 'session-a', lastActive: now },
+        { sessionId: 'session-b', lastActive: now }
+      ],
+      isActive: true,
+      lastActive: new Date()
+    });
+    mockDb.records.set('admin_settings/auth_pin', {
+      currentSessionId: 'session-a',
+      activeSessionIds: [
+        { sessionId: 'session-a', lastActive: now },
+        { sessionId: 'session-b', lastActive: now }
+      ]
+    });
+
     const sessionKey = hashSessionId('session-b');
     const response = await request(`/api/auth/sessions/${sessionKey}`, { method: 'DELETE' });
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ success: true, revokedSession: sessionKey, wasCurrent: false });
     expect(mockDb.records.get('admin_sessions/admin-uid/sessions/session-b')?.isActive).toBe(false);
-    expect(mockDb.records.get('admin_sessions/admin-uid')?.activeSessionIds).toEqual(['session-a']);
-    expect(mockDb.records.get('admin_settings/auth_pin')?.activeSessionIds).toEqual(['session-a']);
+    // After revocation, only session-a remains in activeSessionIds (new schema).
+    const adminRoot = mockDb.records.get('admin_sessions/admin-uid');
+    expect(adminRoot?.activeSessionIds.map((m: any) => m.sessionId)).toEqual(['session-a']);
+    const adminEntity = mockDb.records.get('admin_settings/auth_pin');
+    expect(adminEntity?.activeSessionIds.map((m: any) => m.sessionId)).toEqual(['session-a']);
   });
 
   it('releases the caller session and denies a stale session afterward', async () => {

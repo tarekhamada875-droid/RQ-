@@ -18,7 +18,7 @@ import { isValidBackendOperatorToken } from './backendOperatorToken';
 import { cleanPin, normalizePhone, verifyPinMatch, verifyDocMatch } from './pinCrypto';
 import { migratePinToHash, queryAccountWherePin, queryDelegatesWherePhone, getAdminPin, checkPinAvailabilityAcrossAll, saveEntityPin } from './pinRepository';
 import { isNewPinFormat, validateNewPin, isValidSessionId } from './validation';
-import { addActiveSession, hasActiveSession, hashSessionId, removeActiveSession, toSessionSummary } from './auth/sessionMarkers';
+import { addActiveSession, hasActiveSession, hashSessionId, removeActiveSession, activeSessionIds, toSessionSummary } from './auth/sessionMarkers';
 import { canInvalidateAllSessions } from './domain/authorization';
 import { checkWorkerPinRateLimit, resetWorkerPinRateLimit } from './workerPinRateLimiter';
 import { getCachedRole, setCachedRole, getCachedSession, setCachedSession } from './authCache';
@@ -340,6 +340,7 @@ export {
   hasActiveSession,
   hashSessionId,
   removeActiveSession,
+  activeSessionIds,
   toSessionSummary,
   canInvalidateAllSessions,
   checkWorkerPinRateLimit,

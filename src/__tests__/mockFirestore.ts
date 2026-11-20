@@ -462,7 +462,15 @@ export function installDefaultWorkerTestSessionHeaders(api: { fetch: (...args: a
     });
     db.setVirtualDocument(entityPath, {
       ...existingEntity,
-      activeSessionIds: [...new Set([...(existingEntity.activeSessionIds || []), principal.sessionId])],
+      // SCHEMA-MIGRATION (2026-11-19): write the new schema here (objects
+      // with lastActive) so test fixtures stay on the new schema. The pure
+      // functions accept both schemas on read, but writes migrate to the
+      // new schema — so seeding with the new schema means we don't depend
+      // on the migration path for test correctness.
+      activeSessionIds: [
+        ...(Array.isArray(existingEntity.activeSessionIds) ? existingEntity.activeSessionIds : []),
+        { sessionId: principal.sessionId, lastActive: new Date().toISOString() }
+      ],
       currentSessionId: existingEntity.currentSessionId || principal.sessionId
     });
 

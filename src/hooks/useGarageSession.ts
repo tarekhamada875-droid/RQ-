@@ -446,7 +446,17 @@ export function useGarageSession({
           // duplicate delegate doc read on the Worker. Stored in a ref (not state)
           // to avoid extra re-renders — the dashboard poll reads it synchronously.
           latestEntitySnapshotRef.current = { data: data || null, receivedAt: Date.now() };
-          const activeIds = Array.isArray(data?.activeSessionIds) ? data.activeSessionIds : [];
+          // SCHEMA-MIGRATION (2026-11-19): activeSessionIds on the entity doc may
+          // be either legacy string[] or new Array<{sessionId, lastActive}>. Both
+          // are accepted; the new schema is what the Worker writes from now on.
+          const rawActiveIds = Array.isArray(data?.activeSessionIds) ? data.activeSessionIds : [];
+          const activeIds: string[] = rawActiveIds
+            .map((entry: unknown) => typeof entry === 'string'
+              ? entry
+              : (entry && typeof entry === 'object' && typeof (entry as { sessionId?: unknown }).sessionId === 'string')
+                ? (entry as { sessionId: string }).sessionId
+                : null)
+            .filter((id: string | null): id is string => Boolean(id));
           const isSessionActive = activeIds.includes(sessionId) || data?.currentSessionId === sessionId;
 
           if (isSessionActive) {

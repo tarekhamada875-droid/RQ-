@@ -28,6 +28,7 @@ import {
   hasActiveSession,
   hashSessionId,
   removeActiveSession,
+  activeSessionIds,
   toSessionSummary,
   canInvalidateAllSessions,
   checkWorkerPinRateLimit,
@@ -282,14 +283,21 @@ workerApp.post('/api/admin/update-pin', async (c) => {
         const rootRef = adminDb.doc(`admin_sessions/${callerUid}`);
         const rootSnap = await rootRef.get();
         const rootData = rootSnap.exists ? rootSnap.data() || {} : {};
-        const allSessionIds: string[] = Array.isArray(rootData.activeSessionIds) ? rootData.activeSessionIds : [];
+        // SCHEMA-MIGRATION (2026-11-19): activeSessionIds() handles both legacy
+        // string[] and new Array<{sessionId, lastActive}> schemas, so the pin-
+        // change eviction flow keeps working through the migration window.
+        const allSessionIds: string[] = activeSessionIds(rootData);
         const otherSessionIds = allSessionIds.filter((id: string) => id !== callerSessionId);
         for (const otherId of otherSessionIds) {
           await adminDb.doc(`admin_sessions/${callerUid}/sessions/${otherId}`).set({ isActive: false, lastActive: new Date() }, { merge: true });
         }
         if (otherSessionIds.length > 0) {
-          await rootRef.set({ activeSessionIds: [callerSessionId], currentSessionId: callerSessionId }, { merge: true });
-          await adminDb.doc('admin_settings/auth_pin').set({ activeSessionIds: [callerSessionId], currentSessionId: callerSessionId }, { merge: true });
+          // Write the new-schema marker (single entry, lastActive=now) so the
+          // docs stay on the new schema after this one-shot eviction.
+          const now = new Date();
+          const callerMarker = [{ sessionId: callerSessionId, lastActive: now.toISOString() }];
+          await rootRef.set({ activeSessionIds: callerMarker, currentSessionId: callerSessionId }, { merge: true });
+          await adminDb.doc('admin_settings/auth_pin').set({ activeSessionIds: callerMarker, currentSessionId: callerSessionId }, { merge: true });
         }
       } catch (invalidateErr) {
         // Non-fatal — the PIN was changed successfully, session cleanup is best-effort.
