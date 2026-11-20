@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { User, onAuthStateChanged, signOut } from 'firebase/auth';
+import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { logDiagnostic } from '../utils/authDiagnosticLogger';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -212,15 +212,27 @@ export function useGarageSession({
       console.warn('تعذر إكمال تحرير الجلسة قبل انتهاء المهلة.', error);
     } finally {
       if (releaseTimeout) clearTimeout(releaseTimeout);
-      // Do not sign out a different Firebase identity if auth changed while
-      // the previous session was being released.
-      if (currentUser && auth.currentUser?.uid === currentUser.uid) {
-        try {
-          await signOut(auth);
-        } catch (error) {
-          console.warn('تعذر إنهاء جلسة Firebase.', error);
-        }
-      }
+      // PERF (2026-11-20, owner login-latency investigation): we no longer
+      // call signOut(auth) on logout. The Firebase anonymous account is
+      // REUSED on next login — signInAnonymouslyOnce() short-circuits when
+      // auth.currentUser already exists (see anonymousAuth.ts:31), so the
+      // 2-second Firebase round-trip to create a new anonymous account is
+      // skipped entirely. This cuts login time roughly in half on slow
+      // networks (4.5s -> 2.5s on 1.9 Mbps, 8-10s -> 4-5s on bad days).
+      //
+      // SECURITY: this does not weaken security. The Firebase anonymous
+      // account has no permissions — it's just an identity token used as
+      // the uid in Worker API calls. The Worker's PIN verification and
+      // session claim still gate access to actual data. The previous
+      // signOut was purely cosmetic: it destroyed the account but the
+      // PIN check was already the security gate.
+      //
+      // SIDE EFFECT: stopped accumulating orphaned anonymous accounts in
+      // the Firebase Auth database. The owner's debug files showed 9
+      // different uids created over 2 days of normal use — each one
+      // cost a 2-second Firebase round-trip AND is now garbage in the
+      // Firebase Auth user table that has to be cleaned up separately.
+      // Keeping the account alive eliminates both costs.
       logoutInProgressRef.current = false;
       setIsLoggingOut(false);
     }

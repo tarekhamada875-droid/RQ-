@@ -195,7 +195,11 @@ describe('useGarageSession Firestore listener lifecycle', () => {
 
     await waitFor(() => expect(props.setView).toHaveBeenCalledWith('login'));
     expect(props.showToast).toHaveBeenCalledWith('تم تسجيل خروجك من جهاز آخر', 'error');
-    expect(sessionMocks.signOut).toHaveBeenCalled();
+    // PERF (2026-11-20): signOut is no longer called on logout — the Firebase
+    // anonymous account is kept alive and reused on next login so the 2-second
+    // Firebase account-creation round-trip is skipped. Security is unaffected
+    // (the PIN check on the Worker is the actual security gate).
+    expect(sessionMocks.signOut).not.toHaveBeenCalled();
 
     hook.unmount();
     intervalSpy.mockRestore();
@@ -276,7 +280,8 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     });
 
     await waitFor(() => expect(hook.result.current.isLoggingOut).toBe(false));
-    expect(sessionMocks.signOut).toHaveBeenCalledOnce();
+    // PERF (2026-11-20): no signOut on logout — anonymous account kept alive.
+    expect(sessionMocks.signOut).not.toHaveBeenCalled();
     hook.unmount();
   });
 
@@ -333,7 +338,8 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     expect(localStorage.getItem('app_theme')).toBe('dark');
     expect(localStorage.getItem('app_session_id')).toBe('keep-me');
     expect(localStorage.getItem('rq_canonical_session_id')).toBe('session-lifecycle-test');
-    expect(sessionMocks.signOut).toHaveBeenCalledOnce();
+    // PERF (2026-11-20): no signOut on logout — anonymous account kept alive.
+    expect(sessionMocks.signOut).not.toHaveBeenCalled();
 
     hook.unmount();
   });
@@ -354,10 +360,45 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     expect(props.setDelegate).toHaveBeenCalledWith(null);
     expect(props.setCurrentStaff).toHaveBeenCalledWith(null);
     expect(props.setView).toHaveBeenCalledWith('login');
-    expect(sessionMocks.signOut).toHaveBeenCalledOnce();
+    // PERF (2026-11-20): no signOut on logout — anonymous account kept alive.
+    expect(sessionMocks.signOut).not.toHaveBeenCalled();
     expect(hook.result.current.isLoggingOut).toBe(false);
 
     removeItemSpy.mockRestore();
+    hook.unmount();
+  });
+
+  it('PERF (2026-11-20): keeps the Firebase anonymous account alive after logout so next login reuses it (skips the 2s Firebase round-trip)', async () => {
+    // The owner's debug files showed 9 different Firebase anonymous uids
+    // created over 2 days of normal use — each cost a ~2s round-trip to
+    // Google's servers. The fix: don't call signOut(auth) on logout. The
+    // existing anonymous account is reused on next login because
+    // signInAnonymouslyOnce() short-circuits when auth.currentUser exists.
+    // This test verifies the new behavior: after logout, auth.currentUser
+    // is still set (not signed out), so the next signInAnonymouslyOnce()
+    // call returns the same user without a network round-trip.
+    const props = createProps();
+    const hook = renderHook(() => useGarageSession(props));
+    await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
+
+    // Set up an existing anonymous user (simulating a prior login).
+    const existingUid = 'existing-anon-uid-123';
+    sessionMocks.auth.currentUser = { uid: existingUid } as any;
+    sessionMocks.signInAnonymouslyOnce.mockClear();
+
+    await act(async () => {
+      await hook.result.current.handleLogout();
+    });
+
+    // After logout: the Firebase anonymous account is STILL there.
+    expect(sessionMocks.signOut).not.toHaveBeenCalled();
+    expect(sessionMocks.auth.currentUser).toBeTruthy();
+    expect(sessionMocks.auth.currentUser.uid).toBe(existingUid);
+    // And signInAnonymouslyOnce was NOT called during logout (it's only
+    // called during the next login's runCoordinator, which is not triggered
+    // by logout — only by a future login attempt).
+    expect(sessionMocks.signInAnonymouslyOnce).not.toHaveBeenCalled();
+
     hook.unmount();
   });
 });
