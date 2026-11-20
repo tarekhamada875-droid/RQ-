@@ -11,6 +11,7 @@ import { adminDb } from '../firebaseAdmin';
 import { withErrorHandler } from '../routes/combinators';
 import { requireWorkerAuth } from '../sessionInfrastructure';
 import { buildFirestorePage, firestorePageStartAfter, parseFirestorePageRequest } from '../firestorePagination';
+import { isUsableMaintainedSummary, maintainedGarageSummaryRef } from '../workerMaintenance';
 
 export function registerGarageList(app: WorkerApp): void {
 app.get('/api/garages', requireWorkerAuth, withErrorHandler(async (c) => {
@@ -39,6 +40,40 @@ app.get('/api/garages', requireWorkerAuth, withErrorHandler(async (c) => {
   const snap = await query.limit(pageRequest.pageSize + 1).get();
   const garagePage = buildFirestorePage(snap.docs, pageRequest, '__name__');
   const garages = garagePage.documents.map((docSnap: any) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+
+  // ISSUE 3 (owner debug audit, finding 3, 2026-11-19): the admin/delegate
+  // garage list endpoint was returning the raw `carsInside` field from each
+  // garage doc. That field is maintained by check-in/check-out handlers via
+  // read-modify-write (NOT a transactional increment), so it drifts whenever
+  // a transaction is interrupted (tab closed, network failed, SW stale).
+  // The owner's debug file showed carsInside=0 on the admin list view for a
+  // garage that actually had 67 vehicles inside — verified by the same
+  // garage's verify-pin response which correctly read from the maintained
+  // summary doc.
+  //
+  // Fix: batch-read the maintained_summary/current doc for every garage on
+  // the page (one Firestore read per garage — counts as N reads against the
+  // daily quota but is far cheaper than re-running the dashboard-summary
+  // rebuild on each list call). When a maintained summary is fresh and
+  // schema-current, override the doc-stored carsInside with the maintained
+  // value. When the maintained summary is missing/stale (e.g. a brand-new
+  // garage that has never had a check-in or a dashboard-summary rebuild),
+  // fall back to the doc-stored value so we don't lose data.
+  if (garages.length > 0) {
+    const summaryRefs = garages.map((g: any) => maintainedGarageSummaryRef(g.id));
+    const summarySnaps = await Promise.all(summaryRefs.map((ref: any) => ref.get()));
+    for (let i = 0; i < garages.length; i += 1) {
+      const summarySnap = summarySnaps[i];
+      const summary = summarySnap.exists ? summarySnap.data() || {} : null;
+      if (summary && isUsableMaintainedSummary(summary, ['carsInside'])) {
+        // Override the doc-stored value with the authoritative maintained count.
+        // The maintained summary is updated transactionally via FieldValue.increment
+        // on every check-in/check-out, so it's always accurate even when the
+        // doc-stored carsInside has drifted.
+        garages[i].carsInside = Number(summary.carsInside || 0);
+      }
+    }
+  }
 
   // Perf audit F1: the list used to be sent twice (`garages` + `items`), doubling
   // the payload of the heaviest admin endpoint. Frontend only reads `garages`.
