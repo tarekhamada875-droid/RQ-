@@ -28,8 +28,28 @@ describe('daily projection rebuilds', () => {
       exitsCount: 1,
       grossRevenue: 100,
       refundRevenue: 25,
+      renewalRevenue: 0,
       netRevenue: 75,
       revenue: 75
+    });
+  });
+
+  it('counts subscriber renewal income into net revenue without touching vehicle counters', () => {
+    const renewalEvents = [
+      ...events,
+      { eventId: 'renew-1', occurredAt: '2026-09-18T09:00:00.000Z', eventType: 'subscriber_renewed', payload: { creditAmount: 1 } },
+      { eventId: 'renew-2', occurredAt: '2026-09-18T10:00:00.000Z', eventType: 'subscriber_renewed', payload: { creditAmount: 1 } },
+      { eventId: 'renew-other-day', occurredAt: '2026-09-19T10:00:00.000Z', eventType: 'subscriber_renewed', payload: { creditAmount: 1 } },
+      { eventId: 'renew-legacy', occurredAt: '2026-09-18T11:00:00.000Z', eventType: 'subscriber_renewed', payload: {} }
+    ];
+    expect(calculateDailyProjection(renewalEvents, '2026-09-18')).toEqual({
+      count: 1,
+      exitsCount: 1,
+      grossRevenue: 100,
+      refundRevenue: 25,
+      renewalRevenue: 2,
+      netRevenue: 77,
+      revenue: 77
     });
   });
 
@@ -53,6 +73,7 @@ it('does not count malformed event timestamps', () => {
     exitsCount: 0,
     grossRevenue: 0,
     refundRevenue: 0,
+    renewalRevenue: 0,
     netRevenue: 0,
     revenue: 0
   });
@@ -75,6 +96,7 @@ it('ignores malformed historical money while retaining exit and refund event cou
     exitsCount: 5,
     grossRevenue: 10.25,
     refundRevenue: 2.2,
+    renewalRevenue: 0,
     netRevenue: 8.05,
     revenue: 8.05
   });

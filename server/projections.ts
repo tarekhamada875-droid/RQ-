@@ -12,6 +12,8 @@ export interface DailyProjection {
   exitsCount: number;
   grossRevenue: number;
   refundRevenue: number;
+  /** Audit (2026-11-21): subscriber renewal income (creditAmount on subscriber_renewed events). */
+  renewalRevenue: number;
   netRevenue: number;
   revenue: number;
 }
@@ -86,6 +88,12 @@ export function calculateDailyProjection(events: readonly ProjectionEvent[], tar
   let exitsCount = 0;
   let grossRevenue = 0;
   let refundRevenue = 0;
+  // Audit fix (2026-11-21): subscriber renewals are garage income too — the
+  // subscriber pays their monthly fee in credits. Without counting them here,
+  // rebuild-projections would overwrite daily_stats.revenue with a
+  // renewal-free number while the garage doc and the maintained daily
+  // summary include renewals — the copies disagree again after every rebuild.
+  let renewalRevenue = 0;
 
   for (const event of events) {
     if (getCairoDateKey(event.occurredAt) !== targetDate) continue;
@@ -97,16 +105,21 @@ export function calculateDailyProjection(events: readonly ProjectionEvent[], tar
     if (event.eventType === 'vehicle_refunded') {
       refundRevenue = addMoney(refundRevenue, event.payload?.refundAmount);
     }
+    if (event.eventType === 'subscriber_renewed') {
+      renewalRevenue = addMoney(renewalRevenue, event.payload?.creditAmount ?? event.payload?.cost);
+    }
   }
 
   const roundedGross = Number(grossRevenue.toFixed(2));
   const roundedRefund = Number(refundRevenue.toFixed(2));
-  const netRevenue = Number((roundedGross - roundedRefund).toFixed(2));
+  const roundedRenewal = Number(renewalRevenue.toFixed(2));
+  const netRevenue = Number((roundedGross - roundedRefund + roundedRenewal).toFixed(2));
   return {
     count,
     exitsCount,
     grossRevenue: roundedGross,
     refundRevenue: roundedRefund,
+    renewalRevenue: roundedRenewal,
     netRevenue,
     revenue: netRevenue
   };

@@ -19,6 +19,7 @@ import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from '.
 import { authorizeVehicleGarageScope } from '../domain/authorization';
 import { writeMaintainedGarageDelta, writeMaintainedGarageDailyDelta } from '../workerMaintenance';
 import { getCairoDateKey } from '../projections';
+import { addMoneyRounded } from '../money';
 import { applyCheckoutReportDelta } from '../reportAggregate';
 
 export function registerVehicleCheckOut(app: WorkerApp): void {
@@ -104,9 +105,9 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
       }, { merge: true });
 
       const updatedGarageState = {
-        totalRevenue: (garageData.totalRevenue || 0) + finalDecisionCost,
+        totalRevenue: addMoneyRounded(garageData.totalRevenue, finalDecisionCost),
         totalVehiclesOut: (garageData.totalVehiclesOut || 0) + 1,
-        todayRevenue: isNewDay ? finalDecisionCost : (garageData.todayRevenue || 0) + finalDecisionCost,
+        todayRevenue: isNewDay ? finalDecisionCost : addMoneyRounded(garageData.todayRevenue, finalDecisionCost),
         todayCount: isNewDay ? 0 : (garageData.todayCount || 0),
         lastTransactionDate: today,
         carsInside: Math.max(0, (garageData.carsInside || 0) - 1)
@@ -140,7 +141,7 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
             }
           : {};
         t.set(dailyStatsRef, {
-          revenue: (dailyStatsData.revenue || 0) + finalDecisionCost,
+          revenue: addMoneyRounded(dailyStatsData.revenue, finalDecisionCost),
           ...reportUpdate
         }, { merge: true });
       }

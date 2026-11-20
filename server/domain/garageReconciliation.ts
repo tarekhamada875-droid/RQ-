@@ -30,6 +30,7 @@ export type GarageReconciliationResult = Readonly<{
     todayRefunds: number;
     eventGrossRevenue: number;
     eventRefundRevenue: number;
+    eventRenewalRevenue: number;
     eventDerivedRevenue: number;
   }>;
   differences: Readonly<Record<'carsInside' | 'todayCount' | 'todayRevenue', number>>;
@@ -59,6 +60,7 @@ export function reconcileGarageState(input: Readonly<{
 }>): GarageReconciliationResult {
   let eventGrossRevenue = 0;
   let eventRefundRevenue = 0;
+  let eventRenewalRevenue = 0;
   let todayEnters = 0;
   let todayExits = 0;
   let todayRefunds = 0;
@@ -74,9 +76,15 @@ export function reconcileGarageState(input: Readonly<{
       todayRefunds += 1;
       eventRefundRevenue = addMoney(eventRefundRevenue, event.payload?.refundAmount);
     }
+    // Audit fix (2026-11-21): subscriber renewals are garage income — without
+    // counting them the event-ledger check flagged phantom mismatches on any
+    // day that had a renewal (daily_stats.revenue included it, events didn't).
+    if (event.eventType === 'subscriber_renewed') {
+      eventRenewalRevenue = addMoney(eventRenewalRevenue, event.payload?.creditAmount ?? event.payload?.cost);
+    }
   }
 
-  const eventDerivedRevenue = roundCurrency(eventGrossRevenue - eventRefundRevenue);
+  const eventDerivedRevenue = roundCurrency(eventGrossRevenue - eventRefundRevenue + eventRenewalRevenue);
 
   const expected = {
     carsInside: input.insideVehicleCount,
@@ -96,6 +104,7 @@ export function reconcileGarageState(input: Readonly<{
     todayRefunds,
     eventGrossRevenue: roundCurrency(eventGrossRevenue),
     eventRefundRevenue: roundCurrency(eventRefundRevenue),
+    eventRenewalRevenue: roundCurrency(eventRenewalRevenue),
     eventDerivedRevenue
   };
   const differences = {
