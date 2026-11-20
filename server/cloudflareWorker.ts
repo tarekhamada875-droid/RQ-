@@ -174,7 +174,8 @@ workerApp.use('*', async (c, next) => {
 // timings), and emits one structured console line per request for Cloudflare
 // logs (visible via `wrangler tail` / dashboard). Purely observational:
 // never short-circuits, never mutates the body, and all failures inside it
-// are swallowed so traffic is unaffected. Remove after the audit.
+// are swallowed so traffic is unaffected. (The per-request log line was
+// removed by the 2026-11-21 audit; headers stay for the client debug recorder.)
 workerApp.use('*', async (c, next) => {
   const debugStartedAt = Date.now();
   await next();
@@ -185,17 +186,11 @@ workerApp.use('*', async (c, next) => {
     c.res.headers.set('X-Debug-Server-Ms', String(debugServerMs));
     if (debugReqBytes !== null) c.res.headers.set('X-Debug-Req-Bytes', String(debugReqBytes));
     if (debugResBytes !== null) c.res.headers.set('X-Debug-Res-Bytes', String(debugResBytes));
-    console.log(JSON.stringify({
-      dbg: 1,
-      m: c.req.method,
-      p: c.req.path,
-      s: c.res.status,
-      ms: debugServerMs,
-      reqB: debugReqBytes,
-      resB: debugResBytes,
-      cid: c.get('correlationId') || null,
-      uid: c.get('user')?.uid || null,
-    }));
+    // Audit fix (2026-11-21): the per-request console.log JSON line (method,
+    // path, status, uid) was removed — it grew Cloudflare logs forever on
+    // every request, logged per-request uids, and its own comment said
+    // "Remove after the audit". The X-Debug-* response headers STAY: the
+    // client debug recorder reads X-Debug-Server-Ms.
   } catch {
     // Debug telemetry must never break real traffic.
   }

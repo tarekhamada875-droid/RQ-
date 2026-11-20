@@ -15,6 +15,22 @@ if (!existsSync(wranglerConfig) || statSync(wranglerConfig).size === 0) {
   if (!content.includes('"nodejs_compat"')) fail('wrangler.toml must enable nodejs_compat.');
 }
 
+// Audit fix (2026-11-21): deploys use wrangler.deploy.toml (dist/worker.js +
+// cron + observability + WORKER_SELF_URL), while the checks above pin the
+// DEV config (wrangler.toml). A silent edit that drops the cron, observability
+// or the self-URL from the DEPLOY config would remove the keep-warm ping /
+// observability with no error anywhere. Pin the deploy-critical lines here.
+const deployConfig = resolve(root, 'wrangler.deploy.toml');
+if (!existsSync(deployConfig)) {
+  fail('wrangler.deploy.toml must exist — it is the config production deploys use.');
+} else {
+  const deployContent = readFileSync(deployConfig, 'utf8');
+  if (!deployContent.includes('main = "dist/worker.js"')) fail('wrangler.deploy.toml must deploy the built bundle: main = "dist/worker.js".');
+  if (!deployContent.includes('crons = [')) fail('wrangler.deploy.toml must declare the keep-warm cron (crons = [...]).');
+  if (!deployContent.includes('WORKER_SELF_URL')) fail('wrangler.deploy.toml must define WORKER_SELF_URL.');
+  if (!deployContent.includes('PIN_RATE_LIMITER')) fail('wrangler.deploy.toml must keep the PIN_RATE_LIMITER Durable Object binding.');
+}
+
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')) as { packageManager?: string; scripts?: Record<string, string> };
 if (!packageJson.packageManager?.startsWith('npm@')) fail('package.json must declare npm as the supported package manager.');
 if (!packageJson.scripts?.['build:cloudflare']) fail('package.json must declare build:cloudflare script.');

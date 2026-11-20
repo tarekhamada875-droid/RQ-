@@ -38,6 +38,16 @@ const DAILY_REPORT_LOG_LIMIT = 200;
  */
 const csvCache = new Map<string, { logs: ActivityLog[]; fetchedAt: number }>();
 const CSV_CACHE_MS = 5 * 60 * 1000;
+// Audit fix (2026-11-21): the cache previously grew unbounded for the whole
+// session (up to 200 logs per garage:date). Evict the oldest entry at 50.
+const CSV_CACHE_MAX_ENTRIES = 50;
+function rememberCsvCache(key: string, value: { logs: ActivityLog[]; fetchedAt: number }): void {
+  if (csvCache.size >= CSV_CACHE_MAX_ENTRIES) {
+    const oldestKey = csvCache.keys().next().value;
+    if (oldestKey !== undefined) csvCache.delete(oldestKey);
+  }
+  csvCache.set(key, value);
+}
 
 // Audit fix (2026-11-21): the local copy below hardcoded +02:00, which is
 // wrong during Egypt's daylight-saving period (+03:00, ~April–October) —
@@ -223,7 +233,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
             .slice(0, DAILY_REPORT_LOG_LIMIT)
             .map(d => ({ id: d.id, ...d.data() } as ActivityLog));
         }
-        csvCache.set(cacheKey, { logs, fetchedAt: Date.now() });
+        rememberCsvCache(cacheKey, { logs, fetchedAt: Date.now() });
       }
 
       if (logs.length === 0) {

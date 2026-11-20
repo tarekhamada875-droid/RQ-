@@ -134,21 +134,7 @@
     color: white !important;
   }
 
-  .laptop-view {
-    font-size: 1.15rem;
-  }
-  
-  .laptop-view .text-\[10px\] { font-size: 12px; }
-  .laptop-view .text-xs { font-size: 14px; }
-  .laptop-view .text-sm { font-size: 16px; }
-  .laptop-view .text-base { font-size: 18px; }
-  .laptop-view .text-lg { font-size: 20px; }
-  .laptop-view .text-xl { font-size: 24px; }
-  .laptop-view .text-2xl { font-size: 30px; }
-  .laptop-view .text-3xl { font-size: 36px; }
-  .laptop-view .text-4xl { font-size: 44px; }
-  .laptop-view .text-5xl { font-size: 56px; }
-  .laptop-view .text-6xl { font-size: 72px; }
+  /* (audit 2026-11-21) removed dead .laptop-view rules — the class was used nowhere */
 }
 
 @layer utilities {
@@ -210,20 +196,7 @@
     background: rgba(0, 0, 0, 0.2);
   }
 
-  .custom-scrollbar-emerald::-webkit-scrollbar {
-    width: 4px;
-  }
-  .custom-scrollbar-emerald::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
-  }
-  .custom-scrollbar-emerald::-webkit-scrollbar-thumb {
-    background: rgba(5, 150, 105, 0.3);
-    border-radius: 10px;
-  }
-  .custom-scrollbar-emerald::-webkit-scrollbar-thumb:hover {
-    background: rgba(5, 150, 105, 0.5);
-  }
+
 
   .stable-scrollbar {
     scrollbar-gutter: stable;
@@ -250,10 +223,6 @@
     overflow-wrap: anywhere;
   }
 
-  .text-mobile-fluid {
-    font-size: clamp(0.75rem, 2.8vw, 1.125rem);
-    line-height: 1.25;
-  }
 }
 
 input[type="number"]::-webkit-inner-spin-button,
@@ -389,11 +358,6 @@ input[type="number"]::-webkit-outer-spin-button {
    prefers-reduced-motion gate here — the red balance/border state is the
    non-motion cue, the falling arrows are the motion cue, and both run. */
 
-/* Fluid auto-contained font utility overrides */
-.text-mobile-fluid {
-  font-size: clamp(0.8rem, 2.5vw + 0.2rem, 1.15rem) !important;
-  line-height: 1.3 !important;
-}
 
 .text-mobile-wrap {
   white-space: normal !important;

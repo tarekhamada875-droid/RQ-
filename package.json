@@ -8,7 +8,7 @@
     "dev": "tsx server.ts",
     "build:web": "vite build",
     "build:cloudflare": "node tools/build-cloudflare.mjs",
-    "build": "vite build && npm run build:cloudflare && cp -r dist build",
+    "build": "vite build && npm run build:cloudflare",
     "clean": "rm -rf dist build",
     "test": "vitest run",
     "lint": "tsc --noEmit",

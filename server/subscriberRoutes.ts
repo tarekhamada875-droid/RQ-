@@ -320,7 +320,7 @@ app.post('/api/subscribers/update', requireWorkerAuth, async (c) => {
         }
       }
       // Dates are immutable on the update path. Extending a subscription
-      // requires the /renew endpoint (which debits 5 credits). This closes
+      // requires the /renew endpoint (which debits 1 credit). This closes
       // the free-renewal loophole where editing endDate forward bypassed
       // the renewal fee. Only the renew route may move startDate/endDate.
       if (
