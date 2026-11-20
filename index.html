@@ -14,6 +14,26 @@
     <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
     <link rel="preconnect" href="https://firestore.googleapis.com" />
     <link rel="preconnect" href="https://securetoken.googleapis.com" />
+    <!-- PERF (2026-11-20): pre-warm the Firestore WebSocket connection.
+         Firestore's real-time listeners (onSnapshot for garage data,
+         active vehicles, session-guard) use wss://*.firebaseio.com for
+         push updates. Without this preconnect, the first onSnapshot
+         call after login has to do DNS + TLS + WSS handshake on the
+         critical path — ~200ms on good networks, 1-2s on 2G. With
+         preconnect, the connection is warm by the time the listener
+         attaches. The CSP already allows wss://*.firebaseio.com in
+         connect-src. -->
+    <link rel="preconnect" href="https://firebaseio.com" />
+    <!-- PERF (2026-11-20): pre-warm the Worker API connection.
+         API calls go to rq.tarekhamada875.workers.dev (separate subdomain
+         from rq-acg.pages.dev → separate TLS connection). Without this
+         preconnect, the first API call after login (verify-pin) pays the
+         DNS+TLS handshake on the critical path — ~100-300ms on good
+         networks, 1-2s on 2G. The verify-pin call is the longest single
+         step in the login flow (1.5-2.5s server-side on slow networks);
+         pre-warming the connection shaves the TLS overhead off the top.
+         The CSP already allows this origin in connect-src. -->
+    <link rel="preconnect" href="https://rq.tarekhamada875.workers.dev" />
     <!-- PERF (2026-11-20): self-hosted fonts. Previously loaded from a
          cross-origin Google Fonts URL which cost a DNS+TLS round-trip on
          every cold boot (80ms on good networks, 1-2s on 2G). Now the fonts
