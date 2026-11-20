@@ -6,7 +6,7 @@
 import React, { memo, Suspense, useEffect, useRef } from 'react';
 import { adminService } from '../../services';
 import { AdminProvider } from '../../hooks/adminContext';
-import { DelayedFallback, ModalSuspenseBackdrop } from '../layout/LoadingFallbacks';
+import { DelayedFallback, ModalSuspenseBackdrop, PageSkeleton } from '../layout/LoadingFallbacks';
 import { useSession } from '../../hooks/sessionContext';
 import { Garage, Delegate } from '../../types';
 import { isLightColor } from '../../utils/colors';
@@ -29,6 +29,10 @@ import { useAdminGarageActions } from '../../hooks/useAdminGarageActions';
 const AppearanceSettingsModal = lazyWithRetry(() => import('../modals/AppearanceSettingsModal').then(m => ({ default: m.AppearanceSettingsModal })));
 const AdminAddGarageModal = lazyWithRetry(() => import('./AdminAddGarageModal').then(m => ({ default: m.AdminAddGarageModal })));
 const AdminConfirmDialog = lazyWithRetry(() => import('./AdminConfirmDialog').then(m => ({ default: m.AdminConfirmDialog })));
+// Owner's manual config-cache sync page (perf plan 2026-11-21): opens
+// FULLSCREEN over the dashboard from the corner-menu drawer — same pattern
+// as the garage reports page. Lazy so its chunk loads only on first open.
+const AdminConfigSyncLazy = lazyWithRetry(() => import('./AdminConfigSyncView').then(m => ({ default: m.AdminConfigSyncView })));
 
 interface AdminDashboardProps {
   allGarages: Garage[];
@@ -77,6 +81,9 @@ export const AdminDashboard = memo(({
 
   // Hamburger menu state — small enough to keep local (just a UI toggle).
   const [showMenu, setShowMenu] = React.useState(false);
+  // Config-sync fullscreen page (owner request 2026-11-21): opens from the
+  // corner-menu drawer, covers the dashboard like the garage reports page.
+  const [isConfigSyncOpen, setIsConfigSyncOpen] = React.useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -146,6 +153,7 @@ export const AdminDashboard = memo(({
         showMenu={showMenu}
         setShowMenu={setShowMenu}
         onOpenAppearanceSettings={() => setShowAppearanceSettings(true)}
+        onOpenConfigSync={() => setIsConfigSyncOpen(true)}
         onLogout={onLogout}
         menuRef={menuRef}
       />
@@ -245,6 +253,15 @@ export const AdminDashboard = memo(({
               }
             }}
           />
+        </Suspense>
+      )}
+
+      {/* Config Sync fullscreen page (owner request 2026-11-21) — mirrors
+          GarageDashboardOverlays' reports mount: conditional lazy mount with
+          a page skeleton while the chunk warms. */}
+      {isConfigSyncOpen && (
+        <Suspense fallback={<DelayedFallback><PageSkeleton /></DelayedFallback>}>
+          <AdminConfigSyncLazy onBack={() => setIsConfigSyncOpen(false)} />
         </Suspense>
       )}
     </div>
