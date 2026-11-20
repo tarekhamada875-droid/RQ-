@@ -491,6 +491,100 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect(getBody.garage.id).toBe(testGarageId);
   });
 
+  it('ISSUE 3 (2026-11-19): GET /api/garages overrides stale doc-stored carsInside with the maintained-summary value', async () => {
+    // Owner debug file showed carsInside=0 on the admin list for a garage
+    // that actually had 67 vehicles inside. The garage doc's carsInside
+    // field drifts when check-in/out transactions are interrupted; the
+    // maintained_summary/current doc is updated transactionally via
+    // FieldValue.increment so it's always accurate. The list endpoint
+    // must prefer the maintained summary over the doc-stored value.
+    mockDb.seed('garages/cars-inside-fix', {
+      name: 'Garage With Stale carsInside',
+      hourlyRate: 25,
+      overnightRate: 50,
+      status: 'approved',
+      // Doc-stored value is 0 — the stale, drifted value
+      carsInside: 0,
+      createdAt: new Date('2026-10-18T13:42:05.750Z')
+    });
+    // Maintained summary has the authoritative value: 67 inside
+    mockDb.seed('garages/cars-inside-fix/maintained_summary/current', {
+      schemaVersion: 1,
+      carsInside: 67,
+      activeSubscribersCount: 0,
+      totalSubscribersCount: 0,
+      updatedAt: new Date()
+    });
+
+    const listRes = await api.fetch(new Request('http://localhost/api/garages?limit=50', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+
+    expect(listRes.status).toBe(200);
+    const listBody = await listRes.json() as any;
+    expect(listBody.success).toBe(true);
+    const garage = listBody.garages.find((g: any) => g.id === 'cars-inside-fix');
+    expect(garage).toBeDefined();
+    // The list endpoint must have overridden the stale 0 with the maintained 67
+    expect(garage.carsInside).toBe(67);
+  });
+
+  it('ISSUE 3 (2026-11-19): GET /api/garages falls back to doc-stored carsInside when no maintained summary exists', async () => {
+    // A brand-new garage that has never had a check-in or dashboard-summary
+    // rebuild has no maintained_summary doc. The list endpoint must not
+    // blank out carsInside in that case — it should fall back to whatever
+    // the garage doc says (which may legitimately be 0 for a new garage).
+    mockDb.seed('garages/brand-new-garage', {
+      name: 'Brand New Garage',
+      hourlyRate: 10,
+      overnightRate: 100,
+      status: 'approved',
+      carsInside: 0,
+      createdAt: new Date('2026-11-19T10:00:00.000Z')
+    });
+    // No maintained_summary/current doc seeded
+
+    const listRes = await api.fetch(new Request('http://localhost/api/garages?limit=50', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+
+    expect(listRes.status).toBe(200);
+    const listBody = await listRes.json() as any;
+    const garage = listBody.garages.find((g: any) => g.id === 'brand-new-garage');
+    expect(garage).toBeDefined();
+    // No maintained summary → fall back to doc-stored value
+    expect(garage.carsInside).toBe(0);
+  });
+
+  it('ISSUE 3 (2026-11-19): GET /api/garages ignores stale maintained summary (wrong schemaVersion) and falls back', async () => {
+    // If the maintained summary is from an old schema version or marked
+    // stale, the list endpoint must NOT use its carsInside — it should
+    // fall back to the doc-stored value. This protects against a
+    // maintained-summary rollback bringing the admin list down with it.
+    mockDb.seed('garages/stale-summary-garage', {
+      name: 'Garage With Stale Summary',
+      carsInside: 42,
+      status: 'approved',
+      createdAt: new Date('2026-10-01T00:00:00.000Z')
+    });
+    mockDb.seed('garages/stale-summary-garage/maintained_summary/current', {
+      schemaVersion: 0,  // Wrong version → isUsableMaintainedSummary returns false
+      carsInside: 999,   // Would be wrong if used
+      updatedAt: new Date()
+    });
+
+    const listRes = await api.fetch(new Request('http://localhost/api/garages?limit=50', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+
+    expect(listRes.status).toBe(200);
+    const listBody = await listRes.json() as any;
+    const garage = listBody.garages.find((g: any) => g.id === 'stale-summary-garage');
+    expect(garage).toBeDefined();
+    // Stale/wrong-schema summary → fall back to doc-stored value
+    expect(garage.carsInside).toBe(42);
+  });
+
   it('pages the garage list with a stable tie-break and a bounded sentinel read', async () => {
     for (let index = 0; index < 6; index += 1) {
       mockDb.seed(`garages/page-${index}`, { name: `Garage ${index}`, createdAt: new Date('2026-10-17T10:00:00.000Z') });
