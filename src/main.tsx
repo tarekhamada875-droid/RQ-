@@ -60,8 +60,12 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       {/* DEBUG (owner audit 2026-11-17): outside the provider tree so the
           export button survives provider-level failures and works on every
-          view, including the login screen. */}
-      <DebugHud />
+          view, including the login screen.
+          Audit fix (2026-11-21): gated behind ?debug=1 — the HUD previously
+          rendered for EVERY user (all garage workers, login screen), exposing
+          a debug file export containing sessionId / UA / URL to anyone.
+          Open the app with ?debug=1 in the URL to show it. */}
+      <DebugHud enabled={new URLSearchParams(window.location.search).has('debug')} />
       <ThemeProvider>
         <BackHandlerProvider>
           <ToastProvider>

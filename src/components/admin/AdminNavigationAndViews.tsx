@@ -142,7 +142,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               type="button"
               onClick={() => setActiveTab('catalog_settings')}
               className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs cursor-pointer ${
-                  activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'credit_rate_settings' || activeTab === 'daily_garage_reports'
+                  activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'wallet_settings' || activeTab === 'credit_rate_settings' || activeTab === 'daily_garage_reports'
                   ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 '
                   : 'text-slate-500 '
               }`}

@@ -13,7 +13,12 @@ import { debugRecorder } from './debugRecorder';
 
 type HudPhase = 'idle' | 'exporting' | 'done';
 
-export function DebugHud() {
+export function DebugHud({ enabled = false }: { enabled?: boolean }) {
+  // Audit fix (2026-11-21): the HUD (and its debug-file export, which embeds
+  // sessionId / UA / URL) previously rendered for EVERY user. It now mounts
+  // only when the app is opened with ?debug=1 in the URL (see main.tsx).
+  // `enabled` is fixed at boot from the URL; hooks below run unconditionally
+  // (rules of hooks) and the early return sits after them.
   const [count, setCount] = useState(debugRecorder.count);
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<HudPhase>('idle');
@@ -21,9 +26,10 @@ export function DebugHud() {
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (!enabled) return undefined;
     const timer = window.setInterval(() => setCount(debugRecorder.count), 1500);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [enabled]);
 
   const handleDownload = async () => {
     setPhase('exporting');
@@ -51,6 +57,8 @@ export function DebugHud() {
       setNote('فشل النسخ — استخدم التنزيل');
     }
   };
+
+  if (!enabled) return null;
 
   return (
     <div className="fixed bottom-3 left-3 z-[9999] font-sans" dir="rtl" ref={panelRef}>
