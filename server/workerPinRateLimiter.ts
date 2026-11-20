@@ -45,6 +45,19 @@ interface PinLimiterCommand {
 }
 
 const RECORD_KEY = 'pin-limit-record';
+// System-config cache version board (perf, owner-approved plan 2026-11-21):
+// this Durable Object class hosts a SECOND serialized singleton — the
+// "version board" for the edge-cached GET /api/system-config response. All
+// Worker colos read the version (cheap DO call, no Firestore) to derive
+// their cache key; bumping it makes every colo treat its cached copy as
+// stale immediately (DO reads are strongly consistent — no propagation
+// delay). Reusing this class (instead of a new one) is deliberate: a new DO
+// class requires a wrangler migrations entry on deploy, while adding an
+// action to an already-deployed class is zero-config and zero-risk.
+const CONFIG_VERSION_KEY = 'system-config-cache-version';
+// Fixed DO instance id for the version board (must pass HASHED_BUCKET_PATTERN
+// like every other request to this class). = sha256('rq-system-config-version-board').
+export const SYSTEM_CONFIG_VERSION_BUCKET = '6355889c81bce3452b50906025e7ba04c350cb49d154416b1d0efd0f6011e41b';
 const HASHED_BUCKET_PATTERN = /^[a-f0-9]{64}$/;
 
 function jsonResponse(body: Record<string, unknown>, status = 200): Response {
@@ -52,6 +65,13 @@ function jsonResponse(body: Record<string, unknown>, status = 200): Response {
     status,
     headers: { 'content-type': 'application/json' },
   });
+}
+
+type ConfigVersionCommand = { action: 'config_version_get' | 'config_version_bump' };
+
+function isConfigVersionCommand(command: unknown): command is ConfigVersionCommand {
+  const action = (command as { action?: unknown } | null | undefined)?.action;
+  return action === 'config_version_get' || action === 'config_version_bump';
 }
 
 function isValidCommand(command: unknown): command is PinLimiterCommand {
@@ -81,6 +101,17 @@ export class PinRateLimiterDurableObject {
       command = await request.json();
     } catch {
       return jsonResponse({ success: false, error: 'INVALID_JSON' }, 400);
+    }
+    if (isConfigVersionCommand(command)) {
+      const current = (await this.state.storage.get<number>(CONFIG_VERSION_KEY)) ?? 0;
+      if (command.action === 'config_version_get') {
+        return jsonResponse({ success: true, version: current });
+      }
+      const next = current + 1;
+      // No expiration: the version must survive indefinitely (unlike rate
+      // records, which are garbage-collected after their window).
+      await this.state.storage.put(CONFIG_VERSION_KEY, next);
+      return jsonResponse({ success: true, version: next });
     }
     if (!isValidCommand(command)) return jsonResponse({ success: false, error: 'INVALID_COMMAND' }, 400);
 

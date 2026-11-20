@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { PinRateLimiterDurableObject, type PinRateLimiterNamespace } from '../../server/workerPinRateLimiter';
+import { PinRateLimiterDurableObject, SYSTEM_CONFIG_VERSION_BUCKET, type PinRateLimiterNamespace } from '../../server/workerPinRateLimiter';
 import { MockFirestore, mockAdminAuth, installDefaultWorkerTestSessionHeaders } from './mockFirestore';
 
 const mockDb = new MockFirestore();
@@ -384,5 +384,61 @@ describe('Worker PIN rate limiter', () => {
       expect(await denied.json()).toMatchObject({ taken: false, error: 'RATE_LIMIT_EXCEEDED' });
     });
 
+  });
+});
+
+describe('Worker Durable Object system-config version board (perf plan 2026-11-21)', () => {
+  const boardUrl = `https://pin-rate-limiter/${SYSTEM_CONFIG_VERSION_BUCKET}`;
+
+  const command = async (ns: MemoryNamespace, action: 'config_version_get' | 'config_version_bump') => {
+    const res = await ns.get(SYSTEM_CONFIG_VERSION_BUCKET).fetch(boardUrl, {
+      method: 'POST',
+      body: JSON.stringify({ action }),
+    });
+    expect(res.status).toBe(200);
+    return (await res.json() as { version: number }).version;
+  };
+
+  it('starts at version 0 and bumps monotonically on the fixed board instance', async () => {
+    const ns = new MemoryNamespace();
+    expect(await command(ns, 'config_version_get')).toBe(0);
+    expect(await command(ns, 'config_version_bump')).toBe(1);
+    expect(await command(ns, 'config_version_bump')).toBe(2);
+    expect(await command(ns, 'config_version_get')).toBe(2);
+  });
+
+  it('keeps the version board isolated from per-bucket rate-limit records', async () => {
+    const ns = new MemoryNamespace();
+    // Rate-limit activity on its own bucket must not move the version...
+    const limiterUrl = `https://pin-rate-limiter/${'a'.repeat(64)}`;
+    await ns.get('a'.repeat(64)).fetch(limiterUrl, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'check' }),
+    });
+    expect(await command(ns, 'config_version_get')).toBe(0);
+    // ...and bumping the version must not touch the limiter's budget: the
+    // bucket has now seen exactly TWO checks (one before the bump, one
+    // after) → remaining = 10 - 2 = 8. A reset or shared storage would show 9.
+    await command(ns, 'config_version_bump');
+    const res = await ns.get('a'.repeat(64)).fetch(limiterUrl, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'check' }),
+    });
+    expect(await res.json()).toMatchObject({ allowed: true, remaining: 8 });
+  });
+
+  it('still rejects non-hex buckets and malformed commands exactly as before', async () => {
+    const ns = new MemoryNamespace();
+    const badBucket = await ns.get('not-hex').fetch('https://pin-rate-limiter/not-hex', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'check' }),
+    });
+    expect(await badBucket.json()).toMatchObject({ success: false, error: 'INVALID_BUCKET' });
+
+    const badCommand = await ns.get(SYSTEM_CONFIG_VERSION_BUCKET).fetch(boardUrl, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'explode' }),
+    });
+    expect(await badCommand.json()).toMatchObject({ success: false, error: 'INVALID_COMMAND' });
   });
 });

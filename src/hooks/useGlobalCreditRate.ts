@@ -18,7 +18,12 @@ export function useGlobalCreditRate(): number | null {
     let cancelled = false;
     void (async () => {
       try {
-        const data = await apiFetch<{ success?: boolean; config?: { creditRate?: number } }>('/api/system-config');
+        // cacheTtlMs (perf plan 2026-11-21): the server edge-caches this
+        // endpoint (version-keyed, auto-invalidated on save), so re-mounts
+        // answer instantly from the client SWR memory cache instead of
+        // paying a Worker round trip per mount. Server freshness is governed
+        // by the version board — this client TTL only limits repeat trips.
+        const data = await apiFetch<{ success?: boolean; config?: { creditRate?: number } }>('/api/system-config', { cacheTtlMs: 300_000 });
         if (!cancelled && data?.success && data.config) {
           setEgpPerCredit(rateToEgpPerCredit(data.config.creditRate));
         } else if (!cancelled) {
