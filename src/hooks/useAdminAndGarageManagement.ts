@@ -465,7 +465,11 @@ isSessionOccupiedError(errMsg)
         ? previousAttempt.idempotencyKey
         : (globalThis.crypto?.randomUUID?.() || `garage-create-${Date.now()}-${Math.random().toString(36).slice(2)}`);
       garageCreationAttemptRef.current = { fingerprint: requestFingerprint, idempotencyKey };
-      const result = await garageService.createGarage(data, idempotencyKey);
+      // Audit fix (2026-11-21): the delegate path strips data.pin (the Worker
+      // generates one server-side and rejects client pins), so creation
+      // validation must skip the 5-digit PIN rule — otherwise every delegate
+      // garage creation failed client-side before reaching the server.
+      const result = await garageService.createGarage(data, idempotencyKey, isDelegateCreation ? { skipPinRequirement: true } : undefined);
 
       if (result.success) {
         if (garageCreationAttemptRef.current?.idempotencyKey === idempotencyKey) garageCreationAttemptRef.current = null;

@@ -91,8 +91,8 @@ export const garageService = {
     };
   },
 
-  createGarage: async (data: any, idempotencyKey?: string): Promise<{ success: boolean; id?: string; error?: string }> => {
-    const validation = validateGarageCreation(data);
+  createGarage: async (data: any, idempotencyKey?: string, validationOptions?: Parameters<typeof validateGarageCreation>[1]): Promise<{ success: boolean; id?: string; error?: string }> => {
+    const validation = validateGarageCreation(data, validationOptions);
     if (!validation.valid) {
       return { success: false, error: validation.errors.join(' — ') };
     }

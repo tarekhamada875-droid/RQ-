@@ -173,7 +173,13 @@ export function useGarageSession({
         // login starts a fresh attempt budget, so at session teardown every
         // logout_attempts:* key on this device is dead weight.
         const isLogoutAttemptKey = key.startsWith('logout_attempts:');
-        if (isAppKey || isLogoutAttemptKey) {
+        // Audit fix (2026-11-21): subscriber drafts (plate / owner name /
+        // phone) are customer PII written by the subscriber form. They were
+        // NOT covered by the app_* purge, so after logout the next garage
+        // logging into this device saw the PREVIOUS garage's customers
+        // pre-filled in the subscriber form.
+        const isSubscriberDraftKey = key === 'sub_plate' || key === 'sub_name' || key === 'sub_phone';
+        if (isAppKey || isLogoutAttemptKey || isSubscriberDraftKey) {
           try { localStorage.removeItem(key); } catch { /* Continue clearing other keys. */ }
         }
       });
