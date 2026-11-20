@@ -14,39 +14,27 @@ import { lookupSubscriber, safeDateMillis, sanitizeDelegateDoc } from './workerR
 import { getCairoDateKey } from './projections';
 import { CREDIT_PRICE_MAX, CREDIT_PRICE_MIN, PAYMENT_WALLET_NUMBER_MAX_LENGTH } from './domain/limits';
 import { roundCreditRateForStorage } from './domain/creditRateStorage';
-
-const ACTIVE_SYSTEM_CONFIG_FIELDS = ['adminColor', 'paymentWalletNumber', 'creditRate'] as const;
-
-const DEFAULT_SYSTEM_CONFIG = {
-  adminColor: '#10b981',
-  paymentWalletNumber: '',
-  creditRate: 1
-};
-
-function projectSystemConfig(config: Record<string, any>): Record<string, any> {
-  const projected: Record<string, any> = {};
-  for (const field of ACTIVE_SYSTEM_CONFIG_FIELDS) {
-    if (Object.prototype.hasOwnProperty.call(config, field)) projected[field] = config[field];
-  }
-  return projected;
-}
+import { loadSystemConfigCached, syncSystemConfigCache } from './systemConfigCache';
 
 export function registerReadRoutes(app: WorkerApp): void {
 
 // Private route returning only the active, explicitly allowlisted config fields.
+// Public-shape route (same JSON for admin/garage/staff/delegate — see
+// systemConfigCache.ts): served from the version-keyed edge cache. The role
+// gate stays here so unauthenticated/unauthorized requests never touch the
+// cache or Firestore (foundation test 3 pins this).
 app.get('/api/system-config', requireWorkerAuth, withErrorHandler(async (c) => {
   const user = c.get('user') as WorkerUser | undefined;
   if (!user || !['admin', 'garage', 'staff', 'delegate'].includes(user.role)) {
     return c.json({ success: false, error: 'FORBIDDEN' }, 403);
   }
-
-  const snap = await adminDb.doc('system_config/global').get();
-  if (!snap.exists) {
-    return c.json({ success: true, config: DEFAULT_SYSTEM_CONFIG });
-  }
-  const activeConfig = projectSystemConfig(snap.data() || {});
-  return c.json({ success: true, config: { ...DEFAULT_SYSTEM_CONFIG, ...activeConfig } });
+  return loadSystemConfigCached(c);
 }, 'Read'));
+
+// Owner's "sync now" button (perf plan 2026-11-21): bumps the version board
+// so EVERY colo drops its cached copy, then eagerly warms this colo with a
+// fresh read. update-system-config below does the same automatically after
+// every successful save; this endpoint is the manual safety hatch.
 
 // Foundation Route: POST /api/admin/update-system-config
 app.post('/api/admin/update-system-config', requireWorkerAuth, withAdmin(async (c) => {
@@ -102,9 +90,36 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, withAdmin(async (
     }
 
     await adminDb.doc('system_config/global').set(updatePayload, { merge: true });
-    return c.json({ success: true });
+    // Auto-sync (owner-approved perf plan 2026-11-21): bump the version board
+    // so every colo's 30-day cache copy is invalid immediately, then warm
+    // this colo. MUST NOT fail the save: a failed bump only means copies stay
+    // until TTL — the owner's manual sync button retries it. The response
+    // flag lets the admin UI warn when auto-sync did not go through.
+    let cacheSync: 'ok' | 'failed' | 'not_configured' = 'failed';
+    try {
+      const syncRes = await syncSystemConfigCache(c);
+      const syncBody = await syncRes.json() as { cacheSync?: string };
+      cacheSync = (syncBody.cacheSync as typeof cacheSync) ?? 'failed';
+    } catch (syncErr) {
+      console.warn('[Worker Admin] config cache sync after save failed:', syncErr);
+    }
+    return c.json({ success: true, cacheSync });
   } catch (e: any) {
     console.error('[Worker Admin] Error in update-system-config:', e);
+    const { statusCode, code, message } = mapDomainErrorToStatus(e);
+    return c.json({ success: false, code, error: message, statusCode }, statusCode as any);
+  }
+}));
+
+// Owner's manual "sync now" endpoint (perf plan 2026-11-21, dedicated admin
+// settings page). Admin-only like every /api/admin/* route. Bumps the version
+// board (invalidates all colos' cached copies immediately — DO reads are
+// strongly consistent) and eagerly re-warms this colo with a fresh read.
+app.post('/api/admin/sync-system-config-cache', requireWorkerAuth, withAdmin(async (c) => {
+  try {
+    return await syncSystemConfigCache(c);
+  } catch (e: any) {
+    console.error('[Worker Admin] Error in sync-system-config-cache:', e);
     const { statusCode, code, message } = mapDomainErrorToStatus(e);
     return c.json({ success: false, code, error: message, statusCode }, statusCode as any);
   }
