@@ -52,14 +52,16 @@ export default defineConfig(() => {
           // every chunk from its own precache and never breaks; the extra
           // install traffic (~240 KB) is a one-time background download per
           // deploy.
-          // PERF (2026-11-20): added woff2 so self-hosted fonts in /fonts/
-          // are precached by the service worker. Without this, the first
-          // cold boot after a deploy would still hit the network for fonts
-          // (defeating the self-hosting perf win); on a 2G connection that
-          // adds 1-2s even though the files are local. With precaching,
-          // fonts come from the SW cache instantly on every boot after
-          // the first.
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          // PERF (2026-11-20): added woff2 + json so self-hosted fonts and
+          // manifest.json are precached by the service worker. Without this,
+          // the first cold boot after a deploy hits the network for fonts
+          // and manifest.json (defeating the self-hosting perf win); on a
+          // 2G connection that adds 1-2s even though the files are local.
+          // manifest.json is fetched on every page load by the browser
+          // (referenced in <link rel="manifest">) — without precaching
+          // each load costs ~300-450ms of network RTT for a 385-byte file.
+          // With precaching, it comes from the SW cache instantly.
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json}'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
