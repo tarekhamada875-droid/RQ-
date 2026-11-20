@@ -52,9 +52,9 @@ describe('sanitizeValue (PII-safe structural snapshot)', () => {
     const deep = { a: { b: { c: { d: { e: 'too deep' } } } } };
     expect(sanitizeValue(deep)).toEqual({ a: { b: { c: { d: '«maxdepth»' } } } });
     const wide: Record<string, number> = {};
-    for (let i = 0; i < 40; i += 1) wide[`k${i}`] = i;
+    for (let i = 0; i < 70; i += 1) wide[`k${i}`] = i;
     const outWide = sanitizeValue(wide) as Record<string, number>;
-    expect(Object.keys(outWide).length).toBe(30);
+    expect(Object.keys(outWide).length).toBe(60);
   });
 
   it('AUDIT FIX 2026-11-17: redacts singular *Number keys (wallet number leak)', () => {
