@@ -11,6 +11,7 @@ import { hashSessionId } from './auth/sessionMarkers';
 import { ValidationError, validateId, validateIdempotencyKey, validateNewPin, validateNumber, validateString, sanitizePayload } from './validation';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { checkPinAvailabilityAcrossAll, saveEntityPin } from './pinRepository';
+import { checkWorkerPinRateLimit } from './workerPinRateLimiter';
 import { applyCorrection, awardReferralCredits, grantPaidCredits, materializeCreditLedgerEntry } from './domain/prepaidCreditLedger';
 import { canRunGarageMaintenance, canUpdateEntityPin } from './domain/authorization';
 import { decideDelegateCommission, COMMISSION_AMOUNT_EGP } from './domain/delegateCommission';
@@ -36,6 +37,36 @@ app.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
 
     const normNewPin = validateNewPin(newPin, 'newPin');
 
+    // Audit fix (2026-11-21): rate-limit PIN probing. The availability check
+    // below answers "is this PIN taken anywhere, and by whom" for arbitrary
+    // candidate PINs — without a limiter any authorized caller could
+    // enumerate candidate PINs across all roles indefinitely and harvest
+    // account owner names. Same DO limiter as /api/auth/check-pin-availability.
+    // Missing binding → dev/test harness (prod config always provides it, see
+    // wrangler.toml) → warn loudly and continue. Limiter ERRORED with the
+    // binding present → fail closed (503): a broken limiter must not reopen
+    // the enumeration channel.
+    let pinProbeLimit: { allowed: true } | { allowed: false; resetAt?: number; bucket?: string } | null = null;
+    const limiterNamespace = c.env?.PIN_RATE_LIMITER;
+    if (!limiterNamespace) {
+      console.warn('[Worker People] PIN_RATE_LIMITER binding missing — update-pin probe is running WITHOUT rate limiting (acceptable in dev/test only)');
+    } else {
+      try {
+        pinProbeLimit = await checkWorkerPinRateLimit(
+          limiterNamespace,
+          user?.uid || '',
+          c.req.header('cf-connecting-ip') || 'unknown',
+          normNewPin
+        );
+      } catch (limiterError: any) {
+        console.error('[Worker People] PIN rate limiter failed for update-pin:', limiterError?.message || limiterError);
+        return c.json({ success: false, error: 'RATE_LIMIT_UNAVAILABLE' }, 503);
+      }
+    }
+    if (pinProbeLimit && pinProbeLimit.allowed === false) {
+      return c.json({ success: false, error: 'RATE_LIMIT_EXCEEDED', resetAt: pinProbeLimit.resetAt }, 429);
+    }
+
     let targetGarageId: unknown = entityType === 'garages' ? entityId : undefined;
     if (entityType === 'staff' && user?.role !== 'admin') {
       const targetStaffSnap = await adminDb.collection('staff').doc(entityId).get();
@@ -50,7 +81,12 @@ app.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
       return c.json({
         success: false,
         error: 'PIN_ALREADY_TAKEN',
-        takenBy: { name: pinCheck.name || '', role: pinCheck.role }
+        // Audit fix (2026-11-21): only admins learn WHO owns a colliding PIN
+        // (they can list every account anyway). Other roles learn the
+        // collision + role only — no name harvesting through PIN probing.
+        // No UI consumes the name on non-admin paths (they map this error to
+        // a generic 'الرمز مستخدم بالفعل' message).
+        takenBy: { name: user?.role === 'admin' ? (pinCheck.name || '') : '', role: pinCheck.role }
       }, 400);
     }
 

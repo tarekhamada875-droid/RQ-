@@ -20,6 +20,34 @@ import { parseMoneyAmount } from '../money';
 import { validateId } from '../validation';
 import { mapDomainErrorToStatus } from '../routes/helpers';
 
+/**
+ * Audit fix (2026-11-21): counts inside vehicles with a 450-doc page loop —
+ * the reconciliation route only needs the COUNT, but it used to fetch ALL
+ * inside-vehicle documents unbounded (its sibling recalculate-cars-inside was
+ * already paginated for the same reason: 1k+ inside vehicles would blow the
+ * Worker's 128 MB cap / read budget).
+ */
+export async function countVehiclesInside(garageId: string): Promise<number> {
+  const PAGE_SIZE = 450;
+  let actualCount = 0;
+  let lastDoc: any = null;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    let query: any = adminDb.collection(`garages/${garageId}/vehicles`)
+      .where('status', '==', 'inside')
+      .orderBy('__name__')
+      .limit(PAGE_SIZE);
+    if (lastDoc) {
+      query = query.startAfter(lastDoc);
+    }
+    const pageSnap = await query.get();
+    actualCount += pageSnap.docs.length;
+    if (pageSnap.docs.length < PAGE_SIZE) break; // last page
+    lastDoc = pageSnap.docs[pageSnap.docs.length - 1];
+  }
+  return actualCount;
+}
+
 // Defensive read cap for the three day-scoped `garages/{garageId}/events` queries
 // (reconciliation, dashboard-summary rebuild, rebuild-projections). Day-bounding
 // already constrains volume, but this prevents a runaway garage (e.g. a faulty
@@ -45,8 +73,8 @@ app.post('/api/garages/reconciliation', requireWorkerAuth, async (c) => {
 
     const today = getCairoDateKey(new Date());
     const { start: dayStart, end: nextDayStart } = getCairoDayBounds(today);
-    const [insideSnap, dailyStatsSnap, eventsSnap] = await Promise.all([
-      adminDb.collection(`garages/${garageId}/vehicles`).where('status', '==', 'inside').get(),
+    const [insideCount, dailyStatsSnap, eventsSnap] = await Promise.all([
+      countVehiclesInside(garageId),
       adminDb.doc(`garages/${garageId}/daily_stats/${today}`).get(),
       adminDb.collection(`garages/${garageId}/events`)
         .where('occurredAt', '>=', dayStart.toISOString())
@@ -57,13 +85,16 @@ app.post('/api/garages/reconciliation', requireWorkerAuth, async (c) => {
     ]);
     const reconciliation = reconcileGarageState({
       today,
-      insideVehicleCount: insideSnap.size,
+      insideVehicleCount: insideCount,
       garage: garageSnap.data() || {},
       dailyStats: dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {},
       events: eventsSnap.docs.map((doc: any) => doc.data() || {})
     });
 
-    return c.json({ success: true, data: { garageId, date: today, ...reconciliation } });
+    // Audit fix (2026-11-21): a busy day (>500 events) silently computed
+    // reconciliation from a PARTIAL event set. The flag lets callers detect
+    // the truncation instead of trusting a wrong result.
+    return c.json({ success: true, data: { garageId, date: today, eventReadTruncated: eventsSnap.size >= DAY_SCOPED_EVENTS_READ_CAP, ...reconciliation } });
   } catch (err: any) {
     console.error('[Worker Garage] Error in reconciliation:', err);
     const { statusCode, message } = mapDomainErrorToStatus(err);
@@ -130,6 +161,8 @@ app.post('/api/garages/dashboard-summary/rebuild', requireWorkerAuth, async (c) 
         bucketCount: bucketSnap.size ?? bucketSnap.docs.length,
         eventCount: eventsSnap.size ?? eventsSnap.docs.length,
         consistentWithEvents: reconciliation.consistent,
+        // Audit fix (2026-11-21): surface silent event-read truncation.
+        eventReadTruncated: (eventsSnap.size ?? eventsSnap.docs.length) >= DAY_SCOPED_EVENTS_READ_CAP,
         legacyDifferences
       }
     });
@@ -182,7 +215,9 @@ app.post('/api/garages/rebuild-projections', requireWorkerAuth, async (c) => {
     };
 
     await projectionRef.set(projectionData, { merge: true });
-    return c.json({ success: true, data: { garageId, date: targetDate, projection: projectionData } });
+    // Audit fix (2026-11-21): surface silent event-read truncation — a
+    // rebuilt projection from a partial event set is silently wrong.
+    return c.json({ success: true, data: { garageId, date: targetDate, eventReadTruncated: eventsSnap.size >= DAY_SCOPED_EVENTS_READ_CAP, projection: projectionData } });
   } catch (err: any) {
     console.error('[Worker Garage] Error in rebuild-projections:', err);
     const { statusCode, message } = mapDomainErrorToStatus(err);
