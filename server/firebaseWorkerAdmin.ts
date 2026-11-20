@@ -85,7 +85,11 @@ async function getGoogleAccessToken(): Promise<string> {
   }
   const assertion = await signedJwt(
     { alg: 'RS256', typ: 'JWT' },
-    { iss: config.serviceAccount.client_email, scope: 'https://www.googleapis.com/auth/datastore', aud: config.serviceAccount.token_uri || 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 },
+    // Audit fix (2026-11-21): the token scope must ALSO cover the Identity
+    // Toolkit API — FirebaseAuthRest.deleteUser calls accounts:delete on
+    // identitytoolkit.googleapis.com, which rejects datastore-scoped tokens.
+    // One token with both scopes keeps the single cache valid for both APIs.
+    { iss: config.serviceAccount.client_email, scope: 'https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/identitytoolkit', aud: config.serviceAccount.token_uri || 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 },
     serviceAccountCryptoKey
   );
   const response = await fetch(config.serviceAccount.token_uri || 'https://oauth2.googleapis.com/token', {
@@ -246,6 +250,33 @@ class FirestoreRest {
     }
     throw new Error('FIRESTORE_TRANSACTION_RETRY_EXHAUSTED');
   }
+  /**
+   * Audit fix (2026-11-21): batch document reads. The admin credit-request
+   * list route calls adminDb.getAll(...) — with the real Admin SDK this
+   * exists, but the production REST client never implemented it, so the
+   * route threw TypeError (undefined is not a function) on EVERY page that
+   * had at least one pending request, and the UI swallowed it silently.
+   *
+   * Uses the Firestore REST `:batchGet` endpoint. Results are reordered to
+   * match the caller's reference order (the API may return them out of
+   * order and interleaves `missing` rows); missing documents become
+   * non-existing snapshots (exists: false, data(): undefined).
+   */
+  async getAll(...refs: DocumentReference[]): Promise<DocumentSnapshot[]> {
+    if (refs.length === 0) return [];
+    const names = refs.map((ref) => ref.name);
+    const response = await firestoreRequest(`${this.documentsRoot}:batchGet`, {
+      method: 'POST',
+      body: JSON.stringify({ documents: names })
+    });
+    if (!response.ok) throw new Error(`FIRESTORE_GET_FAILED:${response.status}`);
+    const rows = await response.json() as Array<{ found?: { name?: string }; missing?: string }>;
+    const foundByName = new Map<string, any>();
+    for (const row of rows) {
+      if (row?.found?.name) foundByName.set(String(row.found.name), row.found);
+    }
+    return refs.map((ref) => new DocumentSnapshot(foundByName.get(ref.name) || null));
+  }
   async getDocument(name: string, transaction?: string): Promise<any> {
     if (transaction) {
       const response = await firestoreRequest(`${this.documentsRoot}:batchGet`, { method: 'POST', body: JSON.stringify({ documents: [name], transaction }) });
@@ -289,16 +320,26 @@ class FirestoreRest {
         if (write.method === 'delete') return { delete: write.reference };
         const fields: JsonMap = {};
         const transforms: JsonMap[] = [];
+        // Audit fix (2026-11-21): FieldValue.delete() support. A delete-op
+        // value means "remove this field from the document". In the Firestore
+        // REST commit protocol that is expressed by listing the field path in
+        // the updateMask while OMITTING it from the written fields. Before
+        // this fix the route that clears a garage's per-garage credit price
+        // crashed (FieldValue.delete was undefined) — see
+        // creditGrantRoutes.ts /credit-rate clear:true.
+        const deletedFieldPaths: string[] = [];
         for (const [key, value] of Object.entries(write.data)) {
           if (value && typeof value === 'object' && (value as { __op?: string }).__op === 'increment') {
             transforms.push({ fieldPath: key, increment: encodeValue((value as { value?: unknown }).value || 0) });
+          } else if (value && typeof value === 'object' && (value as { __op?: string }).__op === 'delete') {
+            deletedFieldPaths.push(key);
           } else {
             fields[key] = encodeValue(value);
           }
         }
         const update: JsonMap = { name: write.reference, fields };
         const result: JsonMap = { update };
-        if (write.method === 'merge' || write.method === 'update') result.updateMask = { fieldPaths: Object.keys(fields) };
+        if (write.method === 'merge' || write.method === 'update') result.updateMask = { fieldPaths: [...Object.keys(fields), ...deletedFieldPaths] };
         if (write.method === 'update') result.currentDocument = { exists: true };
         if (transforms.length) result.updateTransforms = transforms;
         return result;
@@ -312,6 +353,25 @@ class FirestoreRest {
 
 class FirebaseAuthRest {
   constructor(public readonly projectId: string) {}
+  /**
+   * Audit fix (2026-11-21): delete a Firebase Auth user via the Identity
+   * Toolkit REST API. staffRoutes calls adminAuth.deleteUser(uid) when a
+   * staff member is removed; with the real Admin SDK this exists, but the
+   * production REST client only implemented verifyIdToken, so the call
+   * threw TypeError which the route's per-uid catch swallowed — deleted
+   * staff could keep a live Firebase Auth account forever. Requires the
+   * identitytoolkit scope on the service-account token (see
+   * getGoogleAccessToken).
+   */
+  async deleteUser(uid: string): Promise<void> {
+    const token = await getGoogleAccessToken();
+    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/projects/${this.projectId}/accounts:delete`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ localId: uid })
+    });
+    if (!response.ok) throw new Error(`FIREBASE_AUTH_DELETE_FAILED:${response.status}`);
+  }
   async verifyIdToken(token: string): Promise<any> {
     const parts = token.split('.');
     if (parts.length !== 3) throw new Error('INVALID_TOKEN');
@@ -356,7 +416,18 @@ async function getGoogleCerts(): Promise<Record<string, JsonMap>> {
   return keys;
 }
 
-export const FieldValue = { increment: (value: number) => ({ __op: 'increment', value }) };
+/**
+ * Sentinel field operations supported by the Worker REST client.
+ * `increment` → atomic server-side increment (updateTransforms).
+ * `delete`    → removes the field from the document (updateMask without a
+ *               written field — see FirestoreRest.write).
+ * The contract test (firebaseWorkerAdminContract.test.ts) fails if any
+ * route starts using a FieldValue op this client does not implement.
+ */
+export const FieldValue = {
+  increment: (value: number) => ({ __op: 'increment', value }),
+  delete: () => ({ __op: 'delete' })
+};
 
 export function initializeFirebaseAdmin(env?: WorkerEnv): void {
   const raw = env?.FIREBASE_SERVICE_ACCOUNT_JSON || env?.FIREBASE_SERVICE_ACCOUNT;
