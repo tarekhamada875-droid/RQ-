@@ -10,6 +10,7 @@ import {
 import { db } from '../../firebase';
 import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { safeDate, AR_DAY } from '../../utils/dates';
+import { getCairoDayBounds } from '../../../server/projections';
 import { useToast } from '../../hooks/toast';
 import type { ActivityLog, Garage } from '../../types';
 import { useModalA11y } from '../../hooks/useModalA11y';
@@ -38,16 +39,12 @@ const DAILY_REPORT_LOG_LIMIT = 200;
 const csvCache = new Map<string, { logs: ActivityLog[]; fetchedAt: number }>();
 const CSV_CACHE_MS = 5 * 60 * 1000;
 
-function getCairoDayBounds(dateId: string): { start: Date; end: Date } {
-  // dateId is YYYY-MM-DD already in Cairo timezone
-  const start = new Date(`${dateId}T00:00:00+02:00`);
-  const end = new Date(`${dateId}T23:59:59.999+02:00`);
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-    const now = new Date();
-    return { start: now, end: now };
-  }
-  return { start, end };
-}
+// Audit fix (2026-11-21): the local copy below hardcoded +02:00, which is
+// wrong during Egypt's daylight-saving period (+03:00, ~April–October) —
+// activity between 00:00 and 01:00 local fell outside the day window. The
+// shared Cairo helper resolves the real Africa/Cairo offset per date.
+// NOTE: the shared bounds return an EXCLUSIVE end (next day's 00:00); callers
+// must use `<` against the end timestamp.
 
 function escapeCsv(val: any): string {
   if (val === null || val === undefined) return '""';
@@ -202,7 +199,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
             collection(db, 'activity_logs'),
             where('garageId', '==', garage.id),
             where('timestamp', '>=', startTs),
-            where('timestamp', '<=', endTs),
+            where('timestamp', '<', endTs),
             orderBy('timestamp', 'desc'),
             limit(DAILY_REPORT_LOG_LIMIT)
           ));

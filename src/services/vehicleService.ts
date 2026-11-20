@@ -5,7 +5,7 @@ import { Vehicle } from '../types';
 import { listenerTracker } from '../utils/listenerTracker';
 import { apiFetch } from '../api/apiClient';
 import { safeDate } from '../utils/dates';
-import { getCairoDateKey } from '../../server/projections';
+import { getCairoDateKey, getCairoDayBounds } from '../../server/projections';
 import { generateIdempotencyKey } from '../types/apiContracts';
 
 const TODAY_ACTIVITY_LOG_LIMIT = 50;
@@ -64,9 +64,13 @@ function recordActivityLogQueryFailure(source: TodayActivityLogSource, error: un
 
 function getCairoDayStartTimestamp(date = new Date()): Date {
   try {
-    const cairoDateStr = getCairoDateKey(date);
-    const startOfDay = new Date(`${cairoDateStr}T00:00:00+02:00`);
-    return isNaN(startOfDay.getTime()) ? new Date(Date.now() - 24 * 3600 * 1000) : startOfDay;
+    // Audit fix (2026-11-21): this used to build the day start with a
+    // hardcoded +02:00 offset. Egypt observes daylight saving (+03:00, ~April
+    // to October), so during summer the window started at 01:00 local — cars
+    // checked out between 00:00 and 01:00 silently vanished from today's
+    // queries and reports. The shared Cairo helper resolves the real
+    // Africa/Cairo offset for the date (DST-safe).
+    return getCairoDayBounds(getCairoDateKey(date)).start;
   } catch {
     return new Date(Date.now() - 24 * 3600 * 1000);
   }
