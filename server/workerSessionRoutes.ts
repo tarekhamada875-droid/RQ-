@@ -276,6 +276,11 @@ workerApp.post('/api/admin/update-pin', async (c) => {
     const storedPin = await getAdminPin();
     if (!storedPin) return c.json({ success: false, error: 'ADMIN_PIN_NOT_CONFIGURED' }, 500);
     if (!verifyPinMatch(normalizedCurrentPin, storedPin).matches) return c.json({ success: false, error: 'CURRENT_PIN_INCORRECT' }, 400);
+    // Audit fix (2026-11-21): rate-limit the availability probe — the route
+    // answers "is this PIN taken anywhere" for arbitrary candidate PINs.
+    const clientIp = c.req.header('cf-connecting-ip') || 'unknown';
+    const probeLimit = await checkWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, c.get('user')?.uid || '', clientIp, normalizedNewPin);
+    if (probeLimit.allowed === false) return c.json({ success: false, error: 'RATE_LIMIT_EXCEEDED', resetAt: probeLimit.resetAt }, 429);
     const pinCheck = await checkPinAvailabilityAcrossAll(normalizedNewPin, 'auth_pin');
     if (pinCheck.taken) return c.json({ success: false, error: 'PIN_ALREADY_TAKEN', takenBy: { name: pinCheck.name || '', role: pinCheck.role } }, 400);
     await saveEntityPin('admin_settings', 'auth_pin', normalizedNewPin);

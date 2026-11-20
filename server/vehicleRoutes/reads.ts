@@ -30,6 +30,13 @@ app.get('/api/vehicles/inside', requireWorkerAuth, withErrorHandler(async (c) =>
 
   const snap = await adminDb.collection(`garages/${garageId}/vehicles`)
     .where('status', '==', 'inside')
+    // Audit fix (2026-11-21): unbounded read — fetched and sorted every
+    // inside-vehicle document on every call, getting slower and pricier
+    // every year. Newest 1000 is far beyond any realistic simultaneous
+    // occupancy; ordered so the cap drops the OLDEST entries, never the
+    // freshest.
+    .orderBy('entryTime', 'desc')
+    .limit(1000)
     .get();
 
   const vehicles = snap.docs
@@ -39,7 +46,8 @@ app.get('/api/vehicles/inside', requireWorkerAuth, withErrorHandler(async (c) =>
   return c.json({
     success: true,
     vehicles,
-    count: vehicles.length
+    count: vehicles.length,
+    truncated: snap.size >= 1000
   });
 }, 'Vehicle'));
 
