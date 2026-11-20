@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { adminDb, initializeFirebaseAdmin } from './firebaseAdmin';
+import { isGrowthCleanupWindow, runGrowthCleanupOncePerDay } from './growthCleanup';
 import { withTraceContext } from './operationTrace';
 import { buildFirestorePage, firestorePageStartAfter, parseFirestorePageRequest } from './firestorePagination';
 import { registerReadRoutes } from './readRoutes';
@@ -325,7 +326,7 @@ export { workerApp };
 // to keep an isolate recently exercised. Best-effort by nature: cron invocations
 // may run in a different PoP than user traffic and eviction is never fully
 // guaranteed off — this narrows the window, it cannot close it.
-export async function scheduled(_event: unknown, env: { WORKER_SELF_URL?: string }, ctx: { waitUntil: (p: Promise<unknown>) => void }) {
+export async function scheduled(_event: unknown, env: { WORKER_SELF_URL?: string }, ctx: { waitUntil: (p: Promise<unknown>) => void }, now: Date = new Date()) {
   const selfUrl = env?.WORKER_SELF_URL;
   if (!selfUrl) return;
   try {
@@ -337,6 +338,17 @@ export async function scheduled(_event: unknown, env: { WORKER_SELF_URL?: string
     );
   } catch {
     // Keep-warm is best-effort; never surface cron failures.
+  }
+  // Growth cleanup (audit 2026-11-21): idempotency_records and deactivated
+  // session_index docs were written forever. The helper self-gates to a
+  // once-a-day Cairo window and bounds its page count; failures must never
+  // surface from the cron.
+  if (isGrowthCleanupWindow(now)) {
+    try {
+      ctx.waitUntil(runGrowthCleanupOncePerDay(now).catch(() => undefined));
+    } catch {
+      // Cleanup is best-effort; never surface cron failures.
+    }
   }
 }
 
