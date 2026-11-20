@@ -62,7 +62,13 @@ const LS_KEY = 'rq_debug_recorder_v1';
 const LS_FLUSH_KEEP = 400;
 const LS_FLUSH_INTERVAL_MS = 30_000;
 const MAX_VALUE_STR = 64;
-const MAX_OBJECT_KEYS = 30;
+// BUMP (2026-11-20, owner debug audit follow-up): was 30, which truncated
+// the admin /api/garages list response exactly at the field where carsInside
+// appeared, making the debug file LIE about what was in the response. The
+// owner's Nov 20 debug file showed a garage missing carsInside — the actual
+// API response had it (verify-pin returned 67), the sanitizer just hid it.
+// 60 covers all current entity shapes with room for future fields.
+const MAX_OBJECT_KEYS = 60;
 const MAX_DEPTH = 4;
 const MAX_SAMPLE_ITEMS = 3;
 const MAX_BODY_STRING_FOR_PARSE = 64 * 1024;

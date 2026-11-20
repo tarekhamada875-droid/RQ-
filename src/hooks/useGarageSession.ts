@@ -85,6 +85,14 @@ export function useGarageSession({
   useEffect(() => {
     logDiagnostic('AUTH_LISTENER_MOUNTED');
     debugRecorder.authEvent('auth_listener_mounted');
+    // Timer is declared before onAuthStateChanged so the listener callback
+    // can clear it when Firebase actually responds — without that, the
+    // 4.5s fallback fires uselessly on every boot even when Firebase
+    // answered in <2s (the owner's debug files consistently showed
+    // auth_state_changed at boot+342ms then auth_timeout_fallback at
+    // boot+4838ms doing nothing useful — wasted timer slot + a confusing
+    // debug event that looks like a problem when it isn't).
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       logDiagnostic('ON_AUTH_STATE_CHANGED', {
         userPresent: Boolean(u),
@@ -98,8 +106,14 @@ export function useGarageSession({
       });
       setUser(u);
       setIsAuthReady(true);
+      // Firebase responded — the fallback safety net isn't needed. Clear
+      // the timer so auth_timeout_fallback never fires on a healthy boot.
+      if (timer) {
+        clearTimeout(timer);
+        timer = undefined;
+      }
     });
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
       logDiagnostic('AUTH_TIMEOUT_FALLBACK_TRIGGERED');
       debugRecorder.authEvent('auth_timeout_fallback', {
         hadUser: Boolean(auth.currentUser),
@@ -108,7 +122,7 @@ export function useGarageSession({
     }, 4500);
     return () => {
       unsubscribe();
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
     };
   }, []);
 
