@@ -134,7 +134,13 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
       // below (for vehicles deleted while still inside) is unrelated to
       // refunds — it restores the credit that was debited at check-in.
       let creditRestore: any = null;
-      if (typeof garageData.credits === 'number' && vehicleData.creditDebit && !vehicleData.creditRestoredAt) {
+      // Audit fix (2026-11-21): restore the check-in credit ONLY when the
+      // vehicle is still inside — i.e. the "wrong entry" correction case the
+      // comment below always described. The old condition had no status
+      // guard, so deleting an already checked-out vehicle (revenue recorded
+      // at check-out, refunds disabled by design) ALSO returned the credit —
+      // the garage kept the recorded revenue AND got the credit back.
+      if (vehicleData.status === 'inside' && typeof garageData.credits === 'number' && vehicleData.creditDebit && !vehicleData.creditRestoredAt) {
         const restoreResult = restoreCredits({
           balance: Number(garageData.credits ?? 0),
           amount: Number(vehicleData.creditDebit.amount),

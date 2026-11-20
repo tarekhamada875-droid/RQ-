@@ -20,7 +20,7 @@ describe('dashboard summary projections', () => {
   it('reports exact differences against the immutable event projection', () => {
     const summary = aggregateProjectionBuckets([{ activeVehicleCount: 1, entriesToday: 2, exitsToday: 1, grossRevenue: 50, refundTotal: 5, netRevenue: 45 }]);
     const reconciliation = reconcileDashboardSummary(summary, {
-      count: 2, exitsCount: 1, grossRevenue: 50, refundRevenue: 5, netRevenue: 45, revenue: 45
+      count: 2, exitsCount: 1, grossRevenue: 50, refundRevenue: 5, renewalRevenue: 0, netRevenue: 45, revenue: 45
     });
     expect(reconciliation.consistent).toBe(true);
     expect(reconciliation.differences).toEqual({ entriesToday: 0, exitsToday: 0, grossRevenue: 0, refundTotal: 0, netRevenue: 0 });

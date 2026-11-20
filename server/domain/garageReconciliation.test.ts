@@ -30,6 +30,7 @@ describe('garage state reconciliation reducer', () => {
         todayRefunds: 1,
         eventGrossRevenue: 100,
         eventRefundRevenue: 25,
+        eventRenewalRevenue: 0,
         eventDerivedRevenue: 75
       },
       differences: { carsInside: 0, todayCount: 0, todayRevenue: 0 },
@@ -41,6 +42,29 @@ describe('garage state reconciliation reducer', () => {
       isConsistent: true
     });
     expect(input).toEqual(before);
+  });
+
+  it('stays consistent on a day that mixes parking revenue with subscriber renewal income', () => {
+    // Audit regression (2026-11-21): renewal revenue used to be written to the
+    // garage doc and daily_stats but NOT carried by the event ledger — the
+    // event-ledger check flagged a phantom mismatch on any renewal day.
+    const result = reconcileGarageState({
+      today: '2026-09-24',
+      insideVehicleCount: 1,
+      garage: { carsInside: 1, lastTransactionDate: '2026-09-24', todayCount: 1, todayRevenue: 76 },
+      dailyStats: { count: 1, revenue: 76, exitsCount: 1 },
+      events: [
+        { occurredAt: '2026-09-24T08:00:00.000Z', eventType: 'vehicle_entered' },
+        { occurredAt: '2026-09-24T09:00:00.000Z', eventType: 'vehicle_exited', payload: { cost: 75 } },
+        { occurredAt: '2026-09-24T10:00:00.000Z', eventType: 'subscriber_renewed', payload: { creditAmount: 1 } }
+      ]
+    });
+
+    expect(result.eventLedgerSummary.eventRenewalRevenue).toBe(1);
+    expect(result.eventLedgerSummary.eventDerivedRevenue).toBe(76);
+    expect(result.dailyStatsConsistent).toBe(true);
+    expect(result.eventLedgerConsistent).toBe(true);
+    expect(result.overallConsistent).toBe(true);
   });
 
   it('ignores daily counters on the garage document when the last transaction was on another day', () => {
@@ -141,7 +165,8 @@ describe('garage state reconciliation reducer', () => {
       todayRefunds: 2,
       eventGrossRevenue: 10,
       eventRefundRevenue: 3,
-      eventDerivedRevenue: 7
+      eventDerivedRevenue: 7,
+      eventRenewalRevenue: 0
     });
     expect([
       result.expected.todayRevenue,

@@ -8,6 +8,7 @@ import { decideDelegateCommission, COMMISSION_AMOUNT_EGP } from './domain/delega
 import { CREDIT_AMOUNT_MAX_EGP, CREDIT_AMOUNT_MIN_EGP } from './domain/limits';
 import { parseMoneyAmount } from './money';
 import { withAdmin, withErrorHandler } from './routes/combinators';
+import { writeMaintainedAdminDelta } from './workerMaintenance';
 
 
 /**
@@ -55,6 +56,11 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
     }
 
     // One pending request per garage at a time.
+    // Fast pre-check — covers legacy requests created before the transactional
+    // lock below existed. The AUTHORITATIVE check is the lock document inside
+    // the transaction: without it, two concurrent creates both saw "no pending
+    // request" and both committed, and the admin could approve both — a double
+    // credit grant (audit 2026-11-21).
     const existingSnap = await adminDb
       .collection('credit_requests')
       .where('garageId', '==', validatedGarageId)
@@ -67,15 +73,34 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
 
     const now = new Date();
     const requestRef = adminDb.collection('credit_requests').doc();
-    await requestRef.set({
-      garageId: validatedGarageId,
-      garageName: garage.name || '',
-      delegateId,
-      delegateName: user.displayName || '',
-      amount,
-      status: 'pending',
-      createdAt: now,
+    // Lock document, one per garage. Created and released inside transactions
+    // so concurrent creates collide on the commit (409 → retry → lock seen).
+    const lockRef = adminDb.doc(`credit_request_locks/${validatedGarageId}`);
+    let lockAcquired = true;
+    await adminDb.runTransaction(async (t: any) => {
+      const lockSnap = await t.get(lockRef);
+      if (lockSnap.exists) {
+        lockAcquired = false;
+        return;
+      }
+      t.set(lockRef, {
+        garageId: validatedGarageId,
+        requestId: requestRef.id,
+        createdAt: now
+      });
+      t.set(requestRef, {
+        garageId: validatedGarageId,
+        garageName: garage.name || '',
+        delegateId,
+        delegateName: user.displayName || '',
+        amount,
+        status: 'pending',
+        createdAt: now,
+      });
     });
+    if (!lockAcquired) {
+      return c.json({ success: false, error: 'PENDING_REQUEST_EXISTS' }, 409);
+    }
 
     return c.json({ success: true, id: requestRef.id });
   }, 'CreditRequest'));
@@ -258,7 +283,11 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
         nextUnsettledCommission = parseMoneyAmount(currentUnsettled + COMMISSION_AMOUNT_EGP);
       }
 
-      // ── Write everything ─────────────────────────────────────────────
+      // ── Write everything ─────────────────────────────────────
+      // Audit fix (2026-11-21): approval revenue now feeds the O(1) admin
+      // summary exactly like the direct-grant path (writeMaintainedAdminDelta
+      // below) — previously the two grant paths diverged and the admin
+      // summary undercounted every request-approved payment.
       const currentAdminRevenue = Number(garage.totalAdminRevenue || 0);
       t.set(garageRef, {
         credits: transition.value.balance,
@@ -307,6 +336,14 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
         reviewedBy: callerUid
       });
 
+      // Release the one-pending-request lock so the garage can request again
+      // (audit 2026-11-21). Deleting a missing legacy lock is a no-op.
+      t.delete(adminDb.doc(`credit_request_locks/${requestData.garageId}`));
+
+      // O(1) admin-summary delta — must mirror the direct-grant path
+      // (creditGrantRoutes.ts) or the summary undercounts (audit 2026-11-21).
+      writeMaintainedAdminDelta(t, { totalAdminRevenue: paymentAmountEgp });
+
       // Write an activity_log entry so the garage-side recharge
       // notification (subscribeToGarageRechargeLogs) picks this up.
       // Mirrors the direct-grant path in /api/garages/:id/credit-grants.
@@ -342,7 +379,7 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
         creditsGranted: amount,
         paymentAmountEgp,
         commissionGranted: isCommissionDue,
-        commissionAmount: isCommissionDue ? 100 : 0
+        commissionAmount: isCommissionDue ? COMMISSION_AMOUNT_EGP : 0
       };
     });
 
@@ -366,10 +403,20 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
       return c.json({ success: false, error: 'CREDIT_REQUEST_ALREADY_PROCESSED' }, 409);
     }
 
-    await requestRef.update({
-      status: 'rejected',
-      reviewedAt: now,
-      reviewedBy: callerUid
+    // Transactional so the status flip and the lock release commit together
+    // (audit 2026-11-21): a crash between them would leave a stale lock that
+    // blocks the garage from ever requesting credits again.
+    await adminDb.runTransaction(async (t: any) => {
+      const freshSnap = await t.get(requestRef);
+      if (!freshSnap.exists) throw new Error('CREDIT_REQUEST_NOT_FOUND');
+      const freshData = freshSnap.data() || {};
+      if (freshData.status !== 'pending') throw new Error('CREDIT_REQUEST_ALREADY_PROCESSED');
+      t.update(requestRef, {
+        status: 'rejected',
+        reviewedAt: now,
+        reviewedBy: callerUid
+      });
+      t.delete(adminDb.doc(`credit_request_locks/${String(freshData.garageId || requestData.garageId || '')}`));
     });
 
     return c.json({ success: true });

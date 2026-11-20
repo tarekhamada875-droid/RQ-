@@ -19,7 +19,7 @@ import { roundCreditRateForStorage } from './domain/creditRateStorage';
 import { recordDomainEventInTransaction } from './events';
 import { mapDomainErrorToStatus } from './routes/helpers';
 import { withAdmin, withErrorHandler } from './routes/combinators';
-import { parseMoneyAmount } from './money';
+import { parseMoneyAmount, addMoneyRounded } from './money';
 import { parseFirestorePageRequest, firestorePageStartAfter, buildFirestorePage } from './firestorePagination';
 import { writeMaintainedAdminDelta } from './workerMaintenance';
 
@@ -246,8 +246,9 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, withAdmin(async (c
         referralAward = { garageId: referrerGarageId, amount: 10, entryId: referralLedger.entryId };
       }
       const now = new Date();
-      const currentAdminRevenue = Number(garage.totalAdminRevenue || 0);
-      const newAdminRevenue = currentAdminRevenue + paymentAmountEgp;
+      // Audit fix (2026-11-21): cent-rounded accumulation — raw float adds
+      // drift by fractions of a cent over years of grants.
+      const newAdminRevenue = addMoneyRounded(garage.totalAdminRevenue, paymentAmountEgp);
       t.set(garageRef, {
         credits: transition.value.balance,
         totalAdminRevenue: newAdminRevenue,

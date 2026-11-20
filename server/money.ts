@@ -81,3 +81,22 @@ export function addSignedMoney(total: number, value: unknown): number {
   if (!Number.isSafeInteger(nextCents)) return totalCents / CENTS_PER_UNIT;
   return nextCents / CENTS_PER_UNIT;
 }
+
+/**
+ * Audit fix (2026-11-21): cent-rounded addition for stored aggregate counters
+ * (garage.totalRevenue / todayRevenue, daily_stats.revenue). Unlike addMoney
+ * — strict, for validated event payloads — this variant NEVER rejects or
+ * zeroes a legacy counter: float representation error accumulated over years
+ * of raw two-decimal additions (e.g. 1234.5600000000002) is re-anchored to
+ * the nearest cent on every write instead of failing parseMoneyCents'
+ * tolerance and silently resetting the total to 0. Each new addition is
+ * exact to the cent, so drift stops accumulating.
+ */
+export function addMoneyRounded(total: unknown, value: unknown): number {
+  const toCents = (input: unknown): number => {
+    const amount = Number(input);
+    if (!Number.isFinite(amount)) return 0;
+    return Math.round(amount * CENTS_PER_UNIT);
+  };
+  return (toCents(total) + toCents(value)) / CENTS_PER_UNIT;
+}

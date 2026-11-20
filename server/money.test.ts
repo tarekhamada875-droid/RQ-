@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addMoney, addSignedMoney, parseMoneyAmount, parseMoneyCents, parseSignedMoneyAmount } from './money';
+import { addMoney, addMoneyRounded, addSignedMoney, parseMoneyAmount, parseMoneyCents, parseSignedMoneyAmount } from './money';
 
 describe('money amount validation', () => {
   it('normalizes valid numeric and legacy numeric-string amounts to cents', () => {
@@ -47,5 +47,17 @@ describe('money amount validation', () => {
     expect(addSignedMoney(-10, 3.25)).toBe(-6.75);
     expect(addSignedMoney(-10, Number.NaN)).toBe(-10);
     expect(addSignedMoney(1.25, 1.234)).toBe(1.25);
+  });
+
+  it('addMoneyRounded re-anchors legacy drifted counters to the cent instead of zeroing them', () => {
+    // Years of raw float additions leave representation error that the strict
+    // parser rejects (addMoney would zero the total). The rounded variant
+    // re-anchors to the nearest cent on every write.
+    const drifted = 0.1 + 0.2 + 1234.25; // legacy accumulated total
+    expect(addMoneyRounded(drifted, 5)).toBe(1239.55);
+    expect(addMoneyRounded(Number.NaN, 5)).toBe(5);
+    expect(addMoneyRounded('12.30', 0.7)).toBe(13);
+    expect(addMoneyRounded(100, Number.NaN)).toBe(100);
+    expect(addMoneyRounded(undefined, 1.01)).toBe(1.01);
   });
 });

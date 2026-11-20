@@ -9,9 +9,11 @@ import { canManageGarageScopedData as decideGarageScope } from './domain/authori
 import { decideSubscriberAdd, decideSubscriberDelete, decideSubscriberRenew, decideSubscriberUpdate } from './domain/subscriberLifecycle';
 import { debitSubscriberRenewal, materializeCreditLedgerEntry } from './domain/prepaidCreditLedger';
 import { addRequestToCommand, lifecycleErrorToLegacyError, subscriberDocumentToState, transitionToFirestoreUpdate, updateRequestToCommand } from './adapters/subscriberLifecycleAdapter';
-import { maintainedGarageSummaryRef, writeMaintainedGarageDelta, writeMaintainedSubscriberDelta } from './workerMaintenance';
+import { maintainedGarageSummaryRef, writeMaintainedGarageDailyDelta, writeMaintainedGarageDelta, writeMaintainedSubscriberDelta } from './workerMaintenance';
 import { lookupSubscriber, safeDateMillis } from './workerReadHelpers';
 import { getCairoDateKey } from './projections';
+import { addMoneyRounded } from './money';
+import { emptyDailyReportAggregate } from './reportAggregate';
 
 function subscriberActivityDelta(before: any, after: any): { activeSubscribersCount: number; expiredSubscribersCount: number; activeSubscribers: number; expiredSubscribers: number } {
   const classify = (value: any) => {
@@ -195,14 +197,40 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
         t.set(adminDb.doc(`credit_ledger/${materialized.value.entryId}`), materialized.value);
         // Subscriber renewal = 1 credit (same as regular check-in).
         // This is SEPARATE from admin revenue (which is the credits the admin sold to the garage).
+        // Audit fix (2026-11-21): cent-rounded accumulation on stored counters.
         const todayKey = getCairoDateKey(new Date());
         const isNewRevenueDay = garageData.lastTransactionDate !== todayKey;
         t.set(garageRef, {
           credits: creditDebit.balance,
-          totalRevenue: (garageData.totalRevenue || 0) + creditDebit.entry.amount,
-          todayRevenue: isNewRevenueDay ? creditDebit.entry.amount : (garageData.todayRevenue || 0) + creditDebit.entry.amount,
+          totalRevenue: addMoneyRounded(garageData.totalRevenue, creditDebit.entry.amount),
+          todayRevenue: isNewRevenueDay ? creditDebit.entry.amount : addMoneyRounded(garageData.todayRevenue, creditDebit.entry.amount),
           lastTransactionDate: todayKey
         }, { merge: true });
+
+        // Audit fix (2026-11-21): renewal income used to be written ONLY to
+        // the garage doc — daily_stats, the maintained daily summary (what the
+        // dashboard actually reads) and the event ledger all disagreed with
+        // it, so reports contradicted each other after any renewal. All four
+        // copies are now written in this transaction; the event payload below
+        // carries creditAmount so the event-derived engines count it too.
+        const dailyStatsRef = adminDb.doc(`garages/${validatedGarageId}/daily_stats/${todayKey}`);
+        const dailyStatsSnap = await t.get(dailyStatsRef);
+        if (!dailyStatsSnap.exists) {
+          t.set(dailyStatsRef, {
+            dateId: todayKey,
+            count: 0,
+            revenue: creditDebit.entry.amount,
+            reportAggregateVersion: 1,
+            report: emptyDailyReportAggregate(),
+            createdAt: new Date()
+          });
+        } else {
+          const dailyStatsData = dailyStatsSnap.data() || {};
+          t.set(dailyStatsRef, {
+            revenue: addMoneyRounded(dailyStatsData.revenue, creditDebit.entry.amount)
+          }, { merge: true });
+        }
+        writeMaintainedGarageDailyDelta(t, validatedGarageId, todayKey, { todayRevenue: creditDebit.entry.amount });
       }
       const activityDelta = subscriberActivityDelta(currentSnap.data() || {}, { ...currentSnap.data(), ...dates });
       writeMaintainedGarageDelta(t, validatedGarageId, {
@@ -231,6 +259,7 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
           ...(creditDebit ? {
             creditAmount: creditDebit.entry.amount,
             creditLedgerEntryId: creditDebit.entry.entryId,
+            cost: creditDebit.entry.amount,
           } : {})
         }
       });
