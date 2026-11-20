@@ -5,7 +5,8 @@ import {
   X,
   Sliders,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  RefreshCw
 } from 'lucide-react';
 
 interface AdminHeaderProps {
@@ -14,6 +15,7 @@ interface AdminHeaderProps {
   showMenu: boolean;
   setShowMenu: (show: boolean) => void;
   onOpenAppearanceSettings: () => void;
+  onOpenConfigSync: () => void;
   onLogout: () => void;
   menuRef: React.RefObject<HTMLDivElement>;
 }
@@ -24,6 +26,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   showMenu,
   setShowMenu,
   onOpenAppearanceSettings,
+  onOpenConfigSync,
   onLogout,
   menuRef,
 }) => {
@@ -130,6 +133,28 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                           <Sliders className="w-4 h-4 text-amber-400 dark:text-slate-950" />
                         </div>
                         <span className="font-bold text-sm text-slate-800 dark:text-slate-200">{'إعدادات المظهر'}</span>
+                      </div>
+                    </button>
+
+                    {/* System Config Sync (perf plan 2026-11-21): opens the
+                        manual cache-sync page FULLSCREEN over the dashboard —
+                        same activation pattern as the garage dashboard's
+                        reports page (corner menu → drawer → page). The card
+                        inside the Settings tab was removed; this drawer entry
+                        is the single path to the page now. */}
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setShowMenu(false);
+                        onOpenConfigSync();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 outline-none cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-sky-600 text-white flex items-center justify-center shrink-0 ">
+                          <RefreshCw className="w-4 h-4" />
+                        </div>
+                        <span className="font-bold text-sm text-slate-800 dark:text-slate-200">{'مزامنة إعدادات النظام'}</span>
                       </div>
                     </button>
                   </div>
