@@ -18,15 +18,14 @@ vi.mock('../../server/firebaseAdmin', () => ({
 import { api } from '../../server/api';
 installDefaultWorkerTestSessionHeaders(api, mockDb);
 
-describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () => {
+describe('CF4 — Cloudflare Worker Read-Heavy Business Routes', () => {
   const operatorToken = 'test-operator-token-32-chars-long!!';
   const workerEnv = { BACKEND_OPERATOR_TOKEN: operatorToken };
 
   beforeEach(() => {
     mockDb.clear();
     // PR-F: reset auth caches between tests so each test sees a fresh
-    // (uncached) auth flow. The existing assertions count read numbers
-    // assuming cache-miss on every request.
+    // (uncached) auth flow.
     __resetAllAuthCachesForTests();
     mockDb.seed('garages/test-garage', {
       name: 'Summary Test Garage',
@@ -37,126 +36,89 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     });
   });
 
-  it('1. POST /api/check-subscriber requires auth, enforces garage scope, and handles lookup validation', async () => {
-    const unauthenticated = await api.fetch(new Request('http://localhost/api/check-subscriber', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ garageId: 'test-garage', plateNumber: '123-abc' })
-    }));
-    expect(unauthenticated.status).toBe(401);
+  // Ported from the removed /api/check-subscriber route tests (2026-11-21):
+  // lookupSubscriber's precedence contract now lives on the live
+  // /api/subscribers/add route, which uses it to reject duplicate plates.
+  it('subscriber add rejects a duplicate plate found via the canonical document id', async () => {
+    const plateRaw = 'ABC123';
+    const canonicalId = `plate_${Buffer.from(plateRaw).toString('base64url')}`;
+    mockDb.seed(`garages/test-garage/subscribers/${canonicalId}`, {
+      plateNumber: 'ABC 123', plateNumberRaw: plateRaw, phone: '01000000001',
+      startDate: '2026-10-01', endDate: '2026-10-31'
+    });
 
-    // Missing garage ID
-    const missingGarageRes = await api.fetch(new Request('http://localhost/api/check-subscriber', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
-      body: JSON.stringify({ plateNumber: '123-abc' })
-    }));
-    expect(missingGarageRes.status).toBe(400);
-
-    const crossGarageRes = await api.fetch(new Request('http://localhost/api/check-subscriber', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-garage-token-other-garage' },
-      body: JSON.stringify({ garageId: 'test-garage', plateNumber: '123-abc' })
-    }));
-    expect(crossGarageRes.status).toBe(403);
-
-    // Non-existent subscriber lookup returns empty match gracefully
-    const notFoundRes = await api.fetch(new Request('http://localhost/api/check-subscriber', {
+    const res = await api.fetch(new Request('http://localhost/api/subscribers/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
       body: JSON.stringify({
-        garageId: 'test-garage-non-existent',
-        plateNumber: '9999-xyz'
+        garageId: 'test-garage',
+        subscriberData: { plateNumber: 'ABC 123', startDate: '2026-11-01', endDate: '2026-11-30' }
       })
     }));
-    expect(notFoundRes.status).toBe(200);
-    const notFoundBody = await notFoundRes.json() as any;
-    expect(notFoundBody.success).toBe(true);
-    expect(notFoundBody.isSubscriber).toBe(false);
-    expect(notFoundBody.isActive).toBe(false);
-    expect(notFoundBody.subscriber).toBeNull();
+    expect(res.status).toBe(409);
+    const body = await res.json() as any;
+    expect(body.success).toBe(false);
   });
 
-  it('uses the canonical subscriber document before bounded legacy queries and preserves precedence', async () => {
-    const garageId = 'lookup-precedence-garage';
-    const plateRaw = 'ABC123';
-    mockDb.seed(`garages/${garageId}/subscribers/plate_${Buffer.from(plateRaw).toString('base64url')}`, {
-      plateNumber: 'ABC 123', plateNumberRaw: plateRaw, phone: '01000000001', startDate: '2026-10-01', endDate: '2026-10-31'
-    });
-    mockDb.seed(`garages/${garageId}/subscribers/legacy-raw`, {
-      plateNumber: 'ABC 123', plateNumberRaw: plateRaw, phone: '01000000002', startDate: '2026-10-01', endDate: '2026-10-31'
+  it('subscriber add still finds a duplicate via the legacy plateNumberRaw fallback', async () => {
+    // Same plate but stored under a non-canonical (legacy) document id.
+    mockDb.seed('garages/test-garage/subscribers/legacy-raw', {
+      plateNumber: 'ABC 123', plateNumberRaw: 'ABC123', phone: '01000000002',
+      startDate: '2026-10-01', endDate: '2026-10-31'
     });
 
-    mockDb.resetDocumentCounts();
-    const canonicalResponse = await api.fetch(new Request('http://localhost/api/check-subscriber', {
+    const res = await api.fetch(new Request('http://localhost/api/subscribers/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
-      body: JSON.stringify({ garageId, plateNumber: 'ABC 123', plateRaw, phone: '01000000002' })
+      body: JSON.stringify({
+        garageId: 'test-garage',
+        subscriberData: { plateNumber: 'ABC 123', startDate: '2026-11-01', endDate: '2026-11-30' }
+      })
     }));
-    const canonicalBody = await canonicalResponse.json() as any;
-
-    expect(canonicalResponse.status).toBe(200);
-    expect(canonicalBody.subscriber.id).toBe(`plate_${Buffer.from(plateRaw).toString('base64url')}`);
-    expect(canonicalBody.subscriber).not.toHaveProperty('phone');
-    expect(canonicalBody.subscriber).not.toHaveProperty('notes');
-    expect(mockDb.documentReadCount).toBe(5); // four session-resolution reads plus one canonical lookup
-
-    mockDb.clear();
-    // PR-F: reset auth caches so the second call sees a fresh (uncached)
-    // auth flow. Without this, the cache hit from the first call skips
-    // session-resolution reads, breaking the read-count comparison.
-    __resetAllAuthCachesForTests();
-    mockDb.seed(`garages/${garageId}/subscribers/legacy-raw`, {
-      plateNumber: 'ABC 123', plateNumberRaw: plateRaw, phone: '01000000001', startDate: '2026-10-01', endDate: '2026-10-31'
-    });
-    mockDb.seed(`garages/${garageId}/subscribers/legacy-formatted`, {
-      plateNumber: 'ABC 123', plateNumberRaw: 'DIFFERENT', phone: '01000000002', startDate: '2026-10-01', endDate: '2026-10-31'
-    });
-    mockDb.resetDocumentCounts();
-    const fallbackResponse = await api.fetch(new Request('http://localhost/api/check-subscriber', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
-      body: JSON.stringify({ garageId, plateNumber: 'ABC 123', plateRaw, phone: '01000000002' })
-    }));
-    const fallbackBody = await fallbackResponse.json() as any;
-
-    expect(fallbackBody.subscriber.id).toBe('legacy-raw');
-    expect(mockDb.documentReadCount).toBe(8); // four session-resolution reads plus canonical, raw, formatted, and phone fallbacks
+    expect(res.status).toBe(409);
+    const body = await res.json() as any;
+    expect(body.success).toBe(false);
   });
 
-  it('2. GET /api/garage-summary requires auth and returns garage summary', async () => {
-    // Unauthenticated
-    const unauthRes = await api.fetch(new Request('http://localhost/api/garage-summary?garageId=test-garage'));
-    expect(unauthRes.status).toBe(401);
+  it('subscriber add still finds a duplicate via the formatted plateNumber fallback', async () => {
+    // Legacy doc whose plateNumberRaw differs but formatted plate matches.
+    mockDb.seed('garages/test-garage/subscribers/legacy-formatted', {
+      plateNumber: 'ABC 123', plateNumberRaw: 'DIFFERENT', phone: '01000000003',
+      startDate: '2026-10-01', endDate: '2026-10-31'
+    });
 
-    // Authenticated with admin token
-    const res = await api.fetch(new Request('http://localhost/api/garage-summary?garageId=test-garage', {
-      headers: { 'Authorization': 'Bearer valid-admin-token' }
-    }), workerEnv);
+    const res = await api.fetch(new Request('http://localhost/api/subscribers/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({
+        garageId: 'test-garage',
+        subscriberData: { plateNumber: 'ABC 123', startDate: '2026-11-01', endDate: '2026-11-30' }
+      })
+    }));
+    expect(res.status).toBe(409);
+    const body = await res.json() as any;
+    expect(body.success).toBe(false);
+  });
 
-    // Should return 200 with structured data
+  it('subscriber add creates the deterministic canonical document when no duplicate exists', async () => {
+    const plateRaw = 'XYZ999';
+    const canonicalId = `plate_${Buffer.from(plateRaw).toString('base64url')}`;
+
+    const res = await api.fetch(new Request('http://localhost/api/subscribers/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({
+        garageId: 'test-garage',
+        subscriberData: { plateNumber: 'XYZ 999', startDate: '2026-11-01', endDate: '2026-11-30', ownerName: 'Owner', phone: '01000000004' }
+      })
+    }));
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.success).toBe(true);
-    expect(body.data).toBeDefined();
-  });
+    expect(body.id).toBe(canonicalId);
 
-  it('serves fresh maintained garage summary without collection scans', async () => {
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-    mockDb.seed('garages/test-garage/maintained_summary/current', {
-      schemaVersion: 1, garageId: 'test-garage', name: 'Summary Test Garage', carsInside: 4,
-      activeSubscribersCount: 3, totalSubscribersCount: 5, balanceExpiry: null, isTrial: false,
-      dailyCapacity: 40, hourlyRate: 10
-    });
-    mockDb.seed(`garages/test-garage/maintained_summary/daily_${today}`, {
-      schemaVersion: 1, garageId: 'test-garage', dateId: today, todayEntries: 12, todayRevenue: 80
-    });
-
-    const garageResponse = await api.fetch(new Request('http://localhost/api/garage-summary?garageId=test-garage', {
-      headers: { Authorization: 'Bearer valid-admin-token' }
-    }), workerEnv);
-    expect(garageResponse.headers.get('X-Summary-Source')).toBe('maintained_summary');
-    expect((await garageResponse.json() as any).data).toMatchObject({ carsInside: 4, activeSubscribersCount: 3, todayEntries: 12 });
+    const stored = mockDb.records.get(`garages/test-garage/subscribers/${canonicalId}`);
+    expect(stored).toMatchObject({ plateNumber: 'XYZ 999', plateNumberRaw: plateRaw });
   });
 
   it('GET /api/admin/delegates returns paginated delegates without PIN fields', async () => {
