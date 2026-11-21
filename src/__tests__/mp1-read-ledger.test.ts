@@ -24,7 +24,7 @@
  *
  * Five flows measured:
  *   1. Session open — auth + session claim
- *   2. Garage dashboard open — garage-summary + dashboard-summary + vehicles/inside + activity
+ *   2. Garage dashboard open — dashboard-summary + vehicles/inside + activity
  *   3. Full check-in → check-out cycle — vehicle in + cost calculation + vehicle out
  *   4. Delegate dashboard poll — /api/delegates/dashboard (with PR-D piggyback)
  *   5. One admin view — /api/admin/delegates + admin garage page
@@ -70,37 +70,49 @@ const STAFF_PER_GARAGE = 3;
 const SUBSCRIBERS_PER_GARAGE = 4;
 const TODAY_ACTIVITY_PER_GARAGE = 8; // check-outs so far today (small garage)
 
-// ── Modeled read counts (calibrated post-PR-F via MP-2 measurement) ────
-// These numbers were measured by the harness itself on post-PR-F main
-// (HEAD 2a3ce74) with cold auth caches per flow. They represent the
-// actual per-flow read counts for the founding shape (15 garages, 4
-// delegates, 5 vehicles/garage, 3 staff/garage, 4 subscribers/garage,
-// 8 today-activity/garage).
+// ── Modeled read counts (recalibrated 2026-11-21) ──────────────────────
+// These numbers were measured by the harness itself with cold auth caches
+// per flow. They represent the actual per-flow read counts for the founding
+// shape (15 garages, 4 delegates, 5 vehicles/garage, 3 staff/garage,
+// 4 subscribers/garage, 8 today-activity/garage).
+//
+// 2026-11-21 recalibration (dead-read-routes cleanup): the legacy
+// /api/garage-summary route was removed — nothing in the app called it.
+// Flows 1-2 now simulate the real fan-out (dashboard-summary etc.), which
+// reads fewer docs; admin-view also drifted on main since post-PR-F
+// (42 vs 27, code changes since HEAD 2a3ce74) and is re-pinned here.
 //
 // Future runs will show divergence > 20% ONLY if:
 //   - A code change alters the read path (new query, removed doc, etc.)
 //   - The seed shape changes (more/fewer docs per garage)
 //   - The auth cache behavior changes
 //
+// Post-PR-F numbers (preserved for reference):
+//   sessionOpen: 17 (Flow 1 then proxied the removed garage-summary route)
+//   garageDashboardOpen: 39 (fan-out then included garage-summary)
+//   checkInOutCycle: 10 (unchanged today)
+//   delegateDashboardPoll_piggyback: 6 (unchanged today)
+//   delegateDashboardPoll_noPiggyback: 7 (unchanged today)
+//   adminView: 27 (drifted to 42 on main before this recalibration)
+//
 // Pre-PR-F estimates (preserved as comments for reference):
-//   sessionOpen: 4 (underestimated; actual 17 — the indexed session
+//   sessionOpen: 4 (underestimated; the indexed session
 //     path misses for synthetic tokens, falling through to the legacy
 //     4-role probe path)
-//   garageDashboardOpen: 53 (overestimated; actual 39 — 4 parallel
+//   garageDashboardOpen: 53 (overestimated — parallel
 //     endpoints share some reads via the mock's in-memory state)
-//   checkInOutCycle: 10 (matched exactly)
-//   delegateDashboardPoll_piggyback: 10 (overestimated; actual 6 —
+//   delegateDashboardPoll_piggyback: 10 (overestimated —
 //     small delegate has 3 created + 1 referred, not 5+5)
-//   delegateDashboardPoll_noPiggyback: 11 (overestimated; actual 7)
-//   adminView: 104 (overestimated; actual 27 — admin-delegates returns
+//   delegateDashboardPoll_noPiggyback: 11 (overestimated)
+//   adminView: 104 (overestimated — admin-delegates returns
 //     0 docs in the seed shape; admin-garages returns all 15 in 1 page)
 const MODEL = {
-  sessionOpen: 17,
-  garageDashboardOpen: 39,
+  sessionOpen: 8,
+  garageDashboardOpen: 22,
   checkInOutCycle: 10,
   delegateDashboardPoll_piggyback: 6,
   delegateDashboardPoll_noPiggyback: 7,
-  adminView: 27,
+  adminView: 42,
 } as const;
 
 const DIVERGENCE_WARN_PCT = 0.20; // 20% per supervisor instruction
@@ -318,7 +330,10 @@ describe('MP-1 read-ledger harness — founding-shape per-flow read counts', () 
       const result = await measureFlow('session-open', MODEL.sessionOpen, async () => {
         // A typical session-open hits the Worker's session-resolution path.
         // The Worker reads the session doc + entity doc during auth.
-        await api.fetch(new Request('http://localhost/api/garage-summary?garageId=g1', {
+        // (2026-11-21: the legacy /api/garage-summary proxy was removed —
+        // the app never called it. dashboard-summary triggers the same
+        // auth path.)
+        await api.fetch(new Request('http://localhost/api/garages/g1/dashboard-summary', {
           headers: { Authorization: 'Bearer valid-garage-token-g1' },
         }));
       });
@@ -333,17 +348,16 @@ describe('MP-1 read-ledger harness — founding-shape per-flow read counts', () 
     }
   });
 
-  it('Flow 2 — garage dashboard open (4 read endpoints)', async () => {
+  it('Flow 2 — garage dashboard open (3 read endpoints)', async () => {
     suppressConsole();
     try {
       const result = await measureFlow('garage-dashboard-open', MODEL.garageDashboardOpen, async () => {
-        // Simulate the dashboard initial-load fan-out: garage-summary,
-        // dashboard-summary, vehicles/inside, vehicle history.
+        // Simulate the dashboard initial-load fan-out: dashboard-summary,
+        // vehicles/inside, vehicle history. (2026-11-21: garage-summary was
+        // removed from this fan-out — the app never called it; the real
+        // fan-out is these three endpoints.)
         const garageToken = 'Bearer valid-garage-token-g1';
         await Promise.all([
-          api.fetch(new Request('http://localhost/api/garage-summary?garageId=g1', {
-            headers: { Authorization: garageToken },
-          })),
           api.fetch(new Request('http://localhost/api/garages/g1/dashboard-summary', {
             headers: { Authorization: garageToken },
           })),

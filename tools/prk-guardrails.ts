@@ -78,10 +78,9 @@ function checkRouteCallers(): CheckResult {
     '/api/delegates/credit-requests',
     '/api/delegate/commission-earnings',
     '/api/delegate/withdraw-commission',
-    // Read routes
-    '/api/garage-summary',
+    // Read routes (2026-11-21: removed /api/garage-summary and
+    // /api/check-subscriber — the routes were retired, nothing called them)
     '/api/admin/delegates',
-    '/api/check-subscriber',
     // Auth/session routes
     '/api/auth/verify-pin',
     '/api/auth/session-claim',
