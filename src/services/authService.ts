@@ -1,6 +1,5 @@
 import { auth } from '../firebase';
 import { normalizeDigits } from '../utils/plates';
-import { releaseEntitySession, getCanonicalSessionId } from './authSessionService';
 import { apiFetch } from '../api/apiClient';
 import { debugRecorder } from '../debug/debugRecorder';
 
@@ -165,29 +164,5 @@ export const authService = {
     }
 
     return false;
-  },
-
-
-  releaseDelegateSession: async (delegateId: string, sessionId?: string) => {
-    if (!delegateId) return;
-    try {
-      const sid = sessionId || getCanonicalSessionId();
-      let targetUid = delegateId;
-      try {
-        if (auth && auth.currentUser && auth.currentUser.uid) {
-          targetUid = auth.currentUser.uid;
-        }
-      } catch (e) {
-        console.warn('[AuthService] Could not resolve current user for delegate release:', e);
-      }
-      await releaseEntitySession({
-        role: 'delegate',
-        entityId: delegateId,
-        sessionId: sid,
-        uid: targetUid
-      });
-    } catch (e) {
-      console.error('[AuthService] Error releasing delegate session:', e);
-    }
   },
 };

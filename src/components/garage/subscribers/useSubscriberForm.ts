@@ -3,10 +3,11 @@ import { adminService } from '../../../services';
 import type { Subscriber, Garage } from '../../../types';
 import { getCleanPlate, getRawPlate } from '../../../utils/plates';
 import { getCairoDateKey } from '../../../domain/garage/businessDay';
+import { getStorage } from '../../../utils/storage';
 
-// PR-I: debounce interval for draft persistence. Per supervisor instruction:
-// "400ms debounce + teardown 清 timer". 400ms balances user typing speed
-// against localStorage write cost. The timer is cleaned up on unmount.
+// PR-I: debounce interval for draft persistence. 400ms balances the user's
+// typing speed against localStorage write cost. The timer is cleaned up on
+// unmount.
 const DRAFT_PERSIST_DEBOUNCE_MS = 400;
 
 const parseDateKey = (dateKey: string | any): Date => {
@@ -51,9 +52,12 @@ export function useSubscriberForm(
   const [activeSubscriberForRenew, setActiveSubscriberForRenew] = useState<Subscriber | null>(null);
 
   // Form State
-  const [plateNumber, setPlateNumber] = useState(() => localStorage.getItem('sub_plate') || '');
-  const [ownerName, setOwnerName] = useState(() => localStorage.getItem('sub_name') || '');
-  const [phone, setPhone] = useState(() => localStorage.getItem('sub_phone') || '');
+  // getStorage = guarded read: returns the default when storage is blocked
+  // (Safari private mode / lockdown) instead of throwing during render —
+  // the same silent-fallback rule useSystemConfig and useGarageApp follow.
+  const [plateNumber, setPlateNumber] = useState(() => getStorage('sub_plate', ''));
+  const [ownerName, setOwnerName] = useState(() => getStorage('sub_name', ''));
+  const [phone, setPhone] = useState(() => getStorage('sub_phone', ''));
   const [startDate, setStartDate] = useState(getCairoDateKey);
   const [endDate, setEndDate] = useState(() => {
     const nextMonth = parseDateKey(getCairoDateKey());
@@ -116,9 +120,14 @@ export function useSubscriberForm(
   useEffect(() => {
     if (!editingSubscriber) {
       const timer = setTimeout(() => {
-        localStorage.setItem('sub_plate', plateNumber);
-        localStorage.setItem('sub_name', ownerName);
-        localStorage.setItem('sub_phone', phone);
+        try {
+          localStorage.setItem('sub_plate', plateNumber);
+          localStorage.setItem('sub_name', ownerName);
+          localStorage.setItem('sub_phone', phone);
+        } catch {
+          // Storage blocked (Safari private mode / lockdown) — the draft
+          // simply doesn't persist; the form keeps working.
+        }
       }, DRAFT_PERSIST_DEBOUNCE_MS);
       // PR-I: teardown — clear the timer on unmount or when deps change.
       // Without this, the timer could fire after unmount and write stale
@@ -128,14 +137,22 @@ export function useSubscriberForm(
   }, [plateNumber, ownerName, phone, editingSubscriber]);
 
   useEffect(() => {
-    localStorage.setItem('sub_show_modal', String(showAddModal));
+    try {
+      localStorage.setItem('sub_show_modal', String(showAddModal));
+    } catch {
+      // Storage blocked — the modal-open flag simply doesn't persist.
+    }
   }, [showAddModal]);
 
   const clearDraft = () => {
-    localStorage.removeItem('sub_plate');
-    localStorage.removeItem('sub_name');
-    localStorage.removeItem('sub_phone');
-    localStorage.removeItem('sub_show_modal');
+    try {
+      localStorage.removeItem('sub_plate');
+      localStorage.removeItem('sub_name');
+      localStorage.removeItem('sub_phone');
+      localStorage.removeItem('sub_show_modal');
+    } catch {
+      // Storage blocked — nothing to clear.
+    }
   };
 
   const handleVirtualKeyPress = (key: string) => {

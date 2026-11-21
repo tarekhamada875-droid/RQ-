@@ -13,7 +13,11 @@ export function useServerTime() {
   const fetchServerTimeOffset = useCallback(async () => {
     try {
       const start = Date.now();
-      // Lightweight HEAD request to fetch only HTTP headers (0-byte payload), saving bandwidth and CPU
+      // Lightweight HEAD request to fetch only HTTP headers (0-byte payload),
+      // saving bandwidth and CPU. Deliberate raw fetch (the only one outside
+      // src/api/): this call needs the HTTP `Date` response header to compute
+      // the server-clock offset, which apiFetch doesn't expose. It is not a
+      // business-data call.
       let res: Response;
       try {
         res = await fetch('/', { method: 'HEAD', cache: 'no-store' });

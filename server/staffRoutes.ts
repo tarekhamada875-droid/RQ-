@@ -11,6 +11,7 @@ import { ValidationError, validateId, validateIdempotencyKey, validateNewPin, va
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { checkPinAvailabilityAcrossAll, deleteEntityPinInTransaction, saveEntityPinInTransaction } from './pinRepository';
 import { canManageStaffForGarage } from './domain/authorization';
+import { hashSessionId } from './auth/sessionMarkers';
 
 export function registerStaffRoutes(app: WorkerApp): void {
 
@@ -156,8 +157,6 @@ app.post('/api/staff/delete', requireWorkerAuth, async (c) => {
     // 2. Revoke all active sessions for this staff member BEFORE deleting the doc.
     const now = new Date();
     let revokedSessions = 0;
-    const crypto = await import('crypto');
-    const hashSessionId = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
     const staffSessionsSnap = await adminDb.collection('staff_sessions')
       .where('entityId', '==', staffId)
       .get();

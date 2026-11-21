@@ -1,36 +1,10 @@
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, query, where, onSnapshot, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs, orderBy, limit } from 'firebase/firestore';
 import { safeDate } from '../utils/dates';
 import { listenerTracker } from '../utils/listenerTracker';
 import type { ActivityLog } from '../types';
 
 export const adminActivityService = {
-  getActivityLogsSince: async (sinceDate: Date, maxCount = 2000): Promise<ActivityLog[]> => {
-    const boundedMaxCount = Math.min(Math.max(Math.floor(maxCount) || 1, 1), 5000);
-    try {
-      const firestoreTimestamp = Timestamp.fromDate(sinceDate);
-      const q = query(
-        collection(db, 'activity_logs'),
-        where('timestamp', '>=', firestoreTimestamp),
-        orderBy('timestamp', 'desc'),
-        limit(boundedMaxCount)
-      );
-      const snap = await getDocs(q);
-      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog));
-    } catch (error) {
-      console.warn('[adminService] getActivityLogsSince index fallback:', error);
-      const fallbackQ = query(
-        collection(db, 'activity_logs'),
-        orderBy('timestamp', 'desc'),
-        limit(boundedMaxCount)
-      );
-      const snap = await getDocs(fallbackQ);
-      const sinceMs = sinceDate.getTime();
-      const logs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog));
-      return logs.filter(log => safeDate(log.timestamp).getTime() >= sinceMs);
-    }
-  },
-
   subscribeToCreditGrantLogs: (garageId: string, callback: (logs: ActivityLog[]) => void, limitCount = 50, onError?: (err: any) => void) => {
     const trackerUnsub = listenerTracker.register(`garages/${garageId}/credit_grant_logs`);
     let primaryUnsub: (() => void) | undefined;
@@ -135,24 +109,6 @@ export const adminActivityService = {
     } catch (err) {
       console.warn('[adminService] getLatestCreditGrantLog failed:', err);
       return null;
-    }
-  },
-
-  getSystemLogsByPlateOnce: async (rawPlate: string): Promise<ActivityLog[]> => {
-    try {
-      const q = query(
-        collection(db, 'activity_logs'),
-        where('plateNumberRaw', '==', rawPlate),
-        limit(50)
-      );
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog));
-      }
-      return [];
-    } catch (err) {
-      console.error('Error fetching activity logs by plate:', err);
-      return [];
     }
   },
 };

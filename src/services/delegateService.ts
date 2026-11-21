@@ -1,15 +1,6 @@
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { handleFirestoreError, OperationType } from '../firebase';
 import { apiFetch } from '../api/apiClient';
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  orderBy, 
-  limit,
-} from 'firebase/firestore';
-import type { Delegate, Garage, ActivityLog } from '../types';
-import { safeDate } from '../utils/dates';
+import type { Delegate, Garage } from '../types';
 
 export interface DelegateDashboardData {
   delegate: Delegate;
@@ -168,26 +159,7 @@ export const delegateService = {
     }
   },
 
-  getDelegateRecharges: async (delegateId: string) => {
-    try {
-      const q = query(
-        collection(db, 'activity_logs'),
-        where('staffId', '==', delegateId),
-        where('actionType', '==', 'recharge'),
-        orderBy('timestamp', 'desc'),
-        limit(50)
-      );
-      const snapshot = await getDocs(q);
-      const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog));
-      logs.sort((a, b) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime());
-      return logs;
-    } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, 'activity_logs');
-      throw error;
-    }
-  },
-
-  // ── Credit requests (delegate → admin) ───────────────────────────────
+  // ── Credit requests (delegate → admin) ──────────────────────────────
   createCreditRequest: async (garageId: string, amount: number): Promise<{ id: string }> => {
     const res = await apiFetch<{ success: boolean; id: string }>('/api/delegates/credit-requests', {
       method: 'POST',

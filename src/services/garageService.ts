@@ -155,17 +155,4 @@ export const garageService = {
     }
   },
 
-  recalculateCarsInside: async (garageId: string): Promise<number> => {
-    try {
-      const res = await apiFetch('/api/garages/recalculate-cars-inside', {
-        method: 'POST',
-        body: { garageId }
-      });
-      return res.count || 0;
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `garages/${garageId}/recalculateCarsInside`);
-      throw error;
-    }
-  },
-
 };

@@ -74,7 +74,7 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
     >
       <div 
         onClick={(e) => e.stopPropagation()}
-        className="relative bg-white dark:bg-slate-900 w-full max-w-sm sm:max-w-md md:max-w-lg rounded-2xl pt-6 pb-8 sm:pt-8 sm:pb-10 px-5 sm:px-8 border border-slate-100 dark:border-slate-800/80 _8px_30px_rgb(0,0,0,0.04)] overflow-hidden"
+        className="relative bg-white dark:bg-slate-900 w-full max-w-sm sm:max-w-md md:max-w-lg rounded-2xl pt-6 pb-8 sm:pt-8 sm:pb-10 px-5 sm:px-8 border border-slate-100 dark:border-slate-800/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden"
       >
         {/* Central Display: Authentic Egyptian License Plate Design */}
         <div className="mb-5 sm:mb-7 select-none" dir="ltr">
@@ -160,7 +160,7 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
         <button 
           onClick={() => handleGarageLogin()}
           disabled={isLoading || cleanPin.length === 0}
-          className="w-full bg-[#0057b7] #004494] text-white py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg disabled:opacity-40 disabled:grayscale flex items-center justify-center mt-5 sm:mt-6 outline-none shadow-sm "
+          className="w-full bg-[#0057b7] hover:bg-[#004494] text-white py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg disabled:opacity-40 disabled:grayscale flex items-center justify-center mt-5 sm:mt-6 outline-none shadow-sm "
         >
           {isLoading ? (
             <div className="flex items-center gap-2">
