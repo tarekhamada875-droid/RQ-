@@ -5,7 +5,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
-  X, Download, Calendar, ChevronLeft, ChevronRight, Loader2, AlertCircle
+  X, Download, Calendar, ChevronDown, ChevronLeft, ChevronRight, Loader2, AlertCircle
 } from 'lucide-react';
 import { db } from '../../firebase';
 import {
@@ -33,21 +33,27 @@ const CSV_PAGE_SIZE = 500;
  * Per-garage daily CSV export modal.
  *
  * Flow (owner redesign 2026-11-22 — replaces the full calendar grid, which
- * was confusing: most days had nothing in them):
+ * was confusing: most days had nothing in them; later the same day the
+ * always-visible day list was shrank into one dropdown after the owner
+ * found it filled the whole screen with no way to scroll):
  * 1. Modal opens and counts each day's operations for the visible month
  *    (one index-only count query per day, run in parallel; days before the
  *    garage existed and future days are skipped — they cannot have ops).
- * 2. Shows ONLY the days that have operations, newest first, with the count
- *    on each row. Zero-operation days simply don't appear.
+ * 2. The active days live behind ONE select-style button ("اختر يوماً").
+ *    Opening it reveals a small capped scrollable panel (max 260px) listing
+ *    ONLY days that have operations, newest first, with the count on each
+ *    row. The modal itself is capped at 85dvh with its own scroll region,
+ *    so nothing can overflow the screen anymore.
  * 3. Tapping a day downloads its CSV directly. If the day has more than
  *    DAILY_REPORT_LOG_LIMIT operations, a choice dialog appears first:
  *    "latest 200 only" or "ALL of them" (paginated fetch).
  *
- * Read cost: opening a month = 1 index-only count per counted day (~22-31,
- * minimum 1 read each), cached 5 minutes per garage+month. A day download =
- * N reads (N = that day's logs, capped at 200 for "latest", uncapped for
- * "all" — the admin explicitly chose "all"). 5-min in-memory caches prevent
- * refetching the same month / same garage+date+mode.
+ * Read cost: identical to the old list design — opening a month = 1
+ * index-only count per counted day (~22-31, minimum 1 read each), cached
+ * 5 minutes per garage+month. A day download = N reads (N = that day's
+ * logs, capped at 200 for "latest", uncapped for "all" — the admin
+ * explicitly chose "all"). 5-min in-memory caches prevent refetching the
+ * same month / same garage+date+mode.
  */
 
 // ── month day-count cache (bounded, same eviction pattern as csvCache) ──
@@ -234,6 +240,9 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
   // The busy day (> DAILY_REPORT_LOG_LIMIT ops) waiting for the user to pick
   // "latest 200 only" or "all of them".
   const [choiceDay, setChoiceDay] = useState<{ dateId: string; count: number } | null>(null);
+  // The select-style day picker panel (owner fix: the always-visible list
+  // filled the screen and had no scrolling).
+  const [pickerOpen, setPickerOpen] = useState(false);
   const { isLoading: isExporting, run: runCsvExport } = useAsyncAction();
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -287,6 +296,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
   }, [garage.id, viewMonth]);
 
   const goPrevMonth = useCallback(() => {
+    setPickerOpen(false);
     setViewMonth(m => m.month === 0 ? { year: m.year - 1, month: 11 } : { year: m.year, month: m.month - 1 });
   }, []);
 
@@ -295,6 +305,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
     const now = new Date();
     const candidateLast = new Date(next.year, next.month + 1, 0);
     if (candidateLast.getTime() > now.getTime() && next.month >= now.getMonth() && next.year >= now.getFullYear()) return;
+    setPickerOpen(false);
     setViewMonth(next);
   }, [viewMonth]);
 
@@ -446,7 +457,16 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
     handleDownloadCSV(dateId, 'latest');
   }, [isExporting, handleDownloadCSV]);
 
-  const modalA11y = useModalA11y(onClose);
+  // Escape closes the day panel first, then the modal.
+  const handleRequestClose = useCallback(() => {
+    if (pickerOpen) {
+      setPickerOpen(false);
+    } else {
+      onClose();
+    }
+  }, [pickerOpen, onClose]);
+
+  const modalA11y = useModalA11y(handleRequestClose);
 
   return (
     <div
@@ -455,12 +475,12 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl "
+        className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md max-h-[85vh] max-h-[85dvh] flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl "
         onClick={(e) => e.stopPropagation()}
         {...modalA11y.containerProps}
       >
         {/* Header */}
-        <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-11 h-11 bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center font-black shrink-0">
               <Calendar className="w-5 h-5" />
@@ -470,7 +490,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
                 تقرير يومي — {garage.name || 'جراج'}
               </h3>
               <p className="text-[11px] font-bold text-slate-400">
-                أيام العمليات فقط — اضغط على يوم لتحميل تقريره
+                أيام العمليات فقط — اختر يوماً لتحميل تقريره
               </p>
             </div>
           </div>
@@ -485,9 +505,9 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
           </button>
         </div>
 
-        <div className="p-5">
+        <div className="p-5 space-y-3 overflow-y-auto min-h-0">
           {/* Month navigation */}
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between">
             <button
               type="button"
               onClick={goPrevMonth}
@@ -536,41 +556,62 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
             </div>
           )}
 
-          {/* The active days themselves — zero-operation days simply don't exist here. */}
-          {!isCounting && !countError && activeDays !== null && (
-            activeDays.length === 0 ? (
-              <div className="py-8 text-center rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
-                <Calendar className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700 mb-2" />
-                <p className="text-sm font-bold text-slate-500 dark:text-slate-400">لا توجد عمليات في هذا الشهر</p>
-                <p className="mt-1 text-[11px] font-bold text-slate-400 dark:text-slate-500">جرّب شهراً سابقاً بالسهم الأيمن</p>
-              </div>
-            ) : (
-              <div className="space-y-2" role="list" aria-label="أيام العمليات">
-                {activeDays.map(({ dateId, count }) => (
-                  <button
-                    key={dateId}
-                    type="button"
-                    role="listitem"
-                    onClick={() => handleTapDay(dateId, count)}
-                    disabled={isExporting}
-                    className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-right"
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-sm font-black text-slate-900 dark:text-white">{dayLabel(dateId)}</span>
-                      <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500">{opsLabel(count)}</span>
-                    </span>
-                    <span className="flex items-center gap-2 shrink-0 text-emerald-600 dark:text-emerald-400">
-                      {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )
+          {/* Select-style day picker — the list stays hidden behind one button. */}
+          {!isCounting && !countError && activeDays !== null && activeDays.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setPickerOpen(o => !o)}
+              disabled={isExporting}
+              aria-expanded={pickerOpen}
+              aria-controls="daily-report-day-list"
+              className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-right"
+            >
+              <span className="text-sm font-black text-slate-900 dark:text-white">اختر يوماً</span>
+              <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 ${pickerOpen ? 'rotate-180' : ''}`} />
+            </button>
+          )}
+
+          {/* The day panel itself — capped height, real scrolling inside. */}
+          {pickerOpen && !isCounting && !countError && activeDays !== null && activeDays.length > 0 && (
+            <div
+              id="daily-report-day-list"
+              className="max-h-[260px] overflow-y-auto rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 p-2 space-y-1.5"
+              role="list"
+              aria-label="أيام العمليات"
+            >
+              {activeDays.map(({ dateId, count }) => (
+                <button
+                  key={dateId}
+                  type="button"
+                  role="listitem"
+                  onClick={() => handleTapDay(dateId, count)}
+                  disabled={isExporting}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-400 dark:hover:border-emerald-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-right"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-black text-slate-900 dark:text-white">{dayLabel(dateId)}</span>
+                    <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500">{opsLabel(count)}</span>
+                  </span>
+                  <span className="flex items-center gap-2 shrink-0 text-emerald-600 dark:text-emerald-400">
+                    {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Empty month — one hint, never duplicated inside the panel. */}
+          {!isCounting && !countError && activeDays !== null && activeDays.length === 0 && (
+            <div className="py-6 text-center rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+              <Calendar className="w-9 h-9 mx-auto text-slate-300 dark:text-slate-700 mb-2" />
+              <p className="text-sm font-bold text-slate-500 dark:text-slate-400">لا توجد عمليات في هذا الشهر</p>
+              <p className="mt-1 text-[11px] font-bold text-slate-400 dark:text-slate-500">جرّب شهراً سابقاً بالسهم الأيمن</p>
+            </div>
           )}
 
           {/* Export loading state */}
           {isExporting && (
-            <div className="mt-4 flex flex-col items-center justify-center py-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60">
+            <div className="flex flex-col items-center justify-center py-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60">
               <Loader2 className="w-7 h-7 animate-spin text-emerald-500 mb-2" />
               <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">جاري تحميل البيانات وتصدير الملف...</p>
             </div>
@@ -578,7 +619,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
 
           {/* Error */}
           {exportError && !isExporting && (
-            <div className="mt-4 flex items-center gap-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 px-4 py-3">
+            <div className="flex items-center gap-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 px-4 py-3">
               <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
               <p className="text-xs font-bold text-rose-700 dark:text-rose-300">{exportError}</p>
             </div>
