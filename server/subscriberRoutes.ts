@@ -164,7 +164,7 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
 
       // A retried renewal may arrive without an idempotency key. Once the requested
       // date range is already persisted, treat it as a no-op rather than debiting
-      // the same two credits again (and overwriting the deterministic ledger ID).
+      // the same renewal credits again (and overwriting the deterministic ledger ID).
       if (
         prepaidCreditsEnabled
         && currentState.startDate === dates.startDate

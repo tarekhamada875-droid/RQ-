@@ -388,7 +388,7 @@ isSessionOccupiedError(errMsg)
       const data: any = Object.fromEntries(formData.entries());
 
       // Trial credits are no longer set at creation — the Worker forces
-      // isTrial: false and grants 100 credits automatically on admin approval.
+      // isTrial: false and grants 50 trial credits automatically on admin approval.
       data.hasMonthlySubscribers = false;
 
       const isDelegateCreation = Boolean(delegate && delegate.id);
