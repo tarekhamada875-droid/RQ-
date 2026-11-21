@@ -4,6 +4,7 @@ import { useTheme } from '../../utils/ThemeContext';
 import { soundManager } from '../../utils/sounds';
 import { Garage, Staff } from '../../types';
 import { isLightColor } from '../../utils/colors';
+import { useModalA11y } from '../../hooks/useModalA11y';
 
 interface AppearanceSettingsModalProps {
   garage?: Garage | null;
@@ -22,8 +23,12 @@ export const AppearanceSettingsModal: React.FC<AppearanceSettingsModalProps> = m
 
   const resolvedActiveColor = '#f59e0b';
 
+  // Fullscreen page styled as a modal dialog: Escape closes it and
+  // keyboard focus starts on the header back button.
+  const modalA11y = useModalA11y(onClose);
+
   return (
-    <div className="fixed inset-0 z-[100] bg-[#faf9f6] dark:bg-slate-950 flex flex-col pt-safe px-safe overflow-hidden " dir="rtl">
+    <div className="fixed inset-0 z-[100] bg-[#faf9f6] dark:bg-slate-950 flex flex-col pt-safe px-safe overflow-hidden " dir="rtl" {...modalA11y.containerProps}>
       {/* Header */}
       <header className="relative bg-[#faf9f6] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 z-40 w-full shrink-0">
         <div className="max-w-2xl mx-auto flex items-center gap-3 w-full">

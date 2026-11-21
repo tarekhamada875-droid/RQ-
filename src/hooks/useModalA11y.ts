@@ -14,6 +14,12 @@ import { useEffect, useRef } from 'react';
  *     </div>
  *   );
  *
+ * For modals that stay MOUNTED and toggle visibility with an `isOpen`
+ * prop (instead of being unmounted by the parent), pass that prop as the
+ * third argument — the Escape handler, focus trap, and initial focus
+ * re-arm every time it opens, and fully release while closed:
+ *   const modalA11y = useModalA11y(onClose, undefined, isOpen);
+ *
  * This adds:
  *   - role="dialog"
  *   - aria-modal="true"
@@ -42,12 +48,18 @@ interface UseModalA11yReturn {
 export function useModalA11y(
   onClose: (() => void) | undefined,
   headingId?: string,
+  /**
+   * Whether the modal is currently open. Defaults to true for the
+   * mount/unmount style. Pass the modal's `isOpen` prop when the
+   * component stays mounted while hidden.
+   */
+  active: boolean = true,
 ): UseModalA11yReturn {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Escape key handler.
   useEffect(() => {
-    if (!onClose) return;
+    if (!onClose || !active) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -57,10 +69,11 @@ export function useModalA11y(
     };
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [onClose]);
+  }, [onClose, active]);
 
   // Focus trap: keep Tab cycling within the modal.
   useEffect(() => {
+    if (!active) return;
     const container = containerRef.current;
     if (!container) return;
 
@@ -95,10 +108,11 @@ export function useModalA11y(
 
     container.addEventListener('keydown', handleTab);
     return () => container.removeEventListener('keydown', handleTab);
-  }, []);
+  }, [active]);
 
-  // Initial focus: move focus into the modal on mount.
+  // Initial focus: move focus into the modal when it opens.
   useEffect(() => {
+    if (!active) return;
     const container = containerRef.current;
     if (!container) return;
     // Defer to next tick so React has finished rendering.
@@ -121,7 +135,7 @@ export function useModalA11y(
       }
     }, 0);
     return () => clearTimeout(timer);
-  }, []);
+  }, [active]);
 
   return {
     containerProps: {

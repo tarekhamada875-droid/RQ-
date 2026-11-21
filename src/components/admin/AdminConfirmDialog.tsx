@@ -27,7 +27,9 @@ export const AdminConfirmDialog: React.FC<AdminConfirmDialogProps> = ({
   const { isLoading: isProcessing, run: runConfirmAction } = useAsyncAction();
   const [isCancelling, setIsCancelling] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const modalA11y = useModalA11y(onCancel);
+  // The dialog stays mounted while hidden (isOpen prop) — pass isOpen so
+  // the trap/focus/Escape re-arm on every open instead of arming once.
+  const modalA11y = useModalA11y(onCancel, undefined, isOpen);
 
   React.useEffect(() => {
     if (!isOpen) {

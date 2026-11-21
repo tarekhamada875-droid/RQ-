@@ -6,6 +6,7 @@
 import React, { memo } from 'react';
 import { ChevronRight, Scale } from 'lucide-react';
 import { soundManager } from '../../utils/sounds';
+import { useModalA11y } from '../../hooks/useModalA11y';
 
 interface TermsAndConditionsModalProps {
   onClose: () => void;
@@ -39,10 +40,16 @@ export const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = m
     onClose();
   };
 
+  // Fullscreen page styled as a modal dialog: Escape closes it (same path
+  // as the header back button, including the click sound) and keyboard
+  // focus starts on the back button.
+  const modalA11y = useModalA11y(handleClose);
+
   return (
     <div
       className="fixed inset-0 bg-[#faf9f6] dark:bg-slate-950 z-[100] flex flex-col pt-safe px-safe overflow-hidden "
       dir="rtl"
+      {...modalA11y.containerProps}
     >
       {/* Header — matches Subscribers/RechargeHistory pattern */}
       <header className="relative bg-[#faf9f6] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3 z-40 w-full shrink-0">

@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { Trash2 } from 'lucide-react';
+import { useModalA11y } from '../../../hooks/useModalA11y';
 
 /**
  * SubscriberDeleteConfirmModal
@@ -26,11 +27,13 @@ export const SubscriberDeleteConfirmModal = memo(function SubscriberDeleteConfir
   onCancel,
   onConfirm,
 }: SubscriberDeleteConfirmModalProps) {
+  // Stays mounted while hidden — re-arm Escape/trap/focus on every open.
+  const modalA11y = useModalA11y(onCancel, undefined, isOpen);
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80">
-      <div className="bg-[#faf9f6] dark:bg-slate-900 w-full max-w-sm rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800">
+      <div className="bg-[#faf9f6] dark:bg-slate-900 w-full max-w-sm rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800" {...modalA11y.containerProps}>
         <div className="p-8 text-center">
           <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <Trash2 className="w-8 h-8" />
