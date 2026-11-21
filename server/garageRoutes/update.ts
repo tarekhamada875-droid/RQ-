@@ -68,8 +68,8 @@ app.post('/api/garages/update', requireWorkerAuth, withErrorHandler(withAdmin(as
     //
     // Previously: the `update(updates)` and the trial-credits grant
     // happened as separate non-transactional writes. Two concurrent
-    // approvals could both observe `isTrial === false`, both grant
-    // 100 credits, and one grant would be silently dropped (lost-update).
+    // approvals could both observe `isTrial === false`, both grant the
+    // trial credits, and one grant would be silently dropped (lost-update).
     // Worse, if the trial grant failed, the garage was already moved to
     // 'approved' status without the credits — a financial inconsistency.
     //
