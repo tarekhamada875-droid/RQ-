@@ -18,12 +18,23 @@ const fixtureDelegateId = 'ui-fixture-delegate';
 const lookupSalt = 'ark_garage_secure_pin_lookup_salt_v2';
 const lookupHash = pin => crypto.scryptSync(pin, lookupSalt, 32).toString('hex');
 
+// All fixture PINs follow the REAL five-digit PIN contract
+// (server/validation.ts isNewPinFormat → validateNewPin: /^\d{5}$/ on every
+// create/change flow; login only tolerates legacy eight-digit credentials).
+// The previous fixture PINs were eight digits — a legacy shape no new
+// account can ever have.
+//
 // private_pins.pin must match the production contract written by
 // pinRepository.setPrivatePin: hashPinWithUniqueSalt's "$scrypt$N=..,r=..,p=..$<salthex>$<derived>"
 // format. verifyDocMatch re-verifies every hash-lookup candidate through
 // verifySingleFieldValue, which ONLY accepts this format — a plaintext pin
 // (the previous fixture format) is silently discarded and login fails with
 // "بيانات الدخول غير صحيحة" even though the pinLookupHash query matched.
+//
+// Entity docs (garages/staff/delegates/admin_settings) deliberately carry
+// NO plaintext pin field — production writes credentials only to
+// private_pins (admin_settings/auth_pin even has its legacy pin nulled:
+// workerSessionRoutes.ts set({ pin: null, ... })).
 const scryptPin = pin => {
   const N = 16384;
   const r = 8;
@@ -35,7 +46,6 @@ const scryptPin = pin => {
 
 const documents = [
   ['admin_settings/auth_pin', {
-    pin: '88000000',
     adminColor: '#10b981',
     createdAt: now,
     updatedAt: now,
@@ -43,8 +53,8 @@ const documents = [
   ['private_pins/auth_pin', {
     entityType: 'admin_settings',
     entityId: 'auth_pin',
-    pin: scryptPin('88000000'),
-    pinLookupHash: lookupHash('88000000'),
+    pin: scryptPin('47159'),
+    pinLookupHash: lookupHash('47159'),
     createdAt: now,
     updatedAt: now,
   }],
@@ -52,8 +62,6 @@ const documents = [
     id: fixtureGarageId,
     name: 'UI Fixture Garage',
     phone: '01000000000',
-    pin: '88000001',
-    ownerPin: '88000001',
     address: 'Local emulator only',
     rate: 25,
     balance: 500,
@@ -66,15 +74,14 @@ const documents = [
   [`private_pins/${fixtureGarageId}`, {
     entityType: 'garages',
     entityId: fixtureGarageId,
-    pin: scryptPin('88000001'),
-    pinLookupHash: lookupHash('88000001'),
+    pin: scryptPin('52841'),
+    pinLookupHash: lookupHash('52841'),
     createdAt: now,
     updatedAt: now,
   }],
   [`staff/${fixtureStaffId}`, {
     id: fixtureStaffId,
     name: 'UI Fixture Staff',
-    pin: '88000002',
     garageId: fixtureGarageId,
     role: 'staff',
     permissions: { checkIn: true, checkOut: true, reports: true },
@@ -84,8 +91,8 @@ const documents = [
   [`private_pins/${fixtureStaffId}`, {
     entityType: 'staff',
     entityId: fixtureStaffId,
-    pin: scryptPin('88000002'),
-    pinLookupHash: lookupHash('88000002'),
+    pin: scryptPin('60372'),
+    pinLookupHash: lookupHash('60372'),
     createdAt: now,
     updatedAt: now,
   }],
@@ -93,7 +100,6 @@ const documents = [
     id: fixtureDelegateId,
     name: 'UI Fixture Delegate',
     phone: '01000000001',
-    pin: '88000003',
     commissionRate: 5,
     createdAt: now,
     updatedAt: now,
@@ -101,8 +107,8 @@ const documents = [
   [`private_pins/${fixtureDelegateId}`, {
     entityType: 'delegates',
     entityId: fixtureDelegateId,
-    pin: scryptPin('88000003'),
-    pinLookupHash: lookupHash('88000003'),
+    pin: scryptPin('83614'),
+    pinLookupHash: lookupHash('83614'),
     createdAt: now,
     updatedAt: now,
   }],

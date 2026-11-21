@@ -20,7 +20,7 @@ The garage harness defaults to mobile. To run the same authenticated fixture at 
 RQ_FIXTURE_VIEWPORT=desktop npm run ui-fixtures:browser-smoke:garage
 ```
 
-The command starts isolated Auth and Firestore emulators for the `demo-rq-ui-fixtures` project, seeds synthetic records, starts the existing Node/Vite server with emulator bindings, launches headless Chromium, enters the synthetic eight-digit garage PIN through the real keypad, clicks the real login button, waits for the authenticated garage dashboard, and writes:
+The command starts isolated Auth and Firestore emulators for the `demo-rq-ui-fixtures` project, seeds synthetic records, starts the existing Node/Vite server with emulator bindings, launches headless Chromium, enters the synthetic five-digit garage PIN through the real keypad, clicks the real login button, waits for the authenticated garage dashboard, and writes:
 
 - `tmp/ui-fixture-smoke/garage-mobile-authenticated.png`
 - `tmp/ui-fixture-smoke/garage-mobile-authenticated.json`

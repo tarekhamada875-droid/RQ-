@@ -23,9 +23,9 @@ const scenarios = {
   // the view to admin_login; the confirm button is 'تسجيل الدخول' for every
   // role). The old per-role entry buttons ('دخول المندوب') and labels
   // ('دخول', 'دخول للوحة الشحن') were removed from the UI.
-  garage: { pin: '88000001', route: '/', entryText: null, loginText: 'تسجيل الدخول', expectedText: 'UI Fixture Garage', output: 'garage-mobile-authenticated' },
-  admin: { pin: '88000000', route: '/#/admin', entryText: null, loginText: 'تسجيل الدخول', expectedText: 'لوحة تحكم النظام', output: 'admin-mobile-authenticated' },
-  delegate: { pin: '88000003', route: '/', entryText: null, loginText: 'تسجيل الدخول', expectedText: 'لوحة المندوب', output: 'delegate-mobile-authenticated' },
+  garage: { pin: '52841', route: '/', entryText: null, loginText: 'تسجيل الدخول', expectedText: 'UI Fixture Garage', output: 'garage-mobile-authenticated' },
+  admin: { pin: '47159', route: '/#/admin', entryText: null, loginText: 'تسجيل الدخول', expectedText: 'لوحة تحكم النظام', output: 'admin-mobile-authenticated' },
+  delegate: { pin: '83614', route: '/', entryText: null, loginText: 'تسجيل الدخول', expectedText: 'لوحة المندوب', output: 'delegate-mobile-authenticated' },
 };
 const scenario = scenarios[role];
 if (!scenario) throw new Error(`Unsupported RQ_FIXTURE_ROLE: ${role}`);

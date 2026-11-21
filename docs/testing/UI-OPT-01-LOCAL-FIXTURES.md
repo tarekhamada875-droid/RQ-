@@ -15,7 +15,7 @@ npm exec firebase emulators:exec --only auth,firestore \
   "npm run ui-fixtures:seed"
 ```
 
-The command starts the emulators, writes seven synthetic records, prints their fixture IDs, and shuts the emulators down. It does not call the production Worker or Firebase project. The fixture PINs are deliberately separate from any operator or production PIN and are not stored in deployment secrets.
+The command starts the emulators, writes the synthetic records, prints their fixture IDs, and shuts the emulators down. It does not call the production Worker or Firebase project. The fixture PINs are deliberately separate from any operator or production PIN and are not stored in deployment secrets.
 
 ## Run the app against emulators
 
@@ -52,4 +52,4 @@ The frontend connects to localhost only when `VITE_RQ_USE_EMULATORS=true`. Ordin
 
 ## Safety boundary
 
-The seed data is synthetic and disposable, and its authentication fixtures use the application's exact eight-digit PIN contract. Do not use the provided operator PINs in this workflow, and do not remove the emulator guard or replace the demo project ID with a live project. Destructive button tests should be added only after the browser harness is connected to this emulator path and can verify the expected records before and after each action.
+The seed data is synthetic and disposable, and its authentication fixtures use the application's exact five-digit PIN contract, with credentials stored only in `private_pins` (scrypt format) exactly as production writes them — entity documents carry no plaintext PIN. Do not use the provided operator PINs in this workflow, and do not remove the emulator guard or replace the demo project ID with a live project. Destructive button tests should be added only after the browser harness is connected to this emulator path and can verify the expected records before and after each action.
