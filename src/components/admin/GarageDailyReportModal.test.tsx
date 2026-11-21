@@ -8,6 +8,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 /**
  * Tests for the owner-redesigned daily report modal (2026-11-22):
  *  - the day list shows ONLY days that have operations (no full calendar);
+ *  - the list lives behind ONE select-style button, inside a capped
+ *    scrollable panel (owner fix: the always-visible list filled the screen
+ *    and could not scroll);
  *  - a day with ≤ 200 ops downloads directly;
  *  - a day with > 200 ops offers "latest 200" vs "ALL" before fetching;
  *  - "ALL" paginates through the whole day.
@@ -140,6 +143,9 @@ describe('GarageDailyReportModal — active-days list', () => {
 
     renderModal('g-list');
 
+    // The day list lives behind one select-style button (dropdown design).
+    fireEvent.click(await screen.findByRole('button', { name: 'اختر يوماً' }));
+
     // Zero-operation days (e.g. Nov 7) never appear; the three active ones do.
     const rows = await screen.findAllByRole('listitem');
     await waitFor(() => expect(rows).toHaveLength(3));
@@ -159,6 +165,7 @@ describe('GarageDailyReportModal — active-days list', () => {
     setDay('2026-11-10', 45);
     renderModal('g-small');
 
+    fireEvent.click(await screen.findByRole('button', { name: 'اختر يوماً' }));
     fireEvent.click(await screen.findByRole('listitem'));
 
     await waitFor(() => expect(firestoreMocks.showToast).toHaveBeenCalled());
@@ -173,6 +180,7 @@ describe('GarageDailyReportModal — active-days list', () => {
     setDay('2026-11-14', 348);
     renderModal('g-choice');
 
+    fireEvent.click(await screen.findByRole('button', { name: 'اختر يوماً' }));
     fireEvent.click(await screen.findByRole('listitem'));
 
     // Nothing fetched while the choice is open.
@@ -191,6 +199,7 @@ describe('GarageDailyReportModal — active-days list', () => {
     setDay('2026-11-14', 600);
     renderModal('g-all');
 
+    fireEvent.click(await screen.findByRole('button', { name: 'اختر يوماً' }));
     fireEvent.click(await screen.findByRole('listitem'));
     fireEvent.click(await screen.findByRole('button', { name: 'تحميل كل العمليات (٦٠٠)' }));
 
