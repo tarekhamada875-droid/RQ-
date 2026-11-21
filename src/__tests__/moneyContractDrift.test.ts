@@ -55,6 +55,14 @@ describe('money contract drift guard (owner-confirmed 1 / 10 / 50, 2026-11-21)',
     expect(plan).not.toMatch(/2 EGP per subscriber renewal/);
     expect(plan).not.toMatch(/Referral award: 20 credits/);
     expect(plan).not.toMatch(/100 EGP once per garage/);
+
+    // The security rules header repeats the money summary too — it drifted
+    // once already.
+    const rules = read('firestore.rules');
+    expect(rules).toMatch(/subscriber renewal debits 1 credit/);
+    expect(rules).toMatch(/Referral reward: 10 credits/);
+    expect(rules).not.toMatch(/renewal debits 2/);
+    expect(rules).not.toMatch(/Referral reward: 20 credits/);
   });
 
   it('the server debit/grant paths use the same confirmed numbers', () => {
