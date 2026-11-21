@@ -2,7 +2,29 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- ============================================================
+         PERMANENT OWNER RULE (stated twice by the owner, reconfirmed
+         2026-11-21): ZOOM IS FORBIDDEN in RQ. See AGENTS.md.
+         Do not remove, weaken, or "fix" any part of this lock — audits
+         and cleanups must treat it as intentional, never as a bug.
+         ============================================================ -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <script>
+      // Zoom lock 1/3 (viewport meta above + touch-action CSS below).
+      // iPhone/iPad Safari ignores user-scalable=no, so kill its gesture
+      // zoom events directly, plus ctrl/cmd wheel zoom and trackpad pinch
+      // (trackpad pinch arrives as wheel events with ctrlKey set).
+      (function () {
+        'use strict';
+        var stopGesture = function (e) { e.preventDefault(); };
+        document.addEventListener('gesturestart', stopGesture, { passive: false });
+        document.addEventListener('gesturechange', stopGesture, { passive: false });
+        document.addEventListener('gestureend', stopGesture, { passive: false });
+        window.addEventListener('wheel', function (e) {
+          if (e.ctrlKey || e.metaKey) { e.preventDefault(); }
+        }, { passive: false });
+      })();
+    </script>
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <title>RQ</title>
     <meta name="description" content="نظام متكامل لإدارة جراجات السيارات بتعدد المستأجرين، يدعم حسابات الساعة والمبيت مع لوحة تحكم إدارية." />
@@ -185,6 +207,13 @@
       html.dark, html.dark body {
         background-color: #020617;
         color: #f1f5f9;
+      }
+      /* PERMANENT OWNER RULE (reconfirmed 2026-11-21): zoom is forbidden in
+         RQ (see AGENTS.md). pan-x pan-y keeps normal scrolling but blocks
+         pinch-zoom and double-tap zoom on every element — Safari ignores
+         user-scalable=no, so touch-action is the real iOS lock. */
+      html, body {
+        touch-action: pan-x pan-y;
       }
       .browser-unsupported-message { display: none; }
       .browser-unsupported .browser-unsupported-message {

@@ -25,6 +25,12 @@ Do not create new handoff, knowledge-base, working-agreement, roadmap, release-h
 
 Announcements and packages/credit-bundle templates have been removed entirely (server endpoints, client code, Firestore rules). Do not re-add them without explicit owner approval. Credit grants use custom amounts (50–2,000 EGP) only.
 
+## Permanent owner decisions (never reverse without a fresh explicit owner request)
+
+These are owner-made product decisions, stated more than once. A future session must treat them as settled contract, not as audit findings.
+
+- **Zoom is forbidden in RQ** (owner stated this twice — previously, and reconfirmed 2026-11-21). Users must never be able to zoom the app: no pinch-zoom, no double-tap zoom, no trackpad/wheel zoom, on any device or role. The lock lives in `index.html` (viewport `user-scalable=no` + `maximum-scale=1`, the inline gesture/wheel blocker script, and the `touch-action: pan-x pan-y` rule on `html, body`). Do not remove or weaken any part of it, and never introduce zoom in new views, modals, or components. `src/__tests__/zoomLockContract.test.ts` fails the build if the lock disappears. Audits and cleanups must record this lock as intentional — never as a bug, dead code, or an accessibility regression.
+
 ## Owner test-and-handoff cycle
 
 - Work with one coding agent at a time and one bounded change at a time. Do not start parallel implementation tasks. Each fresh agent must first read `README.md`, this file, `docs/PROJECT.md`, and `docs/SECURITY.md`. Use audit/test reports as evidence, not as permission to expand scope.
