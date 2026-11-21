@@ -33,6 +33,30 @@ describe('money contract drift guard (owner-confirmed 1 / 10 / 50, 2026-11-21)',
     expect(doc).not.toMatch(/referral reward is 20 credits/);
   });
 
+  it('README and the other money-mentioning docs carry the same confirmed numbers', () => {
+    // README repeats the financial summary — it drifted once already.
+    const readme = read('README.md');
+    expect(readme).toMatch(/monthly subscriber renewal debits 1 credit/);
+    expect(readme).not.toMatch(/renewal debits 2/);
+
+    // The contract-test guidance is what new sessions follow when writing tests.
+    const guide = read('docs/testing/CONTRACT-TEST-GUIDANCE.md');
+    expect(guide).toMatch(/Trial grants use 50 trial credits/);
+    expect(guide).toMatch(/referral award is 10 credits/);
+    expect(guide).not.toMatch(/Trial grants use 100/);
+    expect(guide).not.toMatch(/exactly one 100 EGP delegate commission/);
+
+    // The launch plan (historical) still gets read — its stale numbers must
+    // stay annotated, never presented as current.
+    const plan = read('docs/LAST-PLAN-BEFORE-PRODUCTION.md');
+    expect(plan).toMatch(/Subscriber renewal debits 1 credit/);
+    expect(plan).toMatch(/Referral award: 10 credits/);
+    expect(plan).not.toMatch(/renewal debits 2/);
+    expect(plan).not.toMatch(/2 EGP per subscriber renewal/);
+    expect(plan).not.toMatch(/Referral award: 20 credits/);
+    expect(plan).not.toMatch(/100 EGP once per garage/);
+  });
+
   it('the server debit/grant paths use the same confirmed numbers', () => {
     // Renewal debit: exactly 1 credit (same as a regular check-in).
     const subscriberRoutes = read('server/subscriberRoutes.ts');

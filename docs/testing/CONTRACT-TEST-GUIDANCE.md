@@ -12,7 +12,7 @@ Confirm invokes exactly one callback, cancel invokes none, loading disables dest
 
 ## Prepaid credit grants and commissions
 
-A valid paid credit grant changes the garage balance, ledger, event, activity record, and referral/commission state transactionally. A retry creates no duplicate grant. The first qualifying paid grant for a garage creates exactly one 100 EGP delegate commission; later grants and replayed requests create none. Trial grants use 100 trial credits and are not cash revenue.
+A valid paid credit grant changes the garage balance, ledger, event, activity record, and referral/commission state transactionally. A retry creates no duplicate grant. A qualifying paid grant (≥ 500 EGP) awards the 100 EGP delegate commission only if no commission was granted to that garage within the past 30 days (rolling window); retries inside the window create none. The referral award is 10 credits, awarded once on the referred garage's first qualifying paid grant. Trial grants use 50 trial credits and are not cash revenue.
 
 ## Monthly vehicle subscribers
 
