@@ -124,7 +124,11 @@ app.post('/api/delegates/update', requireWorkerAuth, async (c) => {
 
     const updates: Record<string, any> = { updatedAt: new Date() };
     if (name) updates.name = String(name).trim();
-    if (phone !== undefined) updates.phone = String(phone).trim();
+    // Audit N9 parity: create normalizes phone (keeps `+`, strips spaces and
+    // dashes, converts Arabic-Indic digits). The update path must store the
+    // same canonical form, otherwise an edited phone can no longer match the
+    // canonical form the login lookup compares against.
+    if (phone !== undefined) updates.phone = normalizePhone(phone);
 
     const delegateRef = adminDb.collection('delegates').doc(delegateId);
     await adminDb.runTransaction(async (t: any) => {

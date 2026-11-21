@@ -130,4 +130,25 @@ describe('retired delegate commission configuration', () => {
       expect(harness.runTransaction).not.toHaveBeenCalled();
     }
   );
+
+  describe('phone normalization on update (audit N9 parity)', () => {
+    it('stores the canonical phone form, same as the create route', async () => {
+      const harness = createDelegateRoutesHarness();
+      const response = await harness.update(context({
+        id: 'delegate-1',
+        phone: ' 010-1234 5678 '
+      }));
+
+      expect(response.status).toBe(200);
+      const updated = harness.writes.find((write) => write.operation === 'update' && write.path === 'delegates/delegate-1')?.data;
+      expect(updated).toMatchObject({ phone: '01012345678' });
+    });
+
+    it('keeps the leading + and normalizes Arabic-Indic digits', async () => {
+      const harness = createDelegateRoutesHarness();
+      await harness.update(context({ id: 'delegate-1', phone: '+٢٠ 100 123 4567' }));
+      const updated = harness.writes.find((write) => write.operation === 'update' && write.path === 'delegates/delegate-1')?.data;
+      expect(updated).toMatchObject({ phone: '+201001234567' });
+    });
+  });
 });
