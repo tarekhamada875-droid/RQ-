@@ -479,7 +479,7 @@ export function useGarageSync({
     // of garages (the delegate doc is now piggybacked on the session-guard
     // onSnapshot when fresh — see loadDashboard above), so poll slowly and only
     // while the tab is visible. Cadence extended from 120s → 180s in PR-D per
-    // supervisor instruction "30s polls → piggyback 或 90s" (no new listener).
+    // supervisor instruction "30s polls → piggyback or 90s" (no new listener).
     const DASHBOARD_REFRESH_MS = 180_000;
     const DASHBOARD_MIN_GAP_MS = 60_000;
     let lastDashboardLoadAt = Date.now();
