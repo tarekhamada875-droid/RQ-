@@ -11,6 +11,7 @@ import { ValidationError, validateId, validateIdempotencyKey, validateNewPin, va
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { checkPinAvailabilityAcrossAll, deleteEntityPinInTransaction, saveEntityPinInTransaction } from './pinRepository';
 import { canManageStaffForGarage } from './domain/authorization';
+import { normalizePhone } from './pinCrypto';
 import { hashSessionId } from './auth/sessionMarkers';
 
 export function registerStaffRoutes(app: WorkerApp): void {
@@ -63,7 +64,10 @@ app.post('/api/staff/create', requireWorkerAuth, async (c) => {
       await saveEntityPinInTransaction(t, 'staff', staffId, normPin);
       t.set(staffRef, {
         name: normName.trim(),
-        phone: phone ? String(phone).trim() : '',
+        // Audit N9 parity: store the same canonical phone form as the delegate
+        // create route (keeps `+`, strips spaces/dashes, Arabic-Indic digits
+        // converted). The login lookup compares against this canonical form.
+        phone: phone ? normalizePhone(phone) : '',
         garageId,
         role: role || 'worker',
         permissions: permissions || {},
@@ -110,7 +114,9 @@ app.post('/api/staff/update', requireWorkerAuth, async (c) => {
 
     const updates: Record<string, any> = { updatedAt: new Date() };
     if (name) updates.name = String(name).trim();
-    if (phone !== undefined) updates.phone = String(phone).trim();
+    // Audit N9 parity: staff/create normalizes phone above; the update path
+    // must store the same canonical form or an edited phone can no longer log in.
+    if (phone !== undefined) updates.phone = normalizePhone(phone);
     if (role) updates.role = role;
     if (permissions) updates.permissions = permissions;
 
