@@ -1,6 +1,7 @@
 import React from 'react';
 import { Loader2, PlusCircle, X } from 'lucide-react';
 import { Garage } from '../../types';
+import { useModalA11y } from '../../hooks/useModalA11y';
 
 /**
  * DelegateDashboardOverlays
@@ -34,6 +35,9 @@ export const DelegateDashboardOverlays = ({
   onCreateGarage,
   isLoading,
 }: DelegateDashboardOverlaysProps) => {
+  const closeAddGarage = React.useCallback(() => setShowAddGarage(false), [setShowAddGarage]);
+  const addGarageA11y = useModalA11y(closeAddGarage, undefined, showAddGarage);
+
   return (
     <>
         {/* Add Garage Modal */}
@@ -44,6 +48,7 @@ export const DelegateDashboardOverlays = ({
               onClick={e => e.stopPropagation()}
               onMouseDown={e => e.stopPropagation()}
               onTouchStart={e => e.stopPropagation()}
+              {...addGarageA11y.containerProps}
             >
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-3">

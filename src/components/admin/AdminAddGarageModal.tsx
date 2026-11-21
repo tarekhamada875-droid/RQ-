@@ -80,7 +80,8 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
     }
   }, [isOpen]);
 
-  const modalA11y = useModalA11y(onClose);
+  // Stays mounted while hidden — re-arm Escape/trap/focus on every open.
+  const modalA11y = useModalA11y(onClose, undefined, isOpen);
 
   if (!isOpen) return null;
 

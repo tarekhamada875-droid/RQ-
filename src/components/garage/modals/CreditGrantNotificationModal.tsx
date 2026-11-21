@@ -2,6 +2,7 @@ import React from 'react';
 import { X as XIcon, Gift, Zap, Sparkles, Coins } from 'lucide-react';
 import { ActivityLog } from '../../../types';
 import { safeDate } from '../../../utils/dates';
+import { useModalA11y } from '../../../hooks/useModalA11y';
 
 interface CreditGrantNotificationModalProps {
   isOpen: boolean;
@@ -19,6 +20,9 @@ export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModal
   currentCredits,
   onClose
 }) => {
+  // Stays mounted while hidden (the dashboard pre-warms this chunk by
+  // rendering it unconditionally) — re-arm Escape/trap/focus on every open.
+  const modalA11y = useModalA11y(onClose, undefined, isOpen && !!creditGrantLog);
   if (!isOpen || !creditGrantLog) return null;
 
   const details = creditGrantLog.details as Record<string, any> | undefined;
@@ -91,6 +95,7 @@ export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModal
           className="w-full max-w-md bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 relative overflow-hidden"
           onClick={(e) => e.stopPropagation()}
           dir="rtl"
+          {...modalA11y.containerProps}
         >
           <button
             onClick={onClose}
@@ -176,6 +181,7 @@ export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModal
         className="w-full max-w-md bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         dir="rtl"
+        {...modalA11y.containerProps}
       >
         {/* Subtle, modern close button */}
         <button

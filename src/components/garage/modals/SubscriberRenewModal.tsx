@@ -4,6 +4,7 @@ import { formatPlateNumber } from '../../../utils/plates';
 import { safeDate } from '../../../utils/dates';
 import { getCairoDateKey } from '../../../domain/garage/businessDay';
 import type { Subscriber } from '../../../types';
+import { useModalA11y } from '../../../hooks/useModalA11y';
 
 /**
  * SubscriberRenewModal
@@ -60,12 +61,14 @@ export const SubscriberRenewModal = memo(function SubscriberRenewModal({
   onConfirm,
   isSubmitting,
 }: SubscriberRenewModalProps) {
+  // Stays mounted while hidden — re-arm Escape/trap/focus on every open.
+  const modalA11y = useModalA11y(onClose, undefined, isOpen && !!subscriber);
   if (!isOpen || !subscriber) return null;
 
   return (
     <div className="fixed inset-0 z-[130] flex items-end sm:items-center justify-center p-4 bg-slate-900/60 dark:bg-black/80">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md rounded-[2rem] sm:rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden " dir="rtl">
+      <div className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md rounded-[2rem] sm:rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden " dir="rtl" {...modalA11y.containerProps}>
 
         {/* Header */}
         <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">

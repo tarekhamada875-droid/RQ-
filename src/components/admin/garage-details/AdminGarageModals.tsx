@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import {
   Trash2,
   Loader2,
@@ -13,6 +13,7 @@ import {
 import { normalizeDigits } from '../../../utils/plates';
 import { Garage, Staff } from '../../../types';
 import { FastInput } from '../../ui/FastInput';
+import { useModalA11y } from '../../../hooks/useModalA11y';
 
 interface AdminGarageModalsProps {
   garage: Garage;
@@ -61,12 +62,21 @@ export const AdminGarageModals = memo(({
   isUpdatingGaragePin,
   onSaveGaragePin
 }: AdminGarageModalsProps) => {
+  // All three dialogs stay mounted and toggle visibility — each one gets
+  // its own a11y controller, armed only while that dialog is open.
+  const closeAddStaff = useCallback(() => setShowAddStaffModal(false), [setShowAddStaffModal]);
+  const closeStaffDelete = useCallback(() => setStaffToDelete(null), [setStaffToDelete]);
+  const closeEditPin = useCallback(() => setShowEditGaragePinModal(false), [setShowEditGaragePinModal]);
+  const addStaffA11y = useModalA11y(closeAddStaff, undefined, showAddStaffModal);
+  const staffDeleteA11y = useModalA11y(closeStaffDelete, undefined, Boolean(staffToDelete));
+  const editPinA11y = useModalA11y(closeEditPin, undefined, showEditGaragePinModal);
+
   return (
     <>
       {/* Add Staff Modal */}
       {showAddStaffModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-800 p-6">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-800 p-6" {...addStaffA11y.containerProps}>
             <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">{'إضافة موظف جديد'}</h3>
             <p className="text-xs text-slate-400 font-bold mb-5">{'أدخل اسم الموظف وسيتم استخدام الرمز الظاهر لتسجيل الدخول.'}</p>
 
@@ -123,7 +133,7 @@ export const AdminGarageModals = memo(({
       {/* Staff Delete Confirmation Modal */}
       {staffToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 text-center">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 text-center" {...staffDeleteA11y.containerProps}>
             <div className="w-14 h-14 bg-rose-50 dark:bg-rose-900/20 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-7 h-7" />
             </div>
@@ -173,6 +183,7 @@ export const AdminGarageModals = memo(({
             className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 text-right"
             onClick={(e) => e.stopPropagation()}
             dir="rtl"
+            {...editPinA11y.containerProps}
           >
             <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-100 dark:border-emerald-900/60">
               <Key className="w-6 h-6 stroke-[2.5]" />
