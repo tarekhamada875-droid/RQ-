@@ -187,6 +187,28 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect(body.id).toBeDefined();
   });
 
+  it('1b. POST /api/garages/create stores the canonical phone form (audit N9 parity)', async () => {
+    const testPin = String(Math.floor(10000 + Math.random() * 90000));
+    const createRes = await api.fetch(new Request('http://localhost/api/garages/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer valid-admin-token'
+      },
+      body: JSON.stringify({
+        name: 'Phone Normalization Garage',
+        phone: ' 010-1234 5678 ',
+        pin: testPin,
+        isTrial: true
+      })
+    }), workerEnv);
+
+    expect(createRes.status).toBe(200);
+    const body = await createRes.json() as any;
+    const stored = mockDb.records.get(`garages/${body.id}`);
+    expect(stored).toMatchObject({ phone: '01012345678' });
+  });
+
   it('prevents delegates from self-assigning trial credits during garage creation', async () => {
     const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
     const response = await api.fetch(new Request('http://localhost/api/garages/create', {
@@ -239,6 +261,38 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect(updateRes.status).toBe(200);
     const body = await updateRes.json() as any;
     expect(body.success).toBe(true);
+  });
+
+  it('2b. POST /api/garages/update stores the canonical phone form (audit N9 parity)', async () => {
+    const updateRes = await api.fetch(new Request('http://localhost/api/garages/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer valid-admin-token'
+      },
+      body: JSON.stringify({
+        id: testGarageId,
+        phone: ' +20(100)123-4567 '
+      })
+    }), workerEnv);
+
+    expect(updateRes.status).toBe(200);
+    expect(mockDb.records.get(`garages/${testGarageId}`)).toMatchObject({ phone: '+201001234567' });
+
+    const arabicRes = await api.fetch(new Request('http://localhost/api/garages/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer valid-admin-token'
+      },
+      body: JSON.stringify({
+        id: testGarageId,
+        phone: '٠١٠١٢٣٤٥٦٧٨'
+      })
+    }), workerEnv);
+
+    expect(arabicRes.status).toBe(200);
+    expect(mockDb.records.get(`garages/${testGarageId}`)).toMatchObject({ phone: '01012345678' });
   });
 
   it('3. POST /api/garages/delete starts a resumable job; bounded steps remove only owned data and complete it', async () => {

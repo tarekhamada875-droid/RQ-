@@ -14,6 +14,7 @@ import { requireWorkerAuth } from '../sessionInfrastructure';
 import { grantTrialCredits, materializeCreditLedgerEntry } from '../domain/prepaidCreditLedger';
 import { MAINTAINED_SUMMARY_VERSION, maintainedAdminSummaryRef } from '../workerMaintenance';
 import { validateId } from '../validation';
+import { normalizePhone } from '../pinCrypto';
 
 export function registerGarageUpdate(app: WorkerApp): void {
 // Handler 2: Update Garage (POST /api/garages/update)
@@ -50,6 +51,15 @@ app.post('/api/garages/update', requireWorkerAuth, withErrorHandler(withAdmin(as
       if (key in data && data[key] !== undefined) {
         updates[key] = data[key];
       }
+    }
+
+    // Audit N9 parity: normalize the phone into the canonical form (keeps
+    // `+`, strips spaces/dashes, converts Arabic-Indic digits) — same as the
+    // garage create route and the delegate/staff routes. A phone saved with
+    // spaces or dashes would not match the canonical form the login lookup
+    // compares against.
+    if (typeof updates.phone === 'string') {
+      updates.phone = normalizePhone(updates.phone);
     }
 
     // NOTE (audit N3, 2026-11-06): `lastRateChangeDate` is intentionally NOT

@@ -13,7 +13,7 @@ import { canSubmitGarageApplication } from '../domain/authorization';
 import { grantTrialCredits, materializeCreditLedgerEntry } from '../domain/prepaidCreditLedger';
 import { MAINTAINED_SUMMARY_VERSION, maintainedGarageSummaryRef, writeMaintainedAdminDelta } from '../workerMaintenance';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from '../idempotency';
-import { computeLookupHash } from '../pinCrypto';
+import { computeLookupHash, normalizePhone } from '../pinCrypto';
 import { checkPinAvailabilityAcrossAll, saveEntityPinInTransaction } from '../pinRepository';
 import { generateUniquePin } from '../pinGeneration';
 import { validateIdempotencyKey, validateNewPin, validateNumber, validateString, sanitizePayload } from '../validation';
@@ -147,7 +147,11 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       }, 400);
     }
 
-    const phone = rawPhone ? String(rawPhone).trim() : '';
+    // Audit N9 parity: store the canonical phone form (keeps `+`, strips
+    // spaces/dashes, converts Arabic-Indic digits) — same as the delegate and
+    // staff routes. The login lookup compares against this canonical form, so
+    // a phone saved with spaces or dashes could not log in.
+    const phone = rawPhone ? normalizePhone(rawPhone) : '';
     const hourlyRateValue = rawHourlyRate !== undefined
       ? validateNumber(rawHourlyRate, 'hourlyRate', { min: 0, max: 10000, required: false })
       : 0;
