@@ -2,7 +2,7 @@
  * PR-F: Worker in-memory auth caches.
  *
  * Per supervisor FINAL SEQUENCE: "Worker auth caches (role 5-min TTL +
- * session 30s TTL, bounded+pruning, iat in key); 保留 useGarageSession.ts:88-91
+ * session 30s TTL, bounded+pruning, iat in key); keep the useGarageSession.ts
  * auth-timeout fallback".
  *
  * Two caches:
