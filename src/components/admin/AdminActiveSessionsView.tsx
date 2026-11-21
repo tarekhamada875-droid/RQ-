@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle2, Clock3, Laptop2, Loader2, LogOut, RefreshCw, ShieldCheck, Smartphone, Tablet, XCircle } from 'lucide-react';
 import { ActiveSession, sessionService } from '../../services/sessionService';
+import { AdminConfirmDialog } from './AdminConfirmDialog';
 
 interface AdminActiveSessionsViewProps {
   onLogout: () => void;
@@ -13,7 +14,10 @@ function formatTimestamp(value: string | null, locale: string): string {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+  // Anchored to Africa/Cairo like every other clock in the app (businessDay,
+  // daily report): the same session must show the same "last active" time on
+  // every device, not one that shifts with the device timezone.
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }).format(date);
 }
 
 function deviceIcon(session: ActiveSession): React.ReactNode {
@@ -35,6 +39,9 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
   const [isLoading, setIsLoading] = React.useState(true);
   const [busySession, setBusySession] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  // The session waiting for the user to confirm revocation in the styled
+  // dialog (replaces the old browser window.confirm).
+  const [confirmTarget, setConfirmTarget] = React.useState<ActiveSession | null>(null);
 
   const loadSessions = React.useCallback(async () => {
     setIsLoading(true);
@@ -52,9 +59,14 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
     void loadSessions();
   }, [loadSessions]);
 
-  const revokeSession = async (session: ActiveSession) => {
+  const requestRevoke = (session: ActiveSession) => {
     if (!session.id || busySession) return;
-    if (!window.confirm(session.isCurrent ? 'هل تريد تسجيل الخروج من هذا الجهاز؟' : 'هل تريد إلغاء جلسة هذا الجهاز؟')) return;
+    setConfirmTarget(session);
+  };
+
+  const confirmRevoke = async () => {
+    const session = confirmTarget;
+    if (!session?.id || busySession) return;
     setBusySession(session.id);
     setError(null);
     try {
@@ -62,15 +74,17 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
       if (result.wasCurrent || session.isCurrent) {
         // The session is already revoked server-side. Call handleLogout
         // directly (bypass the PIN confirm modal) — the user already
-        // confirmed via window.confirm above.
+        // confirmed via the styled dialog above.
         if (onImmediateLogout) onImmediateLogout();
         else onLogout();
         return;
       }
       setSessions((current) => current.filter((entry) => entry.id !== session.id));
+      setConfirmTarget(null);
       showToast?.('تم إلغاء جلسة الجهاز بنجاح', 'success');
     } catch (revokeError) {
       const message = errorMessage(revokeError);
+      setConfirmTarget(null);
       setError(message);
       showToast?.(message, 'error');
       if (message.includes('انتهت الجلسة')) onLogout();
@@ -126,7 +140,7 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400"><Clock3 className="w-3.5 h-3.5" /> {'آخر نشاط:'} {formatTimestamp(session.lastActive, 'ar-EG')}</div>
                 <div className="text-[10px] font-mono text-slate-400 truncate">{'معرّف آمن:'} {session.id.slice(0, 12)}…</div>
               </div>
-              <button type="button" onClick={() => void revokeSession(session)} disabled={busySession !== null} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 text-xs font-black disabled:opacity-50 shrink-0">
+              <button type="button" onClick={() => requestRevoke(session)} disabled={busySession !== null} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 text-xs font-black disabled:opacity-50 shrink-0">
                 {busySession === session.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
                 {session.isCurrent ? 'تسجيل الخروج' : 'إلغاء الجلسة'}
               </button>
@@ -134,6 +148,19 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
           ))}
         </div>
       )}
+
+      <AdminConfirmDialog
+        isOpen={confirmTarget !== null}
+        type="danger"
+        title={confirmTarget?.isCurrent ? 'تسجيل الخروج من هذا الجهاز' : 'إلغاء جلسة الجهاز'}
+        message={confirmTarget?.isCurrent
+          ? 'سيتم تسجيل خروجك من هذا الجهاز فوراً. هل تريد المتابعة؟'
+          : 'سيتم إغلاق جلسة هذا الجهاز وسيحتاج المستخدم إلى تسجيل الدخول مرة أخرى. هل تريد المتابعة؟'}
+        confirmText={confirmTarget?.isCurrent ? 'تأكيد الخروج' : 'تأكيد الإلغاء'}
+        cancelText="رجوع"
+        onConfirm={() => confirmRevoke()}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 };
