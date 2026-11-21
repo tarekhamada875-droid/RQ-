@@ -45,14 +45,16 @@ vi.mock('./domain/prepaidCreditLedger', () => ({
 import { registerCreditRequestRoutes } from './creditRequestRoutes';
 import { adminDb } from './firebaseAdmin';
 import { recordDomainEventInTransaction } from './events';
-import { grantPaidCredits } from './domain/prepaidCreditLedger';
+import { grantPaidCredits, materializeCreditLedgerEntry, awardReferralCredits } from './domain/prepaidCreditLedger';
 
 afterEach(() => vi.clearAllMocks());
 
 const grantPaidCreditsMock = vi.mocked(grantPaidCredits);
+const materializeCreditLedgerEntryMock = vi.mocked(materializeCreditLedgerEntry);
+const awardReferralCreditsMock = vi.mocked(awardReferralCredits);
 const recordDomainEventMock = vi.mocked(recordDomainEventInTransaction);
 
-function createHarness(options: { globalConfig?: { creditRate?: number } | null; garageOverride?: number } = {}) {
+function createHarness(options: { globalConfig?: { creditRate?: number } | null; garageOverride?: number; referrerGarage?: Record<string, any> | null } = {}) {
   const routes = new Map<string, (context: any) => Promise<any>>();
   const app: any = new Proxy({}, {
     get: (_target, method: string | symbol) => (path: string, ...handlers: unknown[]) => {
@@ -86,6 +88,7 @@ function createHarness(options: { globalConfig?: { creditRate?: number } | null;
     get: vi.fn(async (ref: any) => {
       if (ref.path === 'credit_requests/req-1') return { exists: true, data: () => ({ ...requestDoc }) };
       if (ref.path === 'garages/garage-1') return { exists: true, data: () => ({ ...garage }) };
+      if (options.referrerGarage && ref.path === `garages/${options.referrerGarage.id}`) return { exists: true, data: () => ({ ...options.referrerGarage }) };
       if (ref.path === 'delegates/delegate-1') return { exists: true, data: () => ({ ...delegate }) };
       if (ref.path === 'system_config/global') {
         return options.globalConfig === null
@@ -233,5 +236,80 @@ describe('pending credit-request list credits preview', () => {
     expect(requests[0]).toMatchObject({ id: 'req-1', creditsPreview: 200 });
     // garage-2 is missing from the DB → falls back to the global 1.33
     expect(requests[1]).toMatchObject({ id: 'req-2', creditsPreview: 133 });
+  });
+});
+
+describe('referral reward fires on the approval path too (same trigger as direct grants)', () => {
+  it('pays the referrer 10 credits + writes the marker on the first ≥500 EGP approval', async () => {
+    const harness = createHarness({
+      garageOverride: 2,
+      globalConfig: { creditRate: 1 },
+      referrerGarage: { id: 'ref-garage', name: 'الجراج المُحيل', billingModel: 'prepaid_credits', credits: 5 },
+    });
+    harness.garage.referredByGarageId = 'ref-garage';
+    harness.requestDoc.amount = 500;
+
+    // Distinct ledger IDs for the grant entry and the referral entry.
+    materializeCreditLedgerEntryMock
+      .mockImplementationOnce((entry: any) => ({ ok: true, value: { ...entry, entryId: 'credit-ledger-1' } }))
+      .mockImplementationOnce((entry: any) => ({ ok: true, value: { ...entry, entryId: 'referral-ledger-1' } }));
+    awardReferralCreditsMock.mockImplementationOnce((command: any) => ({
+      ok: true,
+      value: {
+        balance: (command.balance ?? 0) + 10,
+        entry: { ...command, kind: 'referral_award', amount: 10, balanceBefore: command.balance ?? 0, balanceAfter: (command.balance ?? 0) + 10 },
+      },
+    }));
+
+    const response = await harness.approve(adminContext());
+
+    expect(response.status).toBe(200);
+    expect(response.body.referralAward).toMatchObject({ garageId: 'ref-garage', amount: 10 });
+
+    // The award itself: deterministic one-time idempotency key, same trigger as grants.
+    expect(awardReferralCreditsMock).toHaveBeenCalledTimes(1);
+    expect(awardReferralCreditsMock.mock.calls[0][0]).toMatchObject({
+      garageId: 'ref-garage',
+      referrerGarageId: 'ref-garage',
+      referredGarageId: 'garage-1',
+      paidGrantConfirmed: true,
+      firstPaidGrant: true,
+      idempotencyKey: 'first_paid_grant:garage-1',
+    });
+
+    // Referrer balance updated + referral ledger entry + referrer activity log.
+    const referrerWrite = harness.writes.find((w) => w.path === 'garages/ref-garage');
+    expect(referrerWrite).toBeDefined();
+    expect(referrerWrite!.data.credits).toBe(15);
+    const referralLedgerWrite = harness.writes.find((w) => w.path === 'credit_ledger/referral-ledger-1');
+    expect(referralLedgerWrite).toBeDefined();
+    expect(referralLedgerWrite!.data.source).toBe('first_paid_grant_referral');
+    expect(referralLedgerWrite!.data.referredGarageId).toBe('garage-1');
+    const referralActivity = harness.writes.find((w) => w.data?.actionType === 'credit_referral_award');
+    expect(referralActivity).toBeDefined();
+
+    // The one-time marker records the award (idempotency across both paths).
+    const markerWrite = harness.writes.find((w) => w.path === 'credit_referral_awards/garage-1');
+    expect(markerWrite).toBeDefined();
+    expect(markerWrite!.data).toMatchObject({ status: 'awarded', referrerGarageId: 'ref-garage', amount: 10 });
+
+    // Same history stamps as the direct-grant path.
+    const garageWrite = harness.writes.find((w) => w.path === 'garages/garage-1' && w.operation === 'set');
+    expect(garageWrite).toBeDefined();
+    expect(garageWrite!.data.firstPaidCreditGrantAt).toBeDefined();
+    expect(garageWrite!.data.firstQualifyingGrantAt).toBeDefined();
+    // Revenue is cent-rounded, records the EGP collected (not derived credits).
+    expect(garageWrite!.data.totalAdminRevenue).toBe(500);
+  });
+
+  it('does not reward or mark when the approval is below the qualifying threshold', async () => {
+    const harness = createHarness({ garageOverride: 2, globalConfig: { creditRate: 1 } });
+    harness.garage.referredByGarageId = 'ref-garage';
+    const response = await harness.approve(adminContext());
+
+    expect(response.status).toBe(200);
+    expect(response.body.referralAward).toBeNull();
+    expect(awardReferralCreditsMock).not.toHaveBeenCalled();
+    expect(harness.writes.find((w) => w.path.startsWith('credit_referral_awards/'))).toBeUndefined();
   });
 });
