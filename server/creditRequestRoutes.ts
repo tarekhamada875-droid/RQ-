@@ -2,11 +2,11 @@ import type { WorkerApp, WorkerUser } from './cloudflareWorker';
 import { adminDb } from './firebaseAdmin';
 import { requireWorkerAuth } from './sessionInfrastructure';
 import { validateId, validateNumber } from './validation';
-import { grantPaidCredits, materializeCreditLedgerEntry } from './domain/prepaidCreditLedger';
+import { grantPaidCredits, materializeCreditLedgerEntry, awardReferralCredits } from './domain/prepaidCreditLedger';
 import { recordDomainEventInTransaction } from './events';
 import { decideDelegateCommission, COMMISSION_AMOUNT_EGP } from './domain/delegateCommission';
 import { CREDIT_AMOUNT_MAX_EGP, CREDIT_AMOUNT_MIN_EGP } from './domain/limits';
-import { parseMoneyAmount } from './money';
+import { parseMoneyAmount, addMoneyRounded } from './money';
 import { withAdmin, withErrorHandler } from './routes/combinators';
 import { writeMaintainedAdminDelta } from './workerMaintenance';
 
@@ -283,19 +283,67 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
         nextUnsettledCommission = parseMoneyAmount(currentUnsettled + COMMISSION_AMOUNT_EGP);
       }
 
+      // ── Referral reward (same trigger as /api/garages/:id/credit-grants) ──
+      // The referral reward and the delegate commission fire on the SAME
+      // trigger (first qualifying paid grant ≥ 500 EGP — owner contract,
+      // docs/PROJECT.md). The approval path previously skipped the reward
+      // entirely, so whether a garage's referrer got paid depended on which
+      // screen the admin used for the payment. This mirrors the direct-grant
+      // path in creditGrantRoutes.ts exactly, including the marker doc that
+      // makes the one-time award idempotent.
+      const isFirstPaidGrant = !garage.firstPaidCreditGrantAt;
+      const isFirstQualifyingGrant = !garage.firstQualifyingGrantAt && paymentAmountEgp >= 500;
+      const referrerGarageId = typeof garage.referredByGarageId === 'string' ? garage.referredByGarageId : '';
+      const referralMarkerRef = isFirstQualifyingGrant ? adminDb.doc(`credit_referral_awards/${requestData.garageId}`) : null;
+      const referralMarkerSnap = referralMarkerRef ? await t.get(referralMarkerRef) : null;
+      const referrerRef = isFirstQualifyingGrant && referralMarkerRef && !referralMarkerSnap?.exists && referrerGarageId && referrerGarageId !== requestData.garageId ? adminDb.doc(`garages/${referrerGarageId}`) : null;
+      const referrerSnap = referrerRef ? await t.get(referrerRef) : null;
+      let referralAward: any = null;
+      let referralLedger: any = null;
+      let referralTransition: any = null;
+      if (isFirstQualifyingGrant && referrerRef && referrerSnap?.exists && referrerSnap.data()?.billingModel === 'prepaid_credits' && referralMarkerRef && !referralMarkerSnap?.exists) {
+        const referrer = referrerSnap.data() || {};
+        referralTransition = awardReferralCredits({
+          balance: Number(referrer.credits ?? 0),
+          garageId: referrerGarageId,
+          actorUid: callerUid,
+          actorRole: 'admin',
+          reason: 'First confirmed paid grant referral reward',
+          occurredAt: transition.value.entry.occurredAt,
+          idempotencyKey: `first_paid_grant:${requestData.garageId}`,
+          referrerGarageId,
+          referredGarageId: requestData.garageId,
+          paidGrantConfirmed: true,
+          firstPaidGrant: true,
+        });
+        if (referralTransition.ok === false) throw new Error(referralTransition.error);
+        const materializedReward = materializeCreditLedgerEntry(referralTransition.value.entry);
+        if (materializedReward.ok === false) throw new Error(materializedReward.error);
+        referralLedger = materializedReward.value;
+        referralAward = { garageId: referrerGarageId, amount: 10, entryId: referralLedger.entryId };
+      }
+
       // ── Write everything ─────────────────────────────────────
       // Audit fix (2026-11-21): approval revenue now feeds the O(1) admin
       // summary exactly like the direct-grant path (writeMaintainedAdminDelta
       // below) — previously the two grant paths diverged and the admin
       // summary undercounted every request-approved payment.
-      const currentAdminRevenue = Number(garage.totalAdminRevenue || 0);
+      // Audit fix (2026-11-21): cent-rounded accumulation — the identical
+      // counter on the direct-grant path (creditGrantRoutes.ts) rounds the
+      // same way; raw float adds drift by fractions over years.
+      const newAdminRevenue = addMoneyRounded(garage.totalAdminRevenue, paymentAmountEgp);
       t.set(garageRef, {
         credits: transition.value.balance,
-        totalAdminRevenue: currentAdminRevenue + paymentAmountEgp,
+        totalAdminRevenue: newAdminRevenue,
         // Stamp the badge trigger on the garage doc (mirrors
         // /api/garages/:id/credit-grants) so the client's notification
         // listener doesn't need a separate activity_logs subscription.
         lastCreditGrantAt: now,
+        // Mirror the direct-grant path's first-grant stamps — the referral
+        // reward and first-paid-grant semantics depend on them, so the two
+        // payment paths must record the same history.
+        ...(isFirstPaidGrant ? { firstPaidCreditGrantAt: now } : {}),
+        ...(isFirstQualifyingGrant ? { firstQualifyingGrantAt: now } : {}),
         ...(isCommissionDue ? { lastCommissionGrantAt: now } : {})
       }, { merge: true });
 
@@ -363,6 +411,27 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
         }
       });
 
+      // Referral writes — same shape as the direct-grant path
+      // (creditGrantRoutes.ts): referrer balance, referral ledger entry,
+      // referrer activity log, and the one-time marker (which also records
+      // why no reward was paid when there is no eligible referrer).
+      if (referralLedger && referralAward && referrerRef && referralMarkerRef) {
+        t.set(referrerRef, { credits: referralTransition.value.balance }, { merge: true });
+        t.set(adminDb.doc(`credit_ledger/${referralLedger.entryId}`), { ...referralLedger, source: 'first_paid_grant_referral', referredGarageId: requestData.garageId });
+        t.set(adminDb.collection('activity_logs').doc(), { garageId: referrerGarageId, garageName: referrerSnap.data()?.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_referral_award', timestamp: now, details: { referredGarageId: requestData.garageId, amount: 10, ledgerEntryId: referralLedger.entryId } });
+      }
+      if (isFirstQualifyingGrant && referralMarkerRef && !referralMarkerSnap?.exists) {
+        t.set(referralMarkerRef, {
+          referredGarageId: requestData.garageId,
+          referrerGarageId: referrerGarageId || null,
+          ledgerEntryId: referralLedger?.entryId || null,
+          amount: referralLedger ? 10 : 0,
+          status: referralLedger ? 'awarded' : (referrerGarageId ? 'referrer_not_prepaid' : 'no_eligible_referrer'),
+          createdAt: now,
+          createdBy: callerUid,
+        });
+      }
+
       recordDomainEventInTransaction(t, adminDb, {
         garageId: requestData.garageId,
         aggregateType: 'credit_request',
@@ -379,7 +448,8 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
         creditsGranted: amount,
         paymentAmountEgp,
         commissionGranted: isCommissionDue,
-        commissionAmount: isCommissionDue ? COMMISSION_AMOUNT_EGP : 0
+        commissionAmount: isCommissionDue ? COMMISSION_AMOUNT_EGP : 0,
+        referralAward
       };
     });
 
