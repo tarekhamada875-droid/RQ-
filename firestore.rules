@@ -8,10 +8,10 @@
 //   - All garages use prepaid credits (billingModel: 'prepaid_credits').
 //   - The subscription/hourly billing model has been retired.
 //   - 1 credit per regular vehicle check-in.
-//   - Subscriber check-in is free; subscriber renewal debits 2 credits.
+//   - Subscriber check-in is free; subscriber renewal debits 1 credit (owner decision, PR #725).
 //   - The EGP-to-credit rate is admin-configurable (system_config/global.creditRate).
 //   - Delegate commission: 100 EGP, rolling 30-day recurring.
-//   - Referral reward: 20 credits, one-time on first qualifying grant.
+//   - Referral reward: 10 credits, one-time on first qualifying grant (owner decision, PR #666).
 //   - PINs are stored in private_pins/ (not on entity docs).
 //   - PIN retirement: once used, a PIN can never be reused.
 //
@@ -155,23 +155,15 @@ service cloud.firestore {
     // ===============================================================
 
     match /recharge_requests/{requestId} {
-      // Retired billing model: history is kept for the Admin only; nothing can be written from a browser.
-      allow read: if isAdmin();
-      allow write: if false;
-    }
-
-    match /test/connection {
+      // Retired billing model: history is preserved but inaccessible from any
+      // browser (same pattern as supervisors/). The deletion cleanup adapter
+      // touches it via the Admin SDK, which bypasses rules.
       allow read, write: if false;
     }
 
     match /activity_logs/{logId} {
       allow read: if isAdmin() || (isGarageSession(resource.data.garageId));
       allow create, update, delete: if false; // Server-only
-    }
-
-    match /settings/{docId} {
-      allow read: if isAdmin();
-      allow write: if false;
     }
 
     match /system_config/{configId} {
