@@ -45,7 +45,8 @@ interface AdminGarageSettingsSectionProps {
   editingStaffPinValue: string;
   setEditingStaffPinValue: (value: string) => void;
   isUpdatingStaffPin: boolean;
-  setIsUpdatingStaffPin: (updating: boolean) => void;
+  /** Shared save helper (useAsyncAction.run) owned by AdminGarageDetailsView. */
+  runStaffPinUpdate: (fn: () => Promise<void>, onError?: (error: unknown) => void) => Promise<void | undefined>;
   setStaffToDelete: (staff: Staff | null) => void;
 }
 
@@ -68,7 +69,7 @@ export const AdminGarageSettingsSection = ({
   editingStaffPinValue,
   setEditingStaffPinValue,
   isUpdatingStaffPin,
-  setIsUpdatingStaffPin,
+  runStaffPinUpdate,
   setStaffToDelete,
 }: AdminGarageSettingsSectionProps) => {
   const { showToast } = useToast();
@@ -238,18 +239,16 @@ export const AdminGarageSettingsSection = ({
                                       showToast('رمز دخول الموظف يجب أن يتكون من 5 أرقام بالضبط.', 'error');
                                       return;
                                     }
-                                    setIsUpdatingStaffPin(true);
-                                    try {
+                                    await runStaffPinUpdate(async () => {
                                       const pinCheck = await authService.isPinTaken(editingStaffPinValue, s.id);
                                       if (pinCheck.taken) {
                                         showToast('الرمز مستخدم بالفعل', 'error');
-                                        setIsUpdatingStaffPin(false);
                                         return;
                                       }
                                       await adminService.updateStaff(s.id, { pin: editingStaffPinValue });
                                       setStaffList(prev => applyStaffPinUpdate(prev, s.id, editingStaffPinValue));
                                       setEditingStaffPinId(null);
-                                    } catch (err) {
+                                    }, (err) => {
                                       console.error(err);
                                       const failure = classifyApiFailure(err);
                                       const reference = getApiFailureReference(err);
@@ -261,9 +260,7 @@ export const AdminGarageSettingsSection = ({
                                         message = `${'حدث خطأ في الخادم أثناء تحديث رمز الموظف.'}${suffix}`;
                                       }
                                       showToast(message, 'error');
-                                    } finally {
-                                      setIsUpdatingStaffPin(false);
-                                    }
+                                    });
                                   }}
                                   disabled={isUpdatingStaffPin}
                                   className="w-5 h-5 bg-emerald-600 text-white rounded flex items-center justify-center"

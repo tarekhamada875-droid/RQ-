@@ -30,6 +30,7 @@ import { delegateService, type DelegateCreditRequest } from '../../services/dele
 import { CREDIT_AMOUNT_MAX_EGP, CREDIT_AMOUNT_MIN_EGP } from '../../utils/limits';
 import { useDelegateDashboard } from '../../hooks/delegateDashboardContext';
 import { useToast } from '../../hooks/toast';
+import { useAsyncAction } from '../../hooks/useAsyncAction';
 import { FastInput } from '../ui/FastInput';
 
 interface DelegateDashboardViewProps {
@@ -60,7 +61,7 @@ export const DelegateDashboardView = memo(({
   const [showCreditRequestModal, setShowCreditRequestModal] = useState(false);
   const [creditRequestGarage, setCreditRequestGarage] = useState<Garage | null>(null);
   const [creditRequestAmount, setCreditRequestAmount] = useState('');
-  const [submittingCreditRequest, setSubmittingCreditRequest] = useState(false);
+  const { isLoading: submittingCreditRequest, run: runCreditRequestSubmit } = useAsyncAction();
 
   // ── Back-handler registrations ──────────────────────────────────────
   useBackHandler(() => { setShowCreditRequestModal(false); setCreditRequestGarage(null); return true; }, showCreditRequestModal);
@@ -161,23 +162,20 @@ export const DelegateDashboardView = memo(({
     if (!creditRequestGarage || submittingCreditRequest) return;
     const amount = Number(creditRequestAmount.trim());
     if (!Number.isSafeInteger(amount) || amount < CREDIT_AMOUNT_MIN_EGP || amount > CREDIT_AMOUNT_MAX_EGP) return;
-    setSubmittingCreditRequest(true);
-    try {
+    await runCreditRequestSubmit(async () => {
       await delegateService.createCreditRequest(creditRequestGarage.id, amount);
       await refreshCreditRequests();
       setShowCreditRequestModal(false);
       setCreditRequestGarage(null);
       setCreditRequestAmount('');
-    } catch (err: any) {
-      const msg = err?.message || '';
+    }, (err: unknown) => {
+      const msg = (err as { message?: string })?.message || '';
       if (msg.includes('PENDING_REQUEST_EXISTS')) {
         showToast('يوجد طلب رصيد قيد المراجعة لهذا الجراج بالفعل', 'error');
       } else {
         showToast('تعذر إرسال طلب الرصيد. حاول مرة أخرى.', 'error');
       }
-    } finally {
-      setSubmittingCreditRequest(false);
-    }
+    });
   };
 
   return (

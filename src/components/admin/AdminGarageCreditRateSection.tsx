@@ -16,6 +16,7 @@ import {
 } from '../../utils/creditRate';
 import { getDomainErrorMessage } from '../../utils/domainErrors';
 import { useGlobalCreditRate } from '../../hooks/useGlobalCreditRate';
+import { useAsyncAction } from '../../hooks/useAsyncAction';
 
 interface Props {
   garage: Garage;
@@ -59,7 +60,9 @@ export const AdminGarageCreditRateSection: React.FC<Props> = ({ garage }) => {
   );
   const globalEgpPerCredit = useGlobalCreditRate();
   const [selectedEgpPerCredit, setSelectedEgpPerCredit] = useState<number | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  // Shared save-state machine (useAsyncAction) — one loading flag covers both
+  // the save and the clear action, same as the hand-rolled isSaving it replaces.
+  const { isLoading: isSaving, run: runSaveAction } = useAsyncAction();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -81,36 +84,26 @@ export const AdminGarageCreditRateSection: React.FC<Props> = ({ garage }) => {
 
   const handleSave = async () => {
     if (selectedEgpPerCredit === null || isSaving) return;
-    setIsSaving(true);
     setError('');
     setSuccess('');
-    try {
+    await runSaveAction(async () => {
       await adminService.setGarageCreditRate(garage.id, { egpPerCredit: selectedEgpPerCredit });
       setOwnEgpPerCredit(selectedEgpPerCredit);
       setSelectedEgpPerCredit(null);
       setSuccess('تم حفظ سعر هذا الجراج.');
-    } catch (cause) {
-      setError(getRateErrorMessage(cause));
-    } finally {
-      setIsSaving(false);
-    }
+    }, (cause) => setError(getRateErrorMessage(cause)));
   };
 
   const handleClear = async () => {
     if (isSaving) return;
-    setIsSaving(true);
     setError('');
     setSuccess('');
-    try {
+    await runSaveAction(async () => {
       await adminService.setGarageCreditRate(garage.id, { clear: true });
       setOwnEgpPerCredit(null);
       setSelectedEgpPerCredit(null);
       setSuccess('عاد الجراج إلى السعر العام.');
-    } catch (cause) {
-      setError(getRateErrorMessage(cause));
-    } finally {
-      setIsSaving(false);
-    }
+    }, (cause) => setError(getRateErrorMessage(cause)));
   };
 
   // The credit rate only exists for prepaid-credit garages — subscription

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Trash2, RotateCcw, Check, Loader2 } from 'lucide-react';
 import { useModalA11y } from '../../hooks/useModalA11y';
+import { useAsyncAction } from '../../hooks/useAsyncAction';
 
 interface AdminConfirmDialogProps {
   isOpen: boolean;
@@ -23,14 +24,13 @@ export const AdminConfirmDialog: React.FC<AdminConfirmDialogProps> = ({
   cancelText,
   type = 'success',
 }) => {
-  const [isProcessing, setIsProcessing] = useState(false);
+  const { isLoading: isProcessing, run: runConfirmAction } = useAsyncAction();
   const [isCancelling, setIsCancelling] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const modalA11y = useModalA11y(onCancel);
 
   React.useEffect(() => {
     if (!isOpen) {
-      setIsProcessing(false);
       setIsCancelling(false);
     }
   }, [isOpen]);
@@ -39,14 +39,9 @@ export const AdminConfirmDialog: React.FC<AdminConfirmDialogProps> = ({
 
   const handleConfirmClick = async () => {
     if (isProcessing || isCancelling) return;
-    try {
-      setIsProcessing(true);
-      await Promise.resolve(onConfirm());
-    } catch (err) {
+    await runConfirmAction(() => Promise.resolve(onConfirm()), (err) => {
       console.error('Error in confirm dialog action:', err);
-    } finally {
-      setIsProcessing(false);
-    }
+    });
   };
 
   const handleCancelClick = () => {

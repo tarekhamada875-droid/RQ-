@@ -8,6 +8,7 @@ import { creditsForEgp, formatEgpPerCredit, rateToEgpPerCredit } from '../../uti
 import { getDomainErrorMessage } from '../../utils/domainErrors';
 import { CREDIT_AMOUNT_MAX_EGP, CREDIT_AMOUNT_MIN_EGP, CREDIT_CORRECTION_MAX_CREDITS } from '../../utils/limits';
 import { useGlobalCreditRate } from '../../hooks/useGlobalCreditRate';
+import { useAsyncAction } from '../../hooks/useAsyncAction';
 
 const CREDIT_ERROR_MESSAGES: Record<string, string> = {
   ADMIN_ONLY: 'ليس لديك صلاحية لإدارة الرصيد.',
@@ -42,7 +43,7 @@ type Mode = 'grant' | 'correction';
 export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
   const [mode, setMode] = useState<Mode>('grant');
   const [amount, setAmount] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const { isLoading: submitting, run: runSubmit } = useAsyncAction();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const idempotencyIntentRef = useRef<{ fingerprint: string; key: string } | null>(null);
@@ -105,10 +106,9 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
       : (globalThis.crypto?.randomUUID?.() || `${mode}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     idempotencyIntentRef.current = { fingerprint: intentFingerprint, key: idempotencyKey };
 
-    setSubmitting(true);
     setError('');
     setSuccess('');
-    try {
+    await runSubmit(async () => {
       if (mode === 'grant') {
         // paymentConfirmed is always true — the admin clicking "add balance"
         // IS the payment confirmation. The checkbox was removed per owner
@@ -141,11 +141,9 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
       }
       setAmount('');
       idempotencyIntentRef.current = null;
-    } catch (cause: any) {
+    }, (cause: unknown) => {
       setError(getCreditErrorMessage(cause));
-    } finally {
-      setSubmitting(false);
-    }
+    });
   };
 
   if (garage.billingModel !== 'prepaid_credits') {
