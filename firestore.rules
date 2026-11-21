@@ -231,10 +231,6 @@ service cloud.firestore {
       }
     }
 
-    match /manual_credit_ledger/{entryId} {
-      allow read, create, update, delete: if false; // Server-only immutable financial audit ledger
-    }
-
     // === SERVER-ONLY COLLECTIONS (explicit deny for documentation) ===
     // These collections are written exclusively by the Worker via Admin SDK.
     // The global deny-all above also protects them, but explicit rules document
@@ -270,13 +266,14 @@ service cloud.firestore {
     match /garage_deletion_jobs/{jobId} {
       allow read, write: if false;
     }
-
-    match /admin_rate_limits/{adminUid}/operations/{operationId} {
-      allow get: if isAdmin() && adminUid == request.auth.uid && operationId == 'garage_create';
-      allow create, update: if isAdmin() && adminUid == request.auth.uid && operationId == 'garage_create' &&
-                            request.resource.data.keys().hasOnly(['lastOperationAt']) &&
-                            request.resource.data.lastOperationAt == request.time;
-      allow delete: if false;
+    match /pin_reservations/{pinId} {
+      allow read, write: if false;
+    }
+    match /garages/{garageId}/events/{eventId} {
+      allow read, write: if false;
+    }
+    match /garages/{garageId}/projection_buckets/{bucketId} {
+      allow read, write: if false;
     }
 
     // === DAILY COUNTER RULES (Phase 1) ===

@@ -22,9 +22,6 @@
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
 
-/registerSW.js
-  Cache-Control: no-cache, no-store, must-revalidate
-
 # Fingerprinted assets — safe to cache for a year.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable

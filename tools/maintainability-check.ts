@@ -31,6 +31,36 @@ if (!existsSync(deployConfig)) {
   if (!deployContent.includes('PIN_RATE_LIMITER')) fail('wrangler.deploy.toml must keep the PIN_RATE_LIMITER Durable Object binding.');
 }
 
+// Rhythm-audit fix (2026-11-21): the shared [vars] are duplicated by hand
+// across the dev and deploy configs, and nothing compared them — a one-file
+// edit (e.g. ALLOWED_ORIGINS) would silently diverge dev from production.
+// Every var defined in wrangler.toml must exist with the identical value in
+// wrangler.deploy.toml (deploy may define extra operational vars like
+// WORKER_SELF_URL, which the deploy-critical pins above already guard).
+function parseWranglerVars(content: string): Map<string, string> {
+  const vars = new Map<string, string>();
+  const section = content.match(/^\[vars\]\s*$/m);
+  if (!section || section.index === undefined) return vars;
+  const start = section.index + section[0].length;
+  const rest = content.slice(start);
+  const nextSection = rest.search(/^\[/m);
+  const body = nextSection === -1 ? rest : rest.slice(0, nextSection);
+  for (const line of body.split('\n')) {
+    const match = line.match(/^\s*([A-Za-z0-9_]+)\s*=\s*"(.*)"\s*$/);
+    if (match) vars.set(match[1], match[2]);
+  }
+  return vars;
+}
+
+if (existsSync(wranglerConfig) && existsSync(deployConfig)) {
+  const devVars = parseWranglerVars(readFileSync(wranglerConfig, 'utf8'));
+  const deployVars = parseWranglerVars(readFileSync(deployConfig, 'utf8'));
+  for (const [key, value] of devVars) {
+    if (!deployVars.has(key)) fail(`wrangler.deploy.toml is missing [vars] key "${key}" that wrangler.toml defines — keep the two configs in parity.`);
+    else if (deployVars.get(key) !== value) fail(`[vars] "${key}" differs between wrangler.toml and wrangler.deploy.toml — keep the two configs in parity.`);
+  }
+}
+
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')) as { packageManager?: string; scripts?: Record<string, string> };
 if (!packageJson.packageManager?.startsWith('npm@')) fail('package.json must declare npm as the supported package manager.');
 if (!packageJson.scripts?.['build:cloudflare']) fail('package.json must declare build:cloudflare script.');
