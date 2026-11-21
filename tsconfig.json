@@ -26,5 +26,5 @@
     "noEmit": true
   },
   "include": ["src", "server.ts", "server"],
-  "exclude": ["node_modules", "dist", "functions"]
+  "exclude": ["node_modules", "dist"]
 }

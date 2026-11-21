@@ -36,16 +36,11 @@
     <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
     <link rel="preconnect" href="https://firestore.googleapis.com" />
     <link rel="preconnect" href="https://securetoken.googleapis.com" />
-    <!-- PERF (2026-11-20): pre-warm the Firestore WebSocket connection.
-         Firestore's real-time listeners (onSnapshot for garage data,
-         active vehicles, session-guard) use wss://*.firebaseio.com for
-         push updates. Without this preconnect, the first onSnapshot
-         call after login has to do DNS + TLS + WSS handshake on the
-         critical path — ~200ms on good networks, 1-2s on 2G. With
-         preconnect, the connection is warm by the time the listener
-         attaches. The CSP already allows wss://*.firebaseio.com in
-         connect-src. -->
-    <link rel="preconnect" href="https://firebaseio.com" />
+    <!-- PERF (2026-11-21): the old preconnect to https://firebaseio.com was
+         removed — preconnect cannot establish a WebSocket (wss://) and
+         Firestore's realtime hosts are *.firebaseio.com subdomains, so the
+         apex preconnect never warmed the connection it claimed to. The
+         firestore.googleapis.com preconnect above covers the REST path. -->
     <!-- PERF (2026-11-20): pre-warm the Worker API connection.
          API calls go to rq.tarekhamada875.workers.dev (separate subdomain
          from rq-acg.pages.dev → separate TLS connection). Without this
