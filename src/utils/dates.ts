@@ -60,41 +60,9 @@ function arabicPlural(n: number, singular: string, dual: string, plural: string)
 }
 
 const AR_DAY = (n: number) => arabicPlural(n, 'يوم', 'يومان', 'أيام');
-const AR_HOUR = (n: number) => arabicPlural(n, 'ساعة', 'ساعتان', 'ساعات');
-const AR_MINUTE = (n: number) => arabicPlural(n, 'دقيقة', 'دقيقتان', 'دقائق');
 
-// Exported for use in CheckOutModal and other components that display
-// Arabic durations with proper pluralization.
-export { AR_DAY, AR_HOUR, AR_MINUTE, arabicPlural };
-
-export const getDuration = (entryTime: any, referenceNow?: Date): string => {
-  const start = entryTime ? safeDate(entryTime) : new Date();
-  const end = referenceNow ? safeDate(referenceNow) : new Date();
-
-  // If entryTime is in the future or very close to end (pending sync)
-  if (start.getTime() >= end.getTime() - 2000) return 'الآن';
-
-  const diff = Math.max(0, end.getTime() - start.getTime());
-  const totalMinutes = Math.floor(diff / (1000 * 60));
-  const totalHours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (totalHours >= 24) {
-    const days = Math.floor(totalHours / 24);
-    const hours = totalHours % 24;
-    let result = `${days} ${AR_DAY(days)}`;
-    if (hours > 0) result += ` و ${hours} ${AR_HOUR(hours)}`;
-    if (minutes > 0) result += ` و ${minutes} ${AR_MINUTE(minutes)}`;
-    return result;
-  }
-
-  if (totalHours > 0) {
-    let result = `${totalHours} ${AR_HOUR(totalHours)}`;
-    if (minutes > 0) result += ` و ${minutes} ${AR_MINUTE(minutes)}`;
-    return result;
-  }
-  return `${minutes} ${AR_MINUTE(minutes)}`;
-};
+// Used by CheckOutModal for Arabic day pluralization on past-vehicle rows.
+export { AR_DAY };
 
 const arTimeFormatter = new Intl.DateTimeFormat('ar-EG', { hour: 'numeric', minute: '2-digit' });
 const arWeekdayFormatter = new Intl.DateTimeFormat('ar-EG', { weekday: 'long' });
@@ -120,12 +88,4 @@ export const formatEntryTimeParts = (entryTime: any, referenceNow?: Date) => {
   } else {
     return { main: timeStr, sub: dayName, sub2: dayMonth, isPast: true };
   }
-};
-
-export const isSessionActive = (lastActive: any, serverTimeOffset: number = 0): boolean => {
-  if (!lastActive) return false;
-  const lastActiveMillis = safeDate(lastActive).getTime();
-  if (isNaN(lastActiveMillis) || lastActiveMillis === 0) return false;
-  // If last activity was within 10 minutes (600000ms), session is active
-  return Date.now() + serverTimeOffset - lastActiveMillis < 600000;
 };
