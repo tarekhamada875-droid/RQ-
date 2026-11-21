@@ -16,6 +16,7 @@ import {
 import { Garage, Staff } from '../../types';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useAdminGarageDetailsActions } from '../../hooks/useAdminGarageDetailsActions';
+import { useAsyncAction } from '../../hooks/useAsyncAction';
 import { useToast } from '../../hooks/toast';
 import { AdminGarageSettingsSection } from './AdminGarageSettingsSection';
 import { AdminGarageHeroAndStats } from './garage-details/AdminGarageHeroAndStats';
@@ -63,10 +64,11 @@ export const AdminGarageDetailsView = memo(({
   useBackHandler(() => { setShowMenu(false); return true; }, showMenu);
 
   // Inline staff-PIN editing state — purely visual; the actual updateStaff
-  // call lives in AdminGarageSettingsSection.
+  // call lives in AdminGarageSettingsSection and runs through the shared
+  // useAsyncAction save helper (same instance as the rest of this view).
   const [editingStaffPinId, setEditingStaffPinId] = useState<string | null>(null);
   const [editingStaffPinValue, setEditingStaffPinValue] = useState<string>('');
-  const [isUpdatingStaffPin, setIsUpdatingStaffPin] = useState(false);
+  const { isLoading: isUpdatingStaffPin, run: runStaffPinUpdate } = useAsyncAction();
 
   
   
@@ -233,7 +235,7 @@ export const AdminGarageDetailsView = memo(({
           editingStaffPinValue={editingStaffPinValue}
           setEditingStaffPinValue={setEditingStaffPinValue}
           isUpdatingStaffPin={isUpdatingStaffPin}
-          setIsUpdatingStaffPin={setIsUpdatingStaffPin}
+          runStaffPinUpdate={runStaffPinUpdate}
           setStaffToDelete={setStaffToDelete}
         />
         </section>

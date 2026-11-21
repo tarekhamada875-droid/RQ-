@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { RefreshCw, Loader2, CheckCircle2, AlertTriangle, ChevronRight } from 'lucide-react';
 import { apiFetch } from '../../api/apiClient';
 import { useBackHandler } from '../../hooks/backHandler';
+import { useAsyncAction } from '../../hooks/useAsyncAction';
 import { formatEgpPerCredit, rateToEgpPerCredit } from '../../utils/creditRate';
 
 /**
@@ -32,7 +33,7 @@ interface SyncResult {
 }
 
 export const AdminConfigSyncView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [isSyncing, setIsSyncing] = useState(false);
+  const { isLoading: isSyncing, run: runSync } = useAsyncAction();
   const [result, setResult] = useState<SyncResult | null>(null);
 
   // Android back button closes the fullscreen page (stack is popped
@@ -41,9 +42,8 @@ export const AdminConfigSyncView: React.FC<{ onBack: () => void }> = ({ onBack }
 
   const handleSync = async () => {
     if (isSyncing) return;
-    setIsSyncing(true);
     setResult(null);
-    try {
+    await runSync(async () => {
       const data = await apiFetch<{ success?: boolean; config?: { creditRate?: number; paymentWalletNumber?: string }; cacheSync?: string }>(
         '/api/admin/sync-system-config-cache',
         { method: 'POST' }
@@ -64,11 +64,9 @@ export const AdminConfigSyncView: React.FC<{ onBack: () => void }> = ({ onBack }
       } else {
         setResult({ ok: false, message: 'تعذّرت المزامنة. حاول مرة أخرى بعد لحظات.' });
       }
-    } catch {
+    }, () => {
       setResult({ ok: false, message: 'تعذّرت المزامنة. تحقق من الاتصال بالإنترنت وحاول مرة أخرى.' });
-    } finally {
-      setIsSyncing(false);
-    }
+    });
   };
 
   return (

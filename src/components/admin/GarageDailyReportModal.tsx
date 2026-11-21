@@ -14,6 +14,7 @@ import { getCairoDayBounds } from '../../../server/projections';
 import { useToast } from '../../hooks/toast';
 import type { ActivityLog, Garage } from '../../types';
 import { useModalA11y } from '../../hooks/useModalA11y';
+import { useAsyncAction } from '../../hooks/useAsyncAction';
 
 interface GarageDailyReportModalProps {
   garage: Garage;
@@ -150,7 +151,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
     return { year: d.getFullYear(), month: d.getMonth() };
   });
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
+  const { isLoading: isExporting, run: runCsvExport } = useAsyncAction();
   const [exportError, setExportError] = useState<string | null>(null);
 
   // Build the calendar grid for the current viewMonth
@@ -192,9 +193,8 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
 
   // Fetch activity logs and download CSV directly. No on-screen log list.
   const handleDownloadCSV = useCallback(async (dateId: string) => {
-    setIsExporting(true);
     setExportError(null);
-    try {
+    await runCsvExport(async () => {
       const cacheKey = `${garage.id}:${dateId}`;
       const cached = csvCache.get(cacheKey);
       let logs: ActivityLog[];
@@ -238,7 +238,6 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
 
       if (logs.length === 0) {
         setExportError('لا توجد عمليات مسجلة في هذا اليوم');
-        setIsExporting(false);
         return;
       }
 
@@ -278,12 +277,11 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
 
       showToast(`تم تحميل ${logs.length} سجل من ${garage.name || 'الجراج'} — ${dateId}`, 'success');
       onClose();
-    } catch (err) {
+    }, (err: unknown) => {
       console.error('[GarageDailyReportModal] CSV error:', err);
       setExportError('تعذّر تحميل الملف. حاول مرة أخرى.');
-      setIsExporting(false);
-    }
-  }, [garage, onClose, showToast]);
+    });
+  }, [garage, onClose, showToast, runCsvExport]);
 
   const modalA11y = useModalA11y(onClose);
 

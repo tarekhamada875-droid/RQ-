@@ -17,6 +17,7 @@ import { authService, delegateService } from '../../services';
 import { generateSafePin, formatDisplayPin } from '../../utils/pins';
 import { normalizeDigits } from '../../utils/plates';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
+import { useAsyncAction } from '../../hooks/useAsyncAction';
 import { FastInput, type FastInputHandle } from '../ui/FastInput';
 
 interface AdminPeopleViewProps {
@@ -63,7 +64,7 @@ export const AdminPeopleView = memo(({
   // Delegates State
   const [delegateForm, setDelegateForm] = useState({ name: '', phone: '', pin: '' });
   const [delegatePinError, setDelegatePinError] = useState('');
-  const [isSubmittingDelegate, setIsSubmittingDelegate] = useState(false);
+  const { isLoading: isSubmittingDelegate, run: runCreateDelegate } = useAsyncAction();
   // PERF (audit 2026-11-08): FastInput imperative handle so the "generate
   // safe PIN" button can imperatively set the PIN field's DOM value
   // without going through a controlled-value round-trip.
@@ -82,12 +83,10 @@ export const AdminPeopleView = memo(({
       return;
     }
 
-    setIsSubmittingDelegate(true);
-    try {
+    await runCreateDelegate(async () => {
       const pinCheck = await authService.isPinTaken(cleanPin);
       if (pinCheck.taken) {
         setDelegatePinError(`هذا الرمز السري مستخدم بالفعل في حساب آخر: (${pinCheck.name} - ${pinCheck.role})`);
-        setIsSubmittingDelegate(false);
         return;
       }
       await delegateService.addDelegate({
@@ -101,7 +100,7 @@ export const AdminPeopleView = memo(({
       setDelegateForm({ name: '', phone: '', pin: '' });
       setDelegatePinError('');
       setShowAddForm(false);
-    } catch (err) {
+    }, (err: unknown) => {
       console.error(err);
       const errorMessage = err instanceof Error ? err.message : '';
       const failure = classifyApiFailure(err);
@@ -118,9 +117,7 @@ export const AdminPeopleView = memo(({
       } else {
         setDelegatePinError('تعذر إضافة المندوب. يرجى المحاولة مرة أخرى.');
       }
-    } finally {
-      setIsSubmittingDelegate(false);
-    }
+    });
   };
 
   return (

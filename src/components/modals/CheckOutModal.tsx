@@ -10,6 +10,7 @@ import { isWithinEntryErrorWindow } from '../../utils/graceWindow';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
 import { useServerTimeNow } from '../../hooks/serverTimeContext';
 import { useModalA11y } from '../../hooks/useModalA11y';
+import { useAsyncAction } from '../../hooks/useAsyncAction';
 import { Vehicle, Garage, Staff } from '../../types';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
@@ -54,17 +55,12 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
 
   const [confirmingSide, setConfirmingSide] = React.useState<'left' | 'right' | null>(null);
   const [showLargeButton, setShowLargeButton] = React.useState(false);
-  const [isConfirming, setIsConfirming] = React.useState(false);
+  const { isLoading: isConfirming, run: runConfirm } = useAsyncAction();
   const timerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const handleGuardedConfirm = async () => {
     if (isLoading || isConfirming) return;
-    setIsConfirming(true);
-    try {
-      await onConfirm();
-    } finally {
-      setIsConfirming(false);
-    }
+    await runConfirm(async () => { await onConfirm(); });
   };
 
   const [isLargeScreen, setIsLargeScreen] = React.useState(false);

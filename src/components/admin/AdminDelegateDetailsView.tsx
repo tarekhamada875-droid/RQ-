@@ -9,6 +9,7 @@ import { Trash2, ChevronRight, Users, Coins, Loader2 } from 'lucide-react';
 import { Delegate } from '../../types';
 import { delegateService } from '../../services';
 import { useTheme } from '../../utils/ThemeContext';
+import { useAsyncAction } from '../../hooks/useAsyncAction';
 import { AdminDelegateProfileCard } from './delegate-details/AdminDelegateProfileCard';
 
 interface AdminDelegateDetailsViewProps {
@@ -24,7 +25,7 @@ export const AdminDelegateDetailsView = memo(({
   setSelectedDelegate,
   removeDelegate,
 }: AdminDelegateDetailsViewProps) => {
-  const [isLoading, setIsLoading] = useState(false);
+  const { isLoading, run: runSettleAction } = useAsyncAction();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmSettle, setConfirmSettle] = useState(false);
   const [settledAtOverride, setSettledAtOverride] = useState<Date | null>(null);
@@ -43,8 +44,9 @@ export const AdminDelegateDetailsView = memo(({
 
   const handleSettleAccount = async () => {
     setConfirmSettle(false);
-    setIsLoading(true);
-    try {
+    // Silent on error, exactly like the hand-rolled catch it replaces —
+    // the confirm dialog just closes and the view keeps its last state.
+    await runSettleAction(async () => {
       await delegateService.settleDelegateAccount(
         delegate.id,
         Number(delegate.totalRechargedAmount || 0),
@@ -52,11 +54,7 @@ export const AdminDelegateDetailsView = memo(({
       );
       setSettledAtOverride(new Date());
       setSelectedDelegate({ ...delegate, totalRechargedAmount: 0 });
-    } catch {
-      // Silent — the confirm dialog just closes
-    } finally {
-      setIsLoading(false);
-    }
+    }, () => { /* silent */ });
   };
 
   const handleDelete = async () => {

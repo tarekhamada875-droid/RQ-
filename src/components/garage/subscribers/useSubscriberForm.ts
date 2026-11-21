@@ -4,6 +4,7 @@ import type { Subscriber, Garage } from '../../../types';
 import { getCleanPlate, getRawPlate } from '../../../utils/plates';
 import { getCairoDateKey } from '../../../domain/garage/businessDay';
 import { getStorage } from '../../../utils/storage';
+import { useAsyncAction } from '../../../hooks/useAsyncAction';
 
 // PR-I: debounce interval for draft persistence. 400ms balances the user's
 // typing speed against localStorage write cost. The timer is cleaned up on
@@ -66,7 +67,7 @@ export function useSubscriberForm(
   });
   const [selectedDuration, setSelectedDuration] = useState<Duration>('1m');
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { isLoading: isSubmitting, run: runSubmitAction } = useAsyncAction();
   const [subscriberToDelete, setSubscriberToDelete] = useState<string | null>(null);
   const [isPlateFocused, setIsPlateFocused] = useState(false);
 
@@ -225,8 +226,7 @@ export function useSubscriberForm(
   const handleConfirmRenew = async (type: 'week' | 'two_weeks' | 'month') => {
     if (!activeSubscriberForRenew) return;
 
-    setIsSubmitting(true);
-    try {
+    await runSubmitAction(async () => {
       const todayKey = getCairoDateKey();
       const today = parseDateKey(todayKey);
       const currentEndDate = parseDateKey(activeSubscriberForRenew.endDate);
@@ -252,16 +252,14 @@ export function useSubscriberForm(
       showToast(`تم تجديد الاشتراك بنجاح لمدة ${label}`, 'success');
       setShowRenewModal(false);
       setActiveSubscriberForRenew(null);
-    } catch (err: any) {
-      const errMsg = err?.message || String(err);
+    }, (err: unknown) => {
+      const errMsg = (err as { message?: string })?.message || String(err);
       if (errMsg.includes('INSUFFICIENT_PAID_CREDITS') || errMsg.includes('INSUFFICIENT_ELIGIBLE_CREDITS')) {
         showToast('رصيدك خلص — تجديد الاشتراك يحتاج 1 رصيد مدفوع. يرجى شحن الرصيد أولاً', 'error');
       } else {
         showToast('حدث خطأ أثناء تجديد الاشتراك', 'error');
       }
-    } finally {
-      setIsSubmitting(false);
-    }
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -271,8 +269,7 @@ export function useSubscriberForm(
       return;
     }
 
-    setIsSubmitting(true);
-    try {
+    await runSubmitAction(async () => {
       const cleanPlate = getCleanPlate(plateNumber);
       const rawPlate = getRawPlate(plateNumber);
 
@@ -321,11 +318,11 @@ export function useSubscriberForm(
       setPhone('');
       setShowAddModal(false);
       onFormClose();
-    } catch (error: any) {
+    }, (error: unknown) => {
       let errorMsg = 'حدث خطأ أثناء الحفظ';
 
       try {
-        const msg = typeof error === 'string' ? error : error.message;
+        const msg = typeof error === 'string' ? error : (error as { message?: string })?.message;
         if (msg && msg.startsWith('{') && msg.endsWith('}')) {
           const detailed = JSON.parse(msg);
           errorMsg = `خطأ: ${detailed.error || 'غير معروف'}`;
@@ -335,9 +332,7 @@ export function useSubscriberForm(
       }
 
       showToast(errorMsg, 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
+    });
   };
 
   const handleDelete = (id: string) => {

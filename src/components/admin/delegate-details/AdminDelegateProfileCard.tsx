@@ -6,6 +6,7 @@ import { formatDisplayPin } from '../../../utils/pins';
 import { normalizeDigits } from '../../../utils/plates';
 import { authService, delegateService } from '../../../services';
 import { useToast } from '../../../hooks/toast';
+import { useAsyncAction } from '../../../hooks/useAsyncAction';
 import { FastInput } from '../../ui/FastInput';
 
 interface AdminDelegateProfileCardProps {
@@ -21,7 +22,7 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
 }) => {
   const [isEditingPin, setIsEditingPin] = useState(false);
   const [pinInput, setPinInput] = useState(delegate.pin && delegate.pin.length === 64 ? '' : (delegate.pin || ''));
-  const [isUpdatingPin, setIsUpdatingPin] = useState(false);
+  const { isLoading: isUpdatingPin, run: runPinUpdate } = useAsyncAction();
   
   const { showToast } = useToast();
 
@@ -30,13 +31,11 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
       showToast('يجب أن يكون الرمز 5 أرقام بالضبط', 'error');
       return;
     }
-    setIsUpdatingPin(true);
-    try {
+    await runPinUpdate(async () => {
       const cleanPin = pinInput.trim();
       const pinCheck = await authService.isPinTaken(cleanPin, delegate.id);
       if (pinCheck.taken) {
         showToast(`هذا الرمز مستخدم بالفعل في حساب آخر: (${pinCheck.name} - ${pinCheck.role})`, 'error');
-        setIsUpdatingPin(false);
         return;
       }
 
@@ -46,11 +45,9 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
       // card with the updated pin.
       onPinUpdated?.(cleanPin);
       setIsEditingPin(false);
-    } catch {
+    }, () => {
       showToast('فشل تحديث الرمز', 'error');
-    } finally {
-      setIsUpdatingPin(false);
-    }
+    });
   };
 
   return (

@@ -167,7 +167,7 @@ export function useAdminGarageDetailsActions({
 
   // ── Garage PIN ───────────────────────────────────────────────────────
   const [garagePinInput, setGaragePinInput] = useState(garage.pin || '');
-  const [isUpdatingGaragePin, setIsUpdatingGaragePin] = useState(false);
+  const { isLoading: isUpdatingGaragePin, run: runGaragePinUpdate } = useAsyncAction();
   const [pinError, setPinError] = useState('');
 
   useEffect(() => {
@@ -180,9 +180,8 @@ export function useAdminGarageDetailsActions({
       setPinError('يجب أن يكون الرمز 5 أرقام بالضبط');
       return;
     }
-    setIsUpdatingGaragePin(true);
     setPinError('');
-    try {
+    await runGaragePinUpdate(async () => {
       const pinCheck = await authService.isPinTaken(garagePinInput, garage.id);
       if (pinCheck.taken) {
         // The availability endpoint distinguishes an ACTIVE holder (name it,
@@ -191,17 +190,14 @@ export function useAdminGarageDetailsActions({
         setPinError(pinCheck.roleKey === 'retired'
           ? PIN_UPDATE_ERROR_MESSAGES.PIN_PREVIOUSLY_USED
           : `الرمز مستخدم بالفعل لدى (${pinCheck.name})`);
-        setIsUpdatingGaragePin(false);
         return;
       }
       await garageService.updateGarage(garage.id, { pin: garagePinInput, ownerPin: garagePinInput });
       setSelectedGarageForDetails({ ...garage, pin: garagePinInput, ownerPin: garagePinInput });
       void refreshAdminListsAfterMutation();
-    } catch (err: unknown) {
+    }, (err: unknown) => {
       setPinError(getGaragePinUpdateErrorMessage(err));
-    } finally {
-      setIsUpdatingGaragePin(false);
-    }
+    });
   };
 
   // ── Staff add / delete ───────────────────────────────────────────────
