@@ -1,6 +1,8 @@
 const GARAGE_DELETE_PAGE_SIZE = 200;
 const GARAGE_DELETE_LEASE_MS = 5 * 60 * 1000;
 
+import { buildActivityLogEntry } from '../activityLogWriter';
+
 const GARAGE_SUBCOLLECTIONS = [
   'vehicles',
   'subscribers',
@@ -152,7 +154,7 @@ export async function processGarageDeletionStep(
       ? job.auditLogId
       : fallbackAuditLogId;
 
-    transaction.set(adminDb.doc(`activity_logs/${auditLogId}`), {
+    transaction.set(adminDb.doc(`activity_logs/${auditLogId}`), buildActivityLogEntry({
       garageId,
       garageName,
       staffId: actor.uid || null,
@@ -165,7 +167,7 @@ export async function processGarageDeletionStep(
         deletedByRole: actor.role || 'admin',
         deletedByUid: actor.uid || null
       }
-    });
+    }));
     for (const markerDoc of paymentMarkersSnap.docs) transaction.delete(markerDoc.ref);
     if (referralAwardSnapshot.exists) transaction.delete(referralAwardRef);
     transaction.delete(garageRef);
