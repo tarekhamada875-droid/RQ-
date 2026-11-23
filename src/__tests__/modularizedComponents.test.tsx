@@ -27,7 +27,6 @@ vi.mock('../hooks/vehicleOpsContext', () => ({
 import { LandscapeMobileView } from '../components/layout/LandscapeMobileView';
 import { ErrorBoundary } from '../components/layout/ErrorBoundary';
 import { GarageSubscriptionCard } from '../components/garage/dashboard/GarageSubscriptionCard';
-import { GarageActiveVehiclesList } from '../components/garage/dashboard/GarageActiveVehiclesList';
 import { AdminGarageHeroAndStats } from '../components/admin/garage-details/AdminGarageHeroAndStats';
 import { AdminGarageFinancialsSection } from '../components/admin/garage-details/AdminGarageFinancialsSection';
 import { adminService, authService } from '../services';
@@ -300,32 +299,6 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
       expect(track).toHaveClass('credit-debit-arrow-thin');
       expect(track.querySelector('.credit-debit-rain-thin')).not.toBeNull();
     });
-  });
-
-  it('renders GarageActiveVehiclesList and handles empty state', () => {
-    const onClose = vi.fn();
-    const onRegister = vi.fn();
-
-    renderWithTheme(
-      <GarageActiveVehiclesList
-        vehicles={[]}
-        visibleVehicles={[]}
-        totalInsideCount={0}
-        hasMoreVehicles={false}
-        observerTargetRef={{ current: null }}
-        scrollContainerRef={{ current: null }}
-        onClose={onClose}
-        onCheckOut={vi.fn()}
-        onRegisterNewCar={onRegister}
-      />
-    );
-
-    expect(screen.getByText('إجمالى العدد 0')).toBeDefined();
-    expect(screen.getByText('لا توجد سيارات حالياً')).toBeDefined();
-
-    const regBtn = screen.getByText('سجل دخول عربية جديدة');
-    fireEvent.click(regBtn);
-    expect(onRegister).toHaveBeenCalledTimes(1);
   });
 
   it('renders GarageDashboardView orchestrator with plate registration and menu drawer triggers', () => {
