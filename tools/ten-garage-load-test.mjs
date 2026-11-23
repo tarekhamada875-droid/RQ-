@@ -3,8 +3,10 @@ import { dirname, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 
 export const GARAGE_COUNT = 10;
+// 2026-11-21: the garage-summary scenario was removed — the route was
+// retired (nothing in the app ever called it; see PR removing
+// /api/garage-summary). The remaining scenarios are the real read fan-out.
 export const READ_ONLY_PROFILE = [
-  { name: 'garage-summary', path: (garageId) => `/api/garage-summary?garageId=${encodeURIComponent(garageId)}` },
   { name: 'dashboard-summary', path: (garageId) => `/api/garages/${encodeURIComponent(garageId)}/dashboard-summary` },
   { name: 'vehicles-inside', path: (garageId) => `/api/vehicles/inside?garageId=${encodeURIComponent(garageId)}` },
   { name: 'vehicle-history', path: (garageId) => `/api/vehicles/history?garageId=${encodeURIComponent(garageId)}&limit=50` }
