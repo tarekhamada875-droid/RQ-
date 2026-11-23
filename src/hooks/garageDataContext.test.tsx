@@ -10,8 +10,6 @@ const stubGarageData: GarageDataContextValue = {
   setGarage: vi.fn(),
   delegate: null,
   setDelegate: vi.fn(),
-  vehicles: [],
-  todayTransactions: [],
   allGarages: [],
   setAllGarages: vi.fn(),
   delegates: [],

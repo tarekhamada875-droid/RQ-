@@ -24,8 +24,6 @@ interface UseVehicleOperationsProps {
   garage: Garage | null;
   setGarage: React.Dispatch<React.SetStateAction<Garage | null>>;
   currentStaff: Staff | null;
-  vehicles: Vehicle[];
-  setVehicles: React.Dispatch<React.SetStateAction<Vehicle[]>>;
   isOnline: boolean;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   closeKeyboard: () => void;
@@ -38,8 +36,6 @@ export function useVehicleOperations({
   garage,
   setGarage,
   currentStaff,
-  vehicles,
-  setVehicles,
   isOnline,
   showToast,
   closeKeyboard,
@@ -202,9 +198,11 @@ export function useVehicleOperations({
     }
 
     // Keep the form pending until the Worker confirms the entry. The Worker
-    // response contains the vehicle, car count, daily count, and credit balance.
-    const entrantEntityId = currentStaff?.id ?? garage.id;
-    const entrantRole = currentStaff ? 'staff' : 'garage';
+    // response contains the car count, daily count, and credit balance.
+    // READS (PR2 2026-11-23): the optimistic `setVehicles(...)` cache insert
+    // was removed — nothing consumes a local vehicles cache anymore (the
+    // list is retired and RegistrationCard looks up plates server-side),
+    // so there is nothing to optimistically update here.
 
     try {
       // generate the idempotency key ONCE per transaction attempt.
@@ -229,27 +227,6 @@ export function useVehicleOperations({
       }
 
       const serverData = (res as any).data;
-      const serverVehicle = serverData?.vehicle;
-      const newVehicleObj: Vehicle = {
-        id: raw,
-        plateNumber: serverVehicle?.plateNumber || formatted,
-        plateNumberRaw: serverVehicle?.plateNumberRaw || raw,
-        entryTime: serverVehicle?.entryTime || new Date() as any,
-        type: serverVehicle?.type || type,
-        garageId: garage.id,
-        status: 'inside',
-        staffId: serverVehicle?.staffId ?? entrantEntityId,
-        staffName: serverVehicle?.staffName || (currentStaff ? currentStaff.name : 'مدير الجراج'),
-        enteredByEntityId: serverVehicle?.enteredByEntityId ?? entrantEntityId,
-        enteredByRole: serverVehicle?.enteredByRole ?? entrantRole,
-        enteredByUid: serverVehicle?.enteredByUid ?? null,
-        isSubscriber: serverVehicle?.isSubscriber ?? isSubscriber
-      };
-
-      // apply vehicle + count FIRST (without credits), so the count
-      // animation completes before the credit-debit arrows begin. Credits are
-      // applied in a second state update after a short delay.
-      setVehicles(prev => [newVehicleObj, ...prev.filter(v => v.id !== raw)]);
 
       const countPatch: Partial<Garage> = {};
       if (typeof serverData?.carsInside === 'number') countPatch.carsInside = serverData.carsInside;
@@ -327,8 +304,10 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, setGarage, setVehicles, isLoading, closeKeyboard, vehicles, currentStaff, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
+  }, [isOnline, garage, setGarage, isLoading, closeKeyboard, currentStaff, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
   // PR-U: removed newPlateNumber from deps — it's now a parameter, not state.
+  // PR2 (2026-11-23): vehicles/setVehicles removed from deps — the local
+  // vehicles cache is gone.
 
   // Check Out
   const confirmCheckOut = useCallback(async () => {
@@ -364,7 +343,6 @@ export function useVehicleOperations({
         throw new Error(res.error);
       }
 
-      setVehicles(prev => prev.filter(v => v.id !== vehicleToOut.id));
       const serverGaragePatch: Partial<Garage> = {};
       if (typeof res.carsInside === 'number') serverGaragePatch.carsInside = res.carsInside;
       if (typeof res.totalVehiclesOut === 'number') serverGaragePatch.totalVehiclesOut = res.totalVehiclesOut;
@@ -433,7 +411,7 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, setVehicles, vehicles, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, onCheckOutComplete]);
+  }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, onCheckOutComplete]);
 
   // Delete Vehicle — receipt-mode (mirrors check-in/check-out).
   //
@@ -503,7 +481,6 @@ export function useVehicleOperations({
       // Receipt-mode: apply the confirmed patch locally now that the Worker has
       // committed. The 2-second `_confirmedTransactionUntil` guard prevents a
       // stale Firestore snapshot from reverting the change before it catches up.
-      setVehicles(prev => prev.filter(v => v.id !== vehicleToDelete.id));
       if (isInside) {
         // Credit refund: the Worker restores 1 credit on authorized vehicle
         // deletion. Without this optimistic update, the stale-snapshot guard
@@ -537,7 +514,7 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, selectedVehicle, currentStaff, showToast, setGarage, setVehicles, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
+  }, [isOnline, garage, selectedVehicle, currentStaff, showToast, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
 
   // PR-H2: memoize the return value. Previously exempted in PR-H with
   // incorrect React logic ("useCallback handlers are stable so consumers

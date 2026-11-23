@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Garage, Vehicle, Staff } from '../types';
+import { Garage, Staff } from '../types';
 import type { GarageDeletionProgress } from '../services/garageDeletionService';
 import { useLocalStorageState } from './useLocalStorage';
 import { useOnlineStatus } from './useOnlineStatus';
@@ -86,8 +86,9 @@ export function useGarageApp() {
   const [delegate, setDelegate] = useLocalStorageState<any | null>('app_delegate', null);
   const [currentStaff, setCurrentStaff] = useLocalStorageState<Staff | null>('app_staff', null);
 
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [todayTransactions, setTodayTransactions] = useState<Vehicle[]>([]);
+  // vehicles/todayTransactions state removed (PR2, 2026-11-23): the always-on
+  // active-vehicles stream was retired. RegistrationCard looks up plates
+  // server-side (1 read per typed plate) and the reports view fetches on open.
 
   const [loginPhone, setLoginPhone] = useState<string>('');
 
@@ -156,9 +157,6 @@ export function useGarageApp() {
     setDelegate,
     selectedGarageForDetails,
     setSelectedGarageForDetails,
-    setVehicles,
-    setTodayTransactions,
-    showToast,
     // PR-D piggyback: lets the delegate dashboard poll pass includeDelegate=false
     // when the session-guard onSnapshot has a fresh delegate doc snapshot.
     getLatestEntitySnapshot: session.getLatestEntitySnapshot,
@@ -169,8 +167,6 @@ export function useGarageApp() {
     garage,
     setGarage,
     currentStaff,
-    vehicles,
-    setVehicles,
     isOnline,
     showToast,
     closeKeyboard,
@@ -256,9 +252,7 @@ export function useGarageApp() {
     setGarage,
     delegate,
     setDelegate,
-    vehicles,
-    todayTransactions,
-  }), [syncData, garage, setGarage, delegate, setDelegate, vehicles, todayTransactions]);
+  }), [syncData, garage, setGarage, delegate, setDelegate]);
 
   return {
     session,

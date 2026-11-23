@@ -6,7 +6,7 @@ import {
   CalendarDays,
   TrendingUp,
 } from 'lucide-react';
-import { Garage, Vehicle, Staff } from '../../types';
+import { Garage, Staff } from '../../types';
 import { garageService, vehicleService, GarageDashboardSummary, isFreshGarageDashboardSummary } from '../../services';
 import { formatArabicDigits } from '../../utils/plates';
 import { GarageReportStatCard } from './reports/GarageReportStatCard';
@@ -21,8 +21,6 @@ type ReportViewMode = 'initial' | 'daily' | 'monthly';
 
 interface GarageReportsViewProps {
   garage: Garage;
-  vehiclesInside?: Vehicle[];
-  todayExitedVehicles?: GarageReportRecord[];
   staffList: Staff[];
   onClose: () => void;
   onToggleMenu?: () => void;

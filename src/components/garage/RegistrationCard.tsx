@@ -1,15 +1,15 @@
-import React, { memo, useCallback, useDeferredValue, useMemo, useState, useRef } from 'react';
+import React, { memo, useCallback, useDeferredValue, useMemo, useState, useRef, useEffect } from 'react';
 import { Delete, Loader2 } from 'lucide-react';
 import { getCleanPlate, getRawPlate, getPlateParts, isPlateValid, formatArabicDigits } from '../../utils/plates';
 import { Garage, Vehicle } from '../../types';
 import { LicensePlateKeyboard } from './LicensePlateKeyboard';
 import { FitText } from '../ui/FitText';
+import { vehicleService } from '../../services';
 
 interface RegistrationCardProps {
   isInputFocused: boolean;
   setIsInputFocused: (val: boolean) => void;
   plateInputRef: React.RefObject<HTMLInputElement>;
-  vehicles: Vehicle[];
   garage: Garage;
   handleCheckIn: (type: 'hourly' | 'overnight', plateValue: string) => Promise<string | null>;
   onCheckOut: (vehicle: Vehicle) => void;
@@ -18,11 +18,14 @@ interface RegistrationCardProps {
   isLoading?: boolean;
 }
 
+/** Debounce for the server plate lookup — one read fires after the
+ *  keystrokes settle, not one read per letter. */
+const PLATE_LOOKUP_DEBOUNCE_MS = 250;
+
 export const RegistrationCard = memo(({
   isInputFocused,
   setIsInputFocused,
   plateInputRef: _plateInputRef,
-  vehicles,
   garage,
   handleCheckIn,
   onCheckOut,
@@ -37,20 +40,19 @@ export const RegistrationCard = memo(({
   const [isDebouncing, setIsDebouncing] = React.useState(false);
   const isSubmittingRef = useRef(false);
 
-  // Pre-build a raw-plate → vehicle lookup map when the active vehicles list
-  // changes (Firestore snapshot), not on every keystroke. Replaces the O(N)
-  // vehicles.find() + getRawPlate() per-vehicle scan that ran in render.
-  // First-wins semantics match the previous Array.find behavior.
-  const insideVehicleByRawPlate = React.useMemo(() => {
-    const map = new Map<string, Vehicle>();
-    for (const v of vehicles) {
-      if (v.status === 'inside') {
-        const raw = getRawPlate(v.plateNumberRaw);
-        if (!map.has(raw)) map.set(raw, v);
-      }
-    }
-    return map;
-  }, [vehicles]);
+  // READS (PR2, 2026-11-23): the inside-car check is now a server lookup
+  // instead of the always-on vehicles stream. The vehicle doc ID IS the
+  // normalized plate (see vehicleService.getVehicleDocOnce), so each
+  // complete-plate lookup is exactly 1 Firestore read, fired 250ms after
+  // the keystrokes settle. Previously the app streamed EVERY car inside
+  // (1 read per car at every login + a read per change) just to power
+  // this check and the now-retired cars-inside list.
+  //
+  // Race safety: a generation counter discards responses that arrive after
+  // the plate changed again (backspace → retype), and the debounce timer is
+  // cleared on every keystroke so mid-typing states never fire a read.
+  const [insideVehicleForPlate, setInsideVehicleForPlate] = useState<Vehicle | null>(null);
+  const lookupGenerationRef = useRef(0);
 
   // Memoize plate parsing — previously getPlateParts was called 4+ times
   // and getRawPlate/isPlateValid ran in an inline IIFE on every render
@@ -62,9 +64,29 @@ export const RegistrationCard = memo(({
   const plateParts = useMemo(() => getPlateParts(deferredPlate), [deferredPlate]);
   const rawPlate = useMemo(() => getRawPlate(deferredPlate), [deferredPlate]);
   const isPlateValidMemo = useMemo(() => isPlateValid(deferredPlate), [deferredPlate]);
-  const existingVehicleForPlate = useMemo(() => {
-    return (isPlateValidMemo && rawPlate) ? insideVehicleByRawPlate.get(rawPlate) : undefined;
-  }, [isPlateValidMemo, rawPlate, insideVehicleByRawPlate]);
+
+  useEffect(() => {
+    // Only complete, valid plates are worth a read. Anything else resets
+    // the action area to the ساعة/مبيت buttons (same as the old map miss).
+    if (!garage?.id || !isPlateValidMemo || !rawPlate) {
+      lookupGenerationRef.current += 1; // invalidate any in-flight lookup
+      setInsideVehicleForPlate(null);
+      return;
+    }
+    const generation = ++lookupGenerationRef.current;
+    const timer = setTimeout(async () => {
+      try {
+        const doc = await vehicleService.getVehicleDocOnce(garage.id, rawPlate);
+        if (lookupGenerationRef.current !== generation) return; // a newer lookup superseded this one
+        setInsideVehicleForPlate(doc && doc.status === 'inside' ? doc : null);
+      } catch {
+        // Lookup failure must never block check-in — the buttons stay
+        // available and the server-side ALREADY_INSIDE guard is the backstop.
+        if (lookupGenerationRef.current === generation) setInsideVehicleForPlate(null);
+      }
+    }, PLATE_LOOKUP_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [garage?.id, isPlateValidMemo, rawPlate]);
 
   // Rate display layout — which check-in buttons to show
   const hourlyPrice = Number(garage?.hourlyRate) || 0;
@@ -245,11 +267,11 @@ export const RegistrationCard = memo(({
                 )}
               </div>
             </div>
-            {existingVehicleForPlate ? (
+            {insideVehicleForPlate ? (
               <div className="overflow-hidden mt-2">
                 <button
                   disabled={isLoading || isDebouncing}
-                  onClick={() => handleGuardedCheckOut(existingVehicleForPlate)}
+                  onClick={() => handleGuardedCheckOut(insideVehicleForPlate)}
                   className="w-full py-4 md:py-8 bg-red-500 text-white rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center gap-1 md:gap-2 focus-visible:ring-2 focus-visible:ring-white md:scale-[1.01] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="text-lg md:text-2xl font-black tracking-tight flex items-center justify-center gap-2">

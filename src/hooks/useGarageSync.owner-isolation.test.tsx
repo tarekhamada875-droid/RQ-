@@ -1,13 +1,11 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
-import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useGarageSync } from './useGarageSync';
 
 const serviceMocks = vi.hoisted(() => ({
   subscribeToPackages: vi.fn(() => () => {}),
-  subscribeToActiveVehicles: vi.fn((_garageId: string, _callback: (vehicles: any[]) => void) => () => {}),
   subscribeToTodayTransactions: vi.fn((_garageId: string, _callback: (transactions: any[], error?: unknown) => void) => () => {}),
-  subscribeToGarage: vi.fn(() => () => {}),
+  subscribeToGarage: vi.fn((_garageId: string, _callback: (garage: any, metadata?: { fromCache: boolean }) => void) => () => {}),
   getStaffByGarageOnce: vi.fn(async () => []),
   getGarageById: vi.fn(async () => null),
   getDashboardData: vi.fn(),
@@ -25,13 +23,11 @@ vi.mock('../services', () => ({
   adminService: serviceMocks,
   authService: serviceMocks,
 }));
-vi.mock('../utils/storage', () => ({
-  // The hook imports throttleSnapshot from '../utils/storage' — passthrough
-  // here so rapid test deliveries are not swallowed by the real 150ms
-  // throttle. (The previous '../utils' mock never intercepted the import.)
-  throttleSnapshot: (callback: (...args: any[]) => void) =>
-    Object.assign(callback, { cancel: vi.fn() })
-}));
+
+// setVehicles/setTodayTransactions + subscribeToActiveVehicles mocks removed
+// (PR2, 2026-11-23): the always-on active-vehicles stream was retired and the
+// vehicles/todayTransactions state no longer exists. The reports view manages
+// its own on-demand today-transactions listener.
 
 afterEach(() => {
   cleanup();
@@ -53,148 +49,95 @@ const baseProps = {
 };
 
 describe('useGarageSync owner data isolation', () => {
-  it('clears the previous garage vehicles and transactions before the next garage is shown', async () => {
-    const { result, rerender } = renderHook(
-      ({ garage }: { garage: { id: string } | null }) => {
-        const [vehicles, setVehicles] = useState<any[]>([]);
-        const [transactions, setTransactions] = useState<any[]>([]);
-        useGarageSync({
-          ...baseProps,
-          view: 'garage',
-          garage: garage as any,
-          setVehicles,
-          setTodayTransactions: setTransactions
-        });
-        return { vehicles, transactions, setVehicles, setTransactions };
-      },
-      { initialProps: { garage: { id: 'garage-a' } as { id: string } | null } }
-    );
-
-    act(() => {
-      result.current.setVehicles([{ id: 'vehicle-from-garage-a' }]);
-      result.current.setTransactions([{ id: 'transaction-from-garage-a' }]);
-    });
-    expect(result.current.vehicles).toHaveLength(1);
-    expect(result.current.transactions).toHaveLength(1);
-
-    rerender({ garage: { id: 'garage-b' } });
-
-    expect(result.current.vehicles).toEqual([]);
-    expect(result.current.transactions).toEqual([]);
-  });
-
-  it('ignores a queued vehicle snapshot from the previous garage after switching garages', () => {
-    const callbacks: Record<string, (vehicles: any[]) => void> = {};
-    serviceMocks.subscribeToActiveVehicles.mockImplementation((garageId: string, callback: (vehicles: any[]) => void) => {
+  it('ignores a queued garage snapshot from the previous garage after switching garages', () => {
+    const callbacks: Record<string, (garage: any, metadata?: { fromCache: boolean }) => void> = {};
+    serviceMocks.subscribeToGarage.mockImplementation((garageId: string, callback: (garage: any, metadata?: { fromCache: boolean }) => void) => {
       callbacks[garageId] = callback;
       return vi.fn();
     });
+    const setGarage = vi.fn();
 
-    const { result, rerender } = renderHook(
+    const { rerender } = renderHook(
       ({ garage }: { garage: { id: string } | null }) => {
-        const [vehicles, setVehicles] = useState<any[]>([]);
-        const [transactions, setTransactions] = useState<any[]>([]);
         useGarageSync({
           ...baseProps,
+          setGarage,
           view: 'garage',
           garage: garage as any,
-          setVehicles,
-          setTodayTransactions: setTransactions
         });
-        return { vehicles, transactions };
+        return null;
       },
       { initialProps: { garage: { id: 'garage-a' } as { id: string } | null } }
     );
 
-    act(() => callbacks['garage-a']([{ id: 'vehicle-from-garage-a' }]));
-    expect(result.current.vehicles).toEqual([{ id: 'vehicle-from-garage-a' }]);
+    act(() => callbacks['garage-a']({ id: 'garage-a', name: 'A' }));
+    // setGarage receives an updater — evaluate it the way React would.
+    expect(setGarage).toHaveBeenCalledTimes(1);
+    expect(setGarage.mock.calls[0][0](null)).toEqual({ id: 'garage-a', name: 'A' });
+    setGarage.mockClear();
 
     rerender({ garage: { id: 'garage-b' } });
-    expect(result.current.vehicles).toEqual([]);
 
     // Simulate a Firestore callback that was queued before unsubscribe but delivered
-    // after the new garage became active.
-    act(() => callbacks['garage-a']([{ id: 'late-vehicle-from-garage-a' }]));
-    expect(result.current.vehicles).toEqual([]);
+    // after the new garage became active — the stale-guard must drop it.
+    act(() => callbacks['garage-a']({ id: 'garage-a', name: 'stale' }));
+    expect(setGarage).not.toHaveBeenCalled();
 
-    act(() => callbacks['garage-b']([{ id: 'vehicle-from-garage-b' }]));
-    expect(result.current.vehicles).toEqual([{ id: 'vehicle-from-garage-b' }]);
+    act(() => callbacks['garage-b']({ id: 'garage-b', name: 'B' }));
+    expect(setGarage.mock.calls[0][0](null)).toEqual({ id: 'garage-b', name: 'B' });
   });
 
   // Test removed (2026-11-15): the subscribeToTodayTransactions listener was
   // removed from useGarageSync. The reports view now manages its own on-demand
   // listener. This test verified that stale transaction snapshots from the
   // previous garage were ignored — that concern no longer exists in useGarageSync.
-
-  it('clears garage-scoped records when logging out of the garage view', async () => {
-    const { result, rerender } = renderHook(
-      ({ garage, view }: { garage: { id: string } | null; view: string }) => {
-        const [vehicles, setVehicles] = useState<any[]>([]);
-        const [transactions, setTransactions] = useState<any[]>([]);
-        useGarageSync({
-          ...baseProps,
-          view,
-          garage: garage as any,
-          setVehicles,
-          setTodayTransactions: setTransactions
-        });
-        return { vehicles, transactions, setVehicles, setTransactions };
-      },
-      { initialProps: { garage: { id: 'garage-a' } as { id: string } | null, view: 'garage' } }
-    );
-
-    act(() => {
-      result.current.setVehicles([{ id: 'vehicle-from-garage-a' }]);
-      result.current.setTransactions([{ id: 'transaction-from-garage-a' }]);
-    });
-
-    rerender({ garage: null, view: 'login' });
-
-    expect(result.current.vehicles).toEqual([]);
-    expect(result.current.transactions).toEqual([]);
-  });
+  //
+  // Tests removed (PR2, 2026-11-23): the active-vehicles listener and the
+  // vehicles/todayTransactions state were retired together with the
+  // cars-inside list. The "clears vehicles on owner change" and "ignores a
+  // queued vehicle snapshot" contracts moved to the garage document listener
+  // above (same guard pattern, same teardown semantics).
 
   it('attaches before the claim and keeps same-identity data across a session-ready flip', () => {
-    let activeVehiclesCallback: ((vehicles: any[]) => void) | undefined;
-    serviceMocks.subscribeToActiveVehicles.mockImplementation((_garageId: string, callback: (vehicles: any[]) => void) => {
-      activeVehiclesCallback = callback;
+    let garageCallback: ((garage: any, metadata?: { fromCache: boolean }) => void) | undefined;
+    serviceMocks.subscribeToGarage.mockImplementation((_garageId: string, callback: (garage: any, metadata?: { fromCache: boolean }) => void) => {
+      garageCallback = callback;
       return vi.fn();
     });
+    const setGarage = vi.fn();
 
-    const { result, rerender } = renderHook(
+    const { rerender } = renderHook(
       ({ isSessionReady }: { isSessionReady: boolean }) => {
-        const [vehicles, setVehicles] = useState<any[]>([]);
-        const [transactions, setTransactions] = useState<any[]>([]);
         useGarageSync({
           ...baseProps,
           isSessionReady,
+          setGarage,
           view: 'garage',
           garage: { id: 'garage-a' } as any,
-          setVehicles,
-          setTodayTransactions: setTransactions
         });
-        return { vehicles, transactions, setVehicles, setTransactions };
+        return null;
       },
       { initialProps: { isSessionReady: false } }
     );
 
     // Early-attach contract (stale-tab reopen audit 2026-11-17): the garage
-    // listeners start as soon as the identity is known, while the server
+    // listener starts as soon as the identity is known, while the server
     // session claim is still in flight.
-    expect(serviceMocks.subscribeToActiveVehicles).toHaveBeenCalledWith('garage-a', expect.any(Function));
+    expect(serviceMocks.subscribeToGarage).toHaveBeenCalledWith('garage-a', expect.any(Function));
 
     // A fresh snapshot delivered while the claim is in flight lands in state.
-    act(() => activeVehiclesCallback?.([{ id: 'vehicle-before-claim' }]));
-    expect(result.current.vehicles).toEqual([{ id: 'vehicle-before-claim' }]);
+    act(() => garageCallback?.({ id: 'garage-a', carsInside: 7 }));
+    // setGarage receives an updater — evaluate it the way React would.
+    expect(setGarage).toHaveBeenCalledTimes(1);
+    expect(setGarage.mock.calls[0][0](null)).toEqual({ id: 'garage-a', carsInside: 7 });
 
     // The claim completing for the SAME identity must not wipe the data the
     // early listener already delivered (the old ready/unready owner key did).
     rerender({ isSessionReady: true });
-    expect(result.current.vehicles).toEqual([{ id: 'vehicle-before-claim' }]);
 
     // The listener was never torn down by the flip and keeps streaming.
-    act(() => activeVehiclesCallback?.([{ id: 'vehicle-after-claim' }]));
-    expect(result.current.vehicles).toEqual([{ id: 'vehicle-after-claim' }]);
+    act(() => garageCallback?.({ id: 'garage-a', carsInside: 8 }));
+    expect(setGarage.mock.calls.at(-1)![0](null)).toEqual({ id: 'garage-a', carsInside: 8 });
   });
 
 });
