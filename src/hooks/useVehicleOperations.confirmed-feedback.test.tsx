@@ -45,24 +45,21 @@ function createGarage(overrides: Partial<Garage> = {}): Garage {
   } as Garage;
 }
 
-function renderOperations(initialGarage: Garage, initialVehicles: Vehicle[] = []) {
+function renderOperations(initialGarage: Garage) {
   const showToast = vi.fn();
   const closeKeyboard = vi.fn();
 
   const hook = renderHook(() => {
     const [garage, setGarage] = useState<Garage | null>(initialGarage);
-    const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
     const operations = useVehicleOperations({
       garage,
       setGarage,
       currentStaff: null,
-      vehicles,
-      setVehicles,
       isOnline: true,
       showToast,
       closeKeyboard,
     });
-    return { garage, vehicles, ...operations };
+    return { garage, ...operations };
   }, { wrapper: ({ children }) => <ServerTimeProvider>{children}</ServerTimeProvider> });
 
   return { ...hook, showToast };
@@ -81,7 +78,6 @@ describe('useVehicleOperations confirmed feedback', () => {
     });
 
     expect(result.current.isLoading).toBe(true);
-    expect(result.current.vehicles).toEqual([]);
     expect(result.current.garage?.carsInside).toBe(0);
     expect(result.current.garage?.credits).toBe(5);
     // PR-U: newPlateNumber no longer exists in the hook (moved to RegistrationCard).
@@ -109,7 +105,8 @@ describe('useVehicleOperations confirmed feedback', () => {
     });
 
     expect(result.current.isLoading).toBe(false);
-    expect(result.current.vehicles).toHaveLength(1);
+    // PR2 (2026-11-23): the local vehicles cache is gone — the Worker-confirmed
+    // GARAGE counters are the feedback surface now (carsInside/credits below).
     expect(result.current.garage?.carsInside).toBe(1);
     expect(result.current.garage?.credits).toBe(4);
     expect(result.current.garage?.todayCount).toBe(1);
@@ -131,7 +128,6 @@ describe('useVehicleOperations confirmed feedback', () => {
     vi.mocked(vehicleService.checkOutVehicle).mockReturnValue(deferred.promise);
     const { result } = renderOperations(
       createGarage({ carsInside: 1, todayCount: 1, todayRevenue: 10, totalVehiclesOut: 0, totalRevenue: 100 }),
-      [insideVehicle],
     );
 
     act(() => {
@@ -145,7 +141,6 @@ describe('useVehicleOperations confirmed feedback', () => {
     });
 
     expect(result.current.isLoading).toBe(true);
-    expect(result.current.vehicles).toEqual([insideVehicle]);
     expect(result.current.garage?.carsInside).toBe(1);
     expect(result.current.garage?.todayRevenue).toBe(10);
     expect(result.current.garage?.totalVehiclesOut).toBe(0);
@@ -168,7 +163,6 @@ describe('useVehicleOperations confirmed feedback', () => {
     });
 
     expect(result.current.isLoading).toBe(false);
-    expect(result.current.vehicles).toEqual([]);
     expect(result.current.garage?.carsInside).toBe(0);
     expect(result.current.garage?.todayRevenue).toBe(15);
     expect(result.current.garage?.totalVehiclesOut).toBe(1);

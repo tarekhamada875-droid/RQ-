@@ -59,8 +59,6 @@ const createBaseProps = () => ({
   setDelegate: vi.fn(),
   selectedGarageForDetails: null,
   setSelectedGarageForDetails: vi.fn(),
-  setVehicles: vi.fn(),
-  setTodayTransactions: vi.fn(),
   showToast: vi.fn()
 });
 
@@ -546,7 +544,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
 
     const firstMount = renderHook(() => useGarageSync(props));
     expect(activeSubscriptions().map(({ key }) => key).sort()).toEqual([
-      'active-vehicles', 'current-garage',
+      'current-garage',
     ]);
     const firstSubscriptions = subscriptions.slice();
 
@@ -555,13 +553,13 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     firstSubscriptions.forEach(({ unsubscribe }) => expect(unsubscribe).toHaveBeenCalledOnce());
 
     const secondMount = renderHook(() => useGarageSync(props));
-    expect(activeSubscriptions()).toHaveLength(2);
+    expect(activeSubscriptions()).toHaveLength(1);
     const secondSubscriptions = subscriptions.slice(firstSubscriptions.length);
 
     secondMount.unmount();
     expect(activeSubscriptions()).toHaveLength(0);
     secondSubscriptions.forEach(({ unsubscribe }) => expect(unsubscribe).toHaveBeenCalledOnce());
-    expect(subscriptions).toHaveLength(4);
+    expect(subscriptions).toHaveLength(2);
   });
 
   it('ignores a queued garage subscription callback after switching garages', () => {
@@ -657,18 +655,10 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     unmount();
   });
 
-  it('cancels the active-vehicle trailing update when the garage listener is removed', () => {
-    const { unmount } = renderHook(() => useGarageSync({
-      ...createBaseProps(),
-      isSessionReady: true,
-      view: 'garage',
-      garage: { id: 'garage-1' } as any,
-    }));
-
-    expect(serviceMocks.throttleCancels).toHaveLength(1);
-    unmount();
-    expect(serviceMocks.throttleCancels[0]).toHaveBeenCalledOnce();
-  });
+  // Test removed (PR2, 2026-11-23): "cancels the active-vehicle trailing
+  // update when the garage listener is removed" — the active-vehicles
+  // listener and its throttleSnapshot pipeline were retired entirely, so
+  // there is no trailing throttle update left to cancel.
 
   it('ignores a garage-detail response for the previously selected garage', async () => {
     vi.useRealTimers();

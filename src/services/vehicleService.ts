@@ -1,5 +1,5 @@
 
-import { collection, query, where, onSnapshot, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { collection, doc, query, where, onSnapshot, getDoc, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Vehicle } from '../types';
 import { listenerTracker } from '../utils/listenerTracker';
@@ -148,28 +148,24 @@ export const vehicleService = {
     }
   },
 
-  subscribeToActiveVehicles: (
-    garageId: string,
-    callback: (vehicles: Vehicle[], metadata?: { fromCache: boolean; hasPendingWrites: boolean }) => void
-  ) => {
-    const trackerUnsub = listenerTracker.register(`garages/${garageId}/active_vehicles`);
-    const q = query(
-      collection(db, `garages/${garageId}/vehicles`),
-      where('status', '==', 'inside')
-    );
-    const unsub = onSnapshot(q, (snapshot) => {
-      const vehicles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
-      vehicles.sort((a, b) => safeDate(b.entryTime).getTime() - safeDate(a.entryTime).getTime());
-      callback(
-        vehicles,
-        { fromCache: snapshot.metadata.fromCache, hasPendingWrites: snapshot.metadata.hasPendingWrites }
-      );
-    });
-
-    return () => {
-      unsub();
-      trackerUnsub();
-    };
+  /**
+   * PR2 (2026-11-23): one-shot SINGLE-READ vehicle lookup by document ID.
+   * The vehicle doc ID IS the normalized plate raw (the check-in route
+   * writes garages/{garageId}/vehicles/{plateRaw}), so this is exactly
+   * 1 Firestore read with no query and no index.
+   *
+   * Replaces the always-on subscribeToActiveVehicles stream: the
+   * RegistrationCard calls this (debounced) when a valid plate is typed to
+   * decide between the red "إصدار فاتورة خروج" button (status === 'inside')
+   * and the ساعة/مبيت buttons (no doc or status === 'outside').
+   *
+   * Returns the raw doc regardless of status — the caller filters.
+   * Returns null when the plate has never been registered in this garage.
+   */
+  getVehicleDocOnce: async (garageId: string, plateNumberRaw: string): Promise<Vehicle | null> => {
+    const ref = doc(db, `garages/${garageId}/vehicles/${plateNumberRaw}`);
+    const snap = await getDoc(ref);
+    return snap.exists() ? ({ id: snap.id, ...snap.data() } as Vehicle) : null;
   },
 
   subscribeToTodayTransactions: (garageId: string, callback: TodayActivityLogCallback) => {

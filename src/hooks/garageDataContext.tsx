@@ -1,12 +1,12 @@
 import { createContext, useContext, type ReactNode } from 'react';
-import type { Garage, Delegate, Vehicle, Staff } from '../types';
+import type { Garage, Delegate, Staff } from '../types';
 import type { useGarageSync } from './useGarageSync';
 import type { useLocalStorageState } from './useLocalStorage';
 
 /**
- * Garage data shared state — sync data from useGarageSync (lists, vehicles,
- * staff, pagination cursors) plus the local-state garage/delegate/vehicles
- * owners that are mutated by the sync hook.
+ * Garage data shared state — sync data from useGarageSync (lists, staff,
+ * pagination cursors) plus the local-state garage/delegate owners that are
+ * mutated by the sync hook.
  *
  * Previously drilled: useGarageApp.garageData → AppRoutes → AdminDashboard /
  * AdminGarageDetailsView / AdminDelegateDetailsView / GarageDashboardView /
@@ -23,8 +23,6 @@ export interface GarageDataContextValue extends GarageDataSync {
   setGarage: ReturnType<typeof useLocalStorageState<Garage | null>>[1];
   delegate: Delegate | null;
   setDelegate: ReturnType<typeof useLocalStorageState<Delegate | null>>[1];
-  vehicles: Vehicle[];
-  todayTransactions: Vehicle[];
 }
 
 const GarageDataContext = createContext<GarageDataContextValue | null>(null);

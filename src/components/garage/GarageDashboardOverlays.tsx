@@ -4,7 +4,7 @@ import { SubscribersView } from "./SubscribersView";
 import { CreditGrantHistoryView } from "./CreditGrantHistoryView";
 import { lazyWithRetry } from "../../utils/lazyWithRetry";
 import { DelayedFallback, ModalSuspenseBackdrop, PageSkeleton } from "../layout/LoadingFallbacks";
-import type { ActivityLog, Garage, Staff, Vehicle } from "../../types";
+import type { ActivityLog, Garage, Staff } from "../../types";
 import type { SharedSubscriberPage } from "../../hooks/useGarageDashboardLiveData";
 
 const GarageReportsLazy = lazyWithRetry(() => import("./GarageReportsView").then((module) => ({ default: module.GarageReportsView })));
@@ -30,8 +30,6 @@ interface GarageDashboardOverlaysProps {
   onCloseTerms: () => void;
   currentStaff: Staff | null;
   staffList: Staff[];
-  vehiclesInside: Vehicle[];
-  todayExitedVehicles: Vehicle[];
   isCreditGrantNotificationOpen: boolean;
   creditGrantLog: ActivityLog | null;
   onCloseCreditGrantNotification: () => void;
@@ -55,8 +53,6 @@ export const GarageDashboardOverlays = ({
   onCloseTerms,
   currentStaff,
   staffList,
-  vehiclesInside,
-  todayExitedVehicles,
   isCreditGrantNotificationOpen,
   creditGrantLog,
   onCloseCreditGrantNotification,
@@ -89,8 +85,6 @@ export const GarageDashboardOverlays = ({
         <Suspense fallback={<DelayedFallback><PageSkeleton /></DelayedFallback>}>
           <GarageReportsLazy
             garage={garage}
-            vehiclesInside={vehiclesInside}
-            todayExitedVehicles={todayExitedVehicles}
             staffList={staffList}
             onClose={onCloseReports}
             onToggleMenu={onToggleMenu}

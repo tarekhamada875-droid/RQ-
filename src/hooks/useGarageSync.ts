@@ -1,7 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
-import { Garage, Vehicle, Staff } from '../types';
-import { adminService, delegateService, garageService, vehicleService } from '../services';
-import { throttleSnapshot } from '../utils/storage';
+import { Garage, Staff } from '../types';
+import { adminService, delegateService, garageService } from '../services';
 
 interface UseGarageSyncProps {
   isSessionReady: boolean;
@@ -15,8 +14,6 @@ interface UseGarageSyncProps {
   setDelegate: (d: any | null) => void;
   selectedGarageForDetails: Garage | null;
   setSelectedGarageForDetails: (g: Garage | null) => void;
-  setVehicles: React.Dispatch<React.SetStateAction<Vehicle[]>>;
-  setTodayTransactions: React.Dispatch<React.SetStateAction<Vehicle[]>>;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   // PR-D piggyback: returns the latest entity-doc snapshot captured by
   // useGarageSession's session-guard onSnapshot, or null if no fresh snapshot
@@ -36,8 +33,10 @@ export function useGarageSync({
   setDelegate,
   selectedGarageForDetails,
   setSelectedGarageForDetails,
-  setVehicles,
-  setTodayTransactions,
+  // setVehicles/setTodayTransactions removed (PR2, 2026-11-23): the always-on
+  // active-vehicles stream was retired. The vehicles/todayTransactions state
+  // no longer exists — the RegistrationCard looks up plates server-side
+  // (1 read per typed plate) and the reports view manages its own listener.
   // showToast removed (2026-11-15): the only use was the today-transactions
   // listener's error toast, which was removed when the listener became
   // on-demand. The reports view handles its own error toasts now.
@@ -82,28 +81,28 @@ export function useGarageSync({
   // clobbered by stale cached snapshots or by a queued first-snapshot
   // that pre-dates the user's write. To kill that race entirely, we gate
   // the dashboard on `isInitialSyncComplete`: it flips true only after
-  // BOTH `subscribeToGarage` AND `subscribeToActiveVehicles` have
-  // delivered at least one non-cached snapshot, OR after a 10-second
-  // timeout (so a flaky network cannot permanently lock the user out).
-  // Only the garage view is gated — admin/delegate views use different
-  // listeners and are not affected by the original race.
+  // `subscribeToGarage` has delivered at least one non-cached snapshot, OR
+  // after a 10-second timeout (so a flaky network cannot permanently lock
+  // the user out). Only the garage view is gated — admin/delegate views use
+  // different listeners and are not affected by the original race.
   //
-  // RESUME PERF (stale-tab reopen audit 2026-11-17): the two garage-view
-  // listeners now attach as soon as the identity is known (restored
+  // PR2 (2026-11-23): the active-vehicles listener was retired (reads
+  // savings) — the gate now waits on the garage listener alone.
+  //
+  // RESUME PERF (stale-tab reopen audit 2026-11-17): the garage-view
+  // listener now attaches as soon as the identity is known (restored
   // localStorage garage + auth ready) instead of after the server session
   // claim. On the owner's 9h-idle reopen that moved first-fresh-snapshot
   // delivery INTO the claim's own latency window (token refresh + validate)
   // instead of after it, so the gate is bounded by the claim alone. The
-  // Firestore rules for garages/{id} and its vehicles subcollection are
-  // satisfied by the same server-written garage_sessions doc the claim
-  // refreshes — still active on a reopen (24h timeout). If the claim
-  // ultimately fails (occupied/kicked/expired), the same logout flow that
-  // always handled it fires, and these listeners are torn down by the
-  // identity change; a permission-denied listener is console noise,
-  // never rendered content.
+  // Firestore rules for garages/{id} are satisfied by the same
+  // server-written garage_sessions doc the claim refreshes — still active
+  // on a reopen (24h timeout). If the claim ultimately fails
+  // (occupied/kicked/expired), the same logout flow that always handled it
+  // fires, and this listener is torn down by the identity change; a
+  // permission-denied listener is console noise, never rendered content.
   const [isInitialSyncComplete, setIsInitialSyncComplete] = useState(false);
   const garageFreshSnapshotReceivedRef = useRef(false);
-  const vehiclesFreshSnapshotReceivedRef = useRef(false);
   const initialSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const INITIAL_SYNC_TIMEOUT_MS = 10_000;
 
@@ -142,8 +141,6 @@ export function useGarageSync({
     delegateDashboardLoadedOwnerRef.current = undefined;
     delegatePageLoadingRef.current = { createdGarages: false, referredGarages: false };
 
-    setVehicles([]);
-    setTodayTransactions([]);
     setStaffList([]);
     setAllGarages([]);
     setDelegates([]);
@@ -166,7 +163,6 @@ export function useGarageSync({
     // its own first-fresh-snapshot from its own listeners before it can be
     // considered safe to interact with.
     garageFreshSnapshotReceivedRef.current = false;
-    vehiclesFreshSnapshotReceivedRef.current = false;
     setIsInitialSyncComplete(false);
     if (initialSyncTimeoutRef.current) {
       clearTimeout(initialSyncTimeoutRef.current);
@@ -174,95 +170,21 @@ export function useGarageSync({
     }
   }, [dataOwnerKey]);
 
-  // Subscribe to Active Vehicles — early-attached (see the initial-sync gate
-  // note above): the identity comes from restored localStorage, so the
-  // listener can start while the session claim is still in flight.
-  useEffect(() => {
-    if (!isAuthReady || view !== 'garage' || !garage?.id) {
-      return;
-    }
-    let active = true;
-    // Closure variable so the throttled callback can read the latest
-    // `fromCache` value without changing throttleSnapshot's single-arg
-    // signature.
-    let latestFromCache = false;
-    const throttledVehicleUpdate = throttleSnapshot((activeVehicles: Vehicle[]) => {
-      if (!active) return;
-      const fromCache = latestFromCache;
-      // Merge: preserve optimistic vehicles that the server snapshot hasn't
-      // confirmed yet. An optimistic vehicle (added during check-in) has an
-      // entryTime that is a plain Date, not a Firestore Timestamp. If the
-      // server snapshot doesn't include a vehicle with the same ID, keep the
-      // optimistic one for up to 5 seconds (after that, assume it failed and
-      // drop it). This prevents the "flip then disappear then reappear" flicker
-      // where the throttled snapshot overwrites the optimistic update before
-      // the server confirms it.
-      //
-      // CACHED-snapshot rule: if `fromCache === true`, the snapshot may be
-      // stale (queued before the user's write committed). In that case we
-      // ALWAYS keep optimistic vehicles regardless of age — the next fresh
-      // snapshot is the only thing allowed to retire them.
-      setVehicles((current) => {
-        const serverIds = new Set(activeVehicles.map((v) => v.id));
-        const now = Date.now();
-        const optimisticKeep = current.filter((v) => {
-          if (serverIds.has(v.id)) return false; // server has it, let server win
-          if (fromCache) return true; // stale snapshot — never drop optimistic vehicles
-          // Fresh snapshot still doesn't have the optimistic vehicle. Keep it
-          // only if it's < 5s old (recent optimistic entry). Recognize Date,
-          // Firestore Timestamp (toDate), AND ISO string (returned by Worker).
-          const entryMs = v.entryTime instanceof Date
-            ? v.entryTime.getTime()
-            : (v.entryTime && typeof v.entryTime === 'object' && 'toDate' in v.entryTime && typeof v.entryTime.toDate === 'function') ? v.entryTime.toDate().getTime() : 0;
-          const entryMsFromString = typeof v.entryTime === 'string' ? Date.parse(v.entryTime) : 0;
-          const finalEntryMs = entryMs > 0 ? entryMs : entryMsFromString;
-          return finalEntryMs > 0 && (now - finalEntryMs) < 5000;
-        });
-        return [...optimisticKeep, ...activeVehicles];
-      });
-    }, 150);
-
-    const unsub = vehicleService.subscribeToActiveVehicles(garage.id, (activeVehicles, metadata) => {
-      // Unsubscribe normally stops future snapshots, but an already queued callback
-      // can still arrive after the garage/session changes. Never forward it.
-      if (!active) return;
-      latestFromCache = metadata?.fromCache ?? false;
-      if (!latestFromCache && !vehiclesFreshSnapshotReceivedRef.current) {
-        vehiclesFreshSnapshotReceivedRef.current = true;
-        // Check if both listeners have delivered fresh data → flip the gate.
-        if (garageFreshSnapshotReceivedRef.current) {
-          setIsInitialSyncComplete(true);
-          if (initialSyncTimeoutRef.current) {
-            clearTimeout(initialSyncTimeoutRef.current);
-            initialSyncTimeoutRef.current = null;
-          }
-        }
-      }
-      throttledVehicleUpdate(activeVehicles);
-    });
-    // 10-second safety timeout: if Firestore cannot deliver a fresh snapshot
-    // (e.g. flaky network at reopen), unlock the dashboard anyway so the user
-    // is not permanently blocked from working.
-    if (!initialSyncTimeoutRef.current) {
-      initialSyncTimeoutRef.current = setTimeout(() => {
-        setIsInitialSyncComplete(true);
-        initialSyncTimeoutRef.current = null;
-      }, INITIAL_SYNC_TIMEOUT_MS);
-    }
-    return () => {
-      active = false;
-      throttledVehicleUpdate.cancel();
-      unsub();
-    };
-  }, [isAuthReady, view, garage?.id, setVehicles]);
+  // Subscribe to active vehicles — REMOVED (PR2, 2026-11-23, owner decision).
+  // The always-on stream read EVERY car inside at every login (~1 read per
+  // car) plus a read per change, only to feed the retired cars-inside list
+  // and the RegistrationCard inside-check — which now does a 1-read server
+  // lookup per typed plate (vehicleService.getVehicleDocOnce). A garage with
+  // 73 cars inside went from ~73 reads per login to 0; each checkout costs
+  // exactly 1 lookup read instead.
 
   // Subscribe to completed transactions — REMOVED (2026-11-15, owner decision).
   // The always-on Firestore listener cost ~50 reads/garage/day for every
   // garage, even when nobody was looking at the reports page. The reports
   // view now manages its own on-demand listener (started when the user
   // clicks the "load data" button, stopped when they navigate away).
-  // todayTransactions stays as [] in the global state; the reports view
-  // has its own local copy from its own listener.
+  // PR2 (2026-11-23): the now-consumerless todayTransactions global state was
+  // removed entirely along with the vehicles state.
 
   const staffLoadGenerationRef = useRef(0);
   const loadGarageData = useCallback(async (garageId: string) => {
@@ -578,12 +500,10 @@ export function useGarageSync({
           // Track first-fresh-snapshot delivery for the initial-sync gate.
           if (!fromCache && !garageFreshSnapshotReceivedRef.current) {
             garageFreshSnapshotReceivedRef.current = true;
-            if (vehiclesFreshSnapshotReceivedRef.current) {
-              setIsInitialSyncComplete(true);
-              if (initialSyncTimeoutRef.current) {
-                clearTimeout(initialSyncTimeoutRef.current);
-                initialSyncTimeoutRef.current = null;
-              }
+            setIsInitialSyncComplete(true);
+            if (initialSyncTimeoutRef.current) {
+              clearTimeout(initialSyncTimeoutRef.current);
+              initialSyncTimeoutRef.current = null;
             }
           }
 
@@ -636,6 +556,17 @@ export function useGarageSync({
           });
         })
       : () => {};
+
+    // 10-second safety timeout: if Firestore cannot deliver a fresh snapshot
+    // (e.g. flaky network at reopen), unlock the dashboard anyway so the user
+    // is not permanently blocked from working. (Moved here from the retired
+    // active-vehicles listener — PR2, 2026-11-23.)
+    if (!initialSyncTimeoutRef.current) {
+      initialSyncTimeoutRef.current = setTimeout(() => {
+        setIsInitialSyncComplete(true);
+        initialSyncTimeoutRef.current = null;
+      }, INITIAL_SYNC_TIMEOUT_MS);
+    }
 
     return () => {
       garageSubscriptionCurrent = false;

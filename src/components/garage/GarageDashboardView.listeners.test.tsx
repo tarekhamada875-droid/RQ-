@@ -116,8 +116,6 @@ const DashboardHarness = ({ garage = makeGarage() }: { garage?: any }) => {
     <GarageDashboardView
       garage={garage}
       currentStaff={null}
-      vehicles={[]}
-      todayTransactions={[]}
       closeKeyboard={vi.fn()}
       onLogout={vi.fn()}
       showToast={vi.fn()}

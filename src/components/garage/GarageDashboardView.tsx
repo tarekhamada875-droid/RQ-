@@ -24,15 +24,13 @@ import { GarageSubscriptionCard } from "./dashboard/GarageSubscriptionCard";
 import { GarageActiveCountCard } from "./dashboard/GarageActiveCountCard";
 import { useGarageDashboardLiveData } from "../../hooks/useGarageDashboardLiveData";
 import { getCairoDateKey } from "../../domain/garage/businessDay";
-import type { Garage, Staff, Vehicle } from "../../types";
+import type { Garage, Staff } from "../../types";
 
 type ToastType = 'success' | 'error' | 'info';
 
 interface GarageDashboardViewProps {
   garage: Garage;
   currentStaff: Staff | null;
-  vehicles?: Vehicle[];
-  todayTransactions?: Vehicle[];
   closeKeyboard: () => void;
   onLogout: () => void;
   showToast: (message: string, type?: ToastType) => void;
@@ -45,8 +43,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const {
     garage,
     currentStaff,
-    vehicles = [],
-    todayTransactions = [],
     closeKeyboard,
     onLogout,
     showToast,
@@ -200,7 +196,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
             isInputFocused={isInputFocused}
             setIsInputFocused={setIsInputFocused}
             plateInputRef={plateInputRef}
-            vehicles={vehicles}
             garage={garage}
             handleCheckIn={handleCheckIn}
             onCheckOut={(vehicle) => {
@@ -265,8 +260,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
         onCloseTerms={() => setShowTermsModal(false)}
         currentStaff={currentStaff}
         staffList={staffList}
-        vehiclesInside={vehicles}
-        todayExitedVehicles={todayTransactions}
         isCreditGrantNotificationOpen={isCreditGrantNotificationOpen}
         creditGrantLog={latestCreditGrantLog}
         onCloseCreditGrantNotification={handleAcknowledgeCreditGrant}

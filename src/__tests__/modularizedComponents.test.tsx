@@ -307,8 +307,6 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
       <GarageDashboardView
         garage={mockGarage}
         currentStaff={null}
-        vehicles={[]}
-        todayTransactions={[]}
         closeKeyboard={vi.fn()}
         onLogout={vi.fn()}
         showToast={vi.fn()}
@@ -334,8 +332,6 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
       <GarageDashboardView
         garage={depletedGarage}
         currentStaff={null}
-        vehicles={[]}
-        todayTransactions={[]}
         closeKeyboard={vi.fn()}
         onLogout={vi.fn()}
         showToast={vi.fn()}
