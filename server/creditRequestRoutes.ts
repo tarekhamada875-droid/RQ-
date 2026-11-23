@@ -351,7 +351,11 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
         ...entry.value,
         source: 'credit_request_approval',
         paymentConfirmed: true,
-        paymentAmountEgp
+        paymentAmountEgp,
+        // Name stamp for the admin Income page (owner feature 2026-11-23):
+        // each income row carries its garage's name so the history screen
+        // never needs per-row garage lookups for new entries.
+        garageName: garage.name || requestData.garageName || ''
       });
 
       if (commissionDelegateRef && commissionDelegateId) {

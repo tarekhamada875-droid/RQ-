@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   Wallet,
   Coins,
-  CalendarDays
+  CalendarDays,
+  Banknote
 } from 'lucide-react';
 
 // PR-G: lazy-load the 8 admin tab views so they're code-split into separate
@@ -27,6 +28,7 @@ const AdminActiveSessionsView = React.lazy(() => import('./AdminActiveSessionsVi
 const AdminWalletSettingsView = React.lazy(() => import('./AdminWalletSettingsView').then(m => ({ default: m.AdminWalletSettingsView })));
 const AdminCreditRateSettingsView = React.lazy(() => import('./AdminCreditRateSettingsView').then(m => ({ default: m.AdminCreditRateSettingsView })));
 const AdminDailyGarageReportsView = React.lazy(() => import('./AdminDailyGarageReportsView').then(m => ({ default: m.AdminDailyGarageReportsView })));
+const AdminIncomeView = React.lazy(() => import('./AdminIncomeView').then(m => ({ default: m.AdminIncomeView })));
 
 // UX-C: loading fallback shown while a lazy tab chunk is fetching. Static
 // ghost rows matching the tab card layout (no pulse — UI-LIGHT-SPEED). The
@@ -142,12 +144,12 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               type="button"
               onClick={() => setActiveTab('catalog_settings')}
               className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs cursor-pointer ${
-                  activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'wallet_settings' || activeTab === 'credit_rate_settings' || activeTab === 'daily_garage_reports'
+                  activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'wallet_settings' || activeTab === 'credit_rate_settings' || activeTab === 'daily_garage_reports' || activeTab === 'income'
                   ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 '
                   : 'text-slate-500 '
               }`}
             >
-              <SettingsIcon className={`w-4 h-4 ${(activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'wallet_settings' || activeTab === 'credit_rate_settings' || activeTab === 'daily_garage_reports') ? 'text-current' : 'text-sky-500'}`} />
+              <SettingsIcon className={`w-4 h-4 ${(activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'wallet_settings' || activeTab === 'credit_rate_settings' || activeTab === 'daily_garage_reports' || activeTab === 'income') ? 'text-current' : 'text-sky-500'}`} />
               <span>{'الإعدادات'}</span>
             </button>
           </div>
@@ -258,6 +260,23 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               </div>
             </div>
 
+            {/* Income — owner feature 2026-11-23: lifetime money-in + history */}
+            <div
+              onClick={() => setActiveTab('income')}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 group "
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-slate-900 dark:text-white text-base">{'الدخل'}</h3>
+                <div className="w-11 h-11 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                  <Banknote className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
+                <span>إجمالي وسجل الفلس اللي الجراجات دفعته</span>
+                <ChevronRight className={`w-4 h-4 text-slate-400 rotate-180`} />
+              </div>
+            </div>
+
             {/* System Config Sync (perf plan 2026-11-21): moved OUT of the
                 settings grid to the corner-menu drawer as a fullscreen page
                 (owner request 2026-11-21) — same activation pattern as the
@@ -291,6 +310,8 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
         <AdminCreditRateSettingsView onBack={() => setActiveTab('catalog_settings')} />
       ) : activeTab === 'daily_garage_reports' ? (
         <AdminDailyGarageReportsView onBack={() => setActiveTab('catalog_settings')} />
+      ) : activeTab === 'income' ? (
+        <AdminIncomeView onBack={() => setActiveTab('catalog_settings')} showToast={showToast} />
       ) : activeTab === 'admin-pin' ? (
         <AdminPinSettingsView
           onCancel={() => setActiveTab('catalog_settings')}

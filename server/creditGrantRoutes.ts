@@ -299,7 +299,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, withAdmin(async (c
         // Only set when commission was actually due this grant.
         ...(isCommissionDue ? { lastCommissionGrantAt: now } : {})
       }, { merge: true });
-      t.set(adminDb.doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: 'admin_entered_grant', paymentConfirmed: true, paymentAmountEgp });
+      t.set(adminDb.doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: 'admin_entered_grant', paymentConfirmed: true, paymentAmountEgp, garageName: garage.name || '' });
       recordDomainEventInTransaction(t, adminDb, {
         garageId,
         aggregateType: 'credit_grant',
