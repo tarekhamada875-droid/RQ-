@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { adminDb, initializeFirebaseAdmin } from './firebaseAdmin';
 import { isGrowthCleanupWindow, runGrowthCleanupOncePerDay } from './growthCleanup';
+import { isAnonCleanupWindow, runAnonAuthCleanupOncePerDay } from './anonAuthCleanup';
 import { withTraceContext } from './operationTrace';
 import { buildFirestorePage, firestorePageStartAfter, parseFirestorePageRequest } from './firestorePagination';
 import { registerReadRoutes } from './readRoutes';
@@ -350,6 +351,20 @@ export async function scheduled(_event: unknown, env: { WORKER_SELF_URL?: string
   if (isGrowthCleanupWindow(now)) {
     try {
       ctx.waitUntil(runGrowthCleanupOncePerDay(now).catch(() => undefined));
+    } catch {
+      // Cleanup is best-effort; never surface cron failures.
+    }
+  }
+  // Nightly anonymous-auth cleanup (Day 2, 2026-11-23): Firebase Auth
+  // accumulates orphaned anonymous uids forever (every new device, every
+  // cleared storage, every browser reinstall = 1 new uid). Defense-in-depth
+  // against the Firebase console's "automatic clean-up" feature (only
+  // available on Identity Platform-upgraded projects). Self-gates to a
+  // different minute window (04:30–04:34 Cairo) so it never collides with
+  // growthCleanup. Best-effort; failures never surface from the cron.
+  if (isAnonCleanupWindow(now)) {
+    try {
+      ctx.waitUntil(runAnonAuthCleanupOncePerDay(now).catch(() => undefined));
     } catch {
       // Cleanup is best-effort; never surface cron failures.
     }
