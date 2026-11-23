@@ -3,10 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, {
+import {
   useState,
   useEffect,
-  useRef,
   useMemo,
   memo,
 } from "react";
@@ -14,7 +13,6 @@ import { useBackHandler } from "../../hooks/backHandler";
 import { useGarageInput } from "../../hooks/garageInput";
 import { useVehicleOps } from "../../hooks/vehicleOpsContext";
 import { Spinner } from "../ui/Spinner";
-import { safeDate } from '../../utils/dates';
 import { auth } from "../../firebase";
 import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { useCreditGrantNotification } from '../../hooks/useCreditGrantNotification';
@@ -23,7 +21,6 @@ import { GarageDashboardOverlays } from "./GarageDashboardOverlays";
 import { SmartActionPrompt } from "./SmartActionPrompt";
 import { GarageDashboardHeaderAndDrawer } from "./dashboard/GarageDashboardHeaderAndDrawer";
 import { GarageSubscriptionCard } from "./dashboard/GarageSubscriptionCard";
-import { GarageActiveVehiclesList } from "./dashboard/GarageActiveVehiclesList";
 import { GarageActiveCountCard } from "./dashboard/GarageActiveCountCard";
 import { useGarageDashboardLiveData } from "../../hooks/useGarageDashboardLiveData";
 import { getCairoDateKey } from "../../domain/garage/businessDay";
@@ -59,39 +56,26 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   } = props;
 
   // Vehicle operations come from VehicleOpsProvider (context, not props)
-  const { setSelectedVehicle, setShowCheckOutModal, handleCheckIn, isLoading, loadingType, checkoutJustSucceeded } = useVehicleOps();
+  const { setSelectedVehicle, setShowCheckOutModal, handleCheckIn, isLoading, loadingType } = useVehicleOps();
 
   // Input refs + focus state come from GarageInputProvider (context, not props)
   const { plateInputRef, inputRef, isInputFocused, setIsInputFocused } = useGarageInput();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const shimmerColor = garage?.shimmerColor || '#f59e0b';
-  const [activeTab, setActiveTab] = useState<"main" | "active_vehicles">("main");
-  const [itemsPerPage, setItemsPerPage] = useState(15);
   const [isCreditGrantHistoryOpen, setIsCreditGrantHistoryOpen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
-
-  // Return to the main dashboard tab only when checkout SUCCEEDS.
-  // If checkout fails, stay on the active-vehicles list so the user can
-  // retry or pick a different car. The checkoutJustSucceeded flag is set
-  // by useVehicleOperations: true on success, false on failure.
-  const wasLoadingRef = useRef(false);
-  useEffect(() => {
-    if (wasLoadingRef.current && !isLoading && activeTab === 'active_vehicles') {
-      if (checkoutJustSucceeded) {
-        setActiveTab('main');
-      }
-      // If checkoutJustSucceeded is false (failure), stay on active_vehicles
-    }
-    wasLoadingRef.current = isLoading;
-  }, [isLoading, activeTab, checkoutJustSucceeded]);
   const [showTermsModal, setShowTermsModal] = useState(false);
+
+  // HABIT CHANGE (2026-11-23): the cars-inside list tab was retired. The
+  // count card below is display-only — check-in and check-out both happen
+  // by TYPING the plate into the registration card (typing a plate that is
+  // already inside shows the red "إصدار فاتورة خروج" button). This removes
+  // the browse-and-tap flow so staff build the typing habit.
 
   // (back handler registration moved below — needs isCreditGrantNotificationOpen
   // and isMenuOpen which are defined later in the component)
 
-  const observerTargetRef = useRef<HTMLDivElement | null>(null);
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(!!auth.currentUser);
 
   const garageId = garage?.id;
@@ -135,16 +119,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
 
   const prepaidCreditsEnabled = garage?.billingModel === 'prepaid_credits' || typeof garage?.credits === 'number';
 
-  const totalInsideCount = useMemo(
-    () =>
-      vehicles.length > 0
-        ? vehicles.length
-        : typeof garage?.carsInside === "number"
-          ? Math.max(0, garage.carsInside)
-          : 0,
-    [vehicles.length, garage?.carsInside],
-  );
-
   const isLockedOrSuspended = garage?.isLocked || garage?.isSuspended || false;
 
   const {
@@ -169,47 +143,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
 
   useBackHandler(() => { setIsReportsOpen(false); return true; }, isReportsOpen);
   useBackHandler(() => { setIsCreditGrantHistoryOpen(false); return true; }, isCreditGrantHistoryOpen);
-  useBackHandler(() => { setActiveTab('main'); return true; }, activeTab === 'active_vehicles');
-
-  useEffect(() => {
-    setItemsPerPage(15);
-  }, [activeTab]);
-
-  const sortedVehicles = useMemo(() => {
-    return [...(vehicles || [])].sort((a, b) => safeDate(b.entryTime).getTime() - safeDate(a.entryTime).getTime());
-  }, [vehicles]);
-
-  const visibleVehicles = sortedVehicles.slice(0, itemsPerPage);
-
-  // Keep a ref of itemsPerPage + vehicles.length so the observer callback reads
-  // latest values without re-creating the observer on every page increment.
-  // BUG FIX: previously `itemsPerPage` was in this effect's deps. The observer
-  // callback called setItemsPerPage(prev => prev + 10), which triggered effect
-  // cleanup (disconnect) + new observer creation on every scroll — a feedback
-  // loop that churned observers during active scrolling.
-  const itemsPerPageRef = useRef(itemsPerPage);
-  itemsPerPageRef.current = itemsPerPage;
-  const vehiclesLengthRef = useRef(vehicles.length);
-  vehiclesLengthRef.current = vehicles.length;
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && itemsPerPageRef.current < vehiclesLengthRef.current) {
-          setItemsPerPage((prev) => prev + 10);
-        }
-      },
-      {
-        threshold: 0.1,
-        root: scrollContainerRef.current,
-        rootMargin: "100px",
-      },
-    );
-    if (observerTargetRef.current) {
-      observer.observe(observerTargetRef.current);
-    }
-    return () => observer.disconnect();
-  }, [vehicles.length, activeTab]);
 
   const handleNavigateOverlay = (target: string) => {
     setIsMenuOpen(false);
@@ -253,82 +186,59 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
           isInputFocused ? "gap-3 pt-3 pb-3" : "gap-4"
         }`}
       >
-        {!(isInputFocused && activeTab === "main") && !isBalanceDepleted && (
+        {!isInputFocused && !isBalanceDepleted && (
           <GarageSubscriptionCard garage={garage} />
         )}
 
-        {activeTab === "main" ? (
-          <React.Fragment>
-            {shouldShowSmartPrompt ? (
-              <SmartActionPrompt
-                garage={garage}
-                paymentWalletNumber={paymentWalletNumber}
-              />
-            ) : (
-              <RegistrationCard
-                isInputFocused={isInputFocused}
-                setIsInputFocused={setIsInputFocused}
-                plateInputRef={plateInputRef}
-                vehicles={vehicles}
-                garage={garage}
-                handleCheckIn={handleCheckIn}
-                onCheckOut={(vehicle) => {
-                  setSelectedVehicle(vehicle);
-                  setShowCheckOutModal(true);
-                }}
-                closeKeyboard={closeKeyboard}
-                inputRef={inputRef}
-                isLoading={isLoading}
-              />
-            )}
+        {shouldShowSmartPrompt ? (
+          <SmartActionPrompt
+            garage={garage}
+            paymentWalletNumber={paymentWalletNumber}
+          />
+        ) : (
+          <RegistrationCard
+            isInputFocused={isInputFocused}
+            setIsInputFocused={setIsInputFocused}
+            plateInputRef={plateInputRef}
+            vehicles={vehicles}
+            garage={garage}
+            handleCheckIn={handleCheckIn}
+            onCheckOut={(vehicle) => {
+              setSelectedVehicle(vehicle);
+              setShowCheckOutModal(true);
+            }}
+            closeKeyboard={closeKeyboard}
+            inputRef={inputRef}
+            isLoading={isLoading}
+          />
+        )}
 
             {/* UX-C: during a vehicle transaction the action buttons unmount
                 (the draft plate is cleared at submit start), which used to
                 leave the screen silent while the Worker round trip ran. This
                 slim status strip explains the locked buttons instead. */}
-            {isLoading && (
-              <div
-                className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl bg-slate-900/[0.04] dark:bg-slate-800/40 text-slate-500 dark:text-slate-400"
-                role="status"
-              >
-                <Spinner className="w-4 h-4 text-emerald-500" />
-                <span className="text-xs font-bold">
-                  {loadingType === 'hourly' || loadingType === 'overnight'
-                    ? 'جاري تسجيل دخول السيارة...'
-                    : loadingType === 'checkout'
-                      ? 'جاري تسجيل خروج السيارة...'
-                      : loadingType === 'delete'
-                        ? 'جاري حذف السيارة...'
-                        : 'جاري تنفيذ العملية...'}
-                </span>
-              </div>
-            )}
+        {isLoading && (
+          <div
+            className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl bg-slate-900/[0.04] dark:bg-slate-800/40 text-slate-500 dark:text-slate-400"
+            role="status"
+          >
+            <Spinner className="w-4 h-4 text-emerald-500" />
+            <span className="text-xs font-bold">
+              {loadingType === 'hourly' || loadingType === 'overnight'
+                ? 'جاري تسجيل دخول السيارة...'
+                : loadingType === 'checkout'
+                  ? 'جاري تسجيل خروج السيارة...'
+                  : loadingType === 'delete'
+                    ? 'جاري حذف السيارة...'
+                    : 'جاري تنفيذ العملية...'}
+            </span>
+          </div>
+        )}
 
-            {!isInputFocused && (
-              <GarageActiveCountCard
-                count={garage?.carsInside || 0}
-                shimmerColor={shimmerColor}
-                onClick={() => setActiveTab("active_vehicles")}
-              />
-            )}
-          </React.Fragment>
-        ) : (
-          <GarageActiveVehiclesList
-            vehicles={vehicles}
-            visibleVehicles={visibleVehicles}
-            totalInsideCount={totalInsideCount}
-            hasMoreVehicles={itemsPerPage < vehicles.length}
-            observerTargetRef={observerTargetRef}
-            scrollContainerRef={scrollContainerRef}
-            onClose={() => setActiveTab("main")}
-            onCheckOut={(vehicle) => {
-              if (isLoading) return; // block during transaction lock
-              closeKeyboard();
-              setSelectedVehicle(vehicle);
-              setShowCheckOutModal(true);
-            }}
-            onRegisterNewCar={() => setActiveTab("main")}
-            disabled={isLoading}
+        {!isInputFocused && (
+          <GarageActiveCountCard
+            count={garage?.carsInside || 0}
+            shimmerColor={shimmerColor}
           />
         )}
       </main>

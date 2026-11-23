@@ -47,7 +47,6 @@ vi.mock('../ui/FlipNumber', () => ({ FlipNumber: () => null }));
 vi.mock('./RegistrationCard', () => ({ RegistrationCard: () => null }));
 vi.mock('./SmartActionPrompt', () => ({ SmartActionPrompt: () => null }));
 vi.mock('./dashboard/GarageSubscriptionCard', () => ({ GarageSubscriptionCard: () => null }));
-vi.mock('./dashboard/GarageActiveVehiclesList', () => ({ GarageActiveVehiclesList: () => null }));
 vi.mock('./dashboard/GarageDashboardHeaderAndDrawer', () => ({
   GarageDashboardHeaderAndDrawer: ({ onNavigateOverlay, expiringSubscribersCount, hasNewCreditGrant }: any) => (
     <header>
