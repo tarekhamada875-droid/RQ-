@@ -142,13 +142,12 @@ export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }
         notifyWorkerSessionReady();
         return;
       }
-      if (serverClaim.error === 'SESSION_OCCUPIED') {
-        throw new Error('SESSION_OCCUPIED');
-      }
+      // REMOVED (2026-11-23): the `error === 'SESSION_OCCUPIED'` rethrow.
+      // The Worker's /api/auth/claim-admin-session route never returns
+      // SESSION_OCCUPIED — only INVALID_ADMIN_PIN or SERVER_ERROR. The
+      // rethrow was dead code; multi-device admin login is the actual
+      // behavior.
     } catch (err: any) {
-      if (err?.message === 'SESSION_OCCUPIED') {
-        throw err;
-      }
       console.warn('Server admin session claim failed:', err);
     }
   }

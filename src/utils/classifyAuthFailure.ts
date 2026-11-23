@@ -9,18 +9,26 @@
  *     releaseEntitySession catch)
  *   - useGarageSession.ts (2 copies)
  *
- * Each copy checked the same error codes:
- *   SESSION_OCCUPIED, DELEGATE_SESSION_OCCUPIED, ACCESS_DENIED_ACTIVE_SESSION_EXISTS,
- *   'مستخدم على جهاز آخر', RATE_LIMIT_EXCEEDED, RATE_LIMITER_UNAVAILABLE,
- *   PIN_NOT_UNIQUE, 'بيانات الدخول غير صحيحة', INVALID_PIN, 'تعذر الاتصال بخادم التحقق'
- *
  * And produced the same Arabic toast messages.
  *
  * Now there's one function: classifyAuthFailure(error) → { type, message }
+ *
+ * REMOVED (2026-11-23): the `session_occupied` branch and the
+ * `isSessionOccupiedError` helper. The Worker never returns
+ * SESSION_OCCUPIED / DELEGATE_SESSION_OCCUPIED /
+ * ACCESS_DENIED_ACTIVE_SESSION_EXISTS — and never throws the Arabic
+ * "مستخدم على جهاز آخر" string. Those codes were leftover from an
+ * older single-session design that was refactored away (see
+ * server/auth/sessionMarkers.ts and the 2026-11-13 device-doc-authority
+ * fix in server/sessionInfrastructure.ts). Multi-device login has been
+ * the actual behavior for weeks; the matching code was dead defense
+ * that could not fire. Removing it makes the codebase honest about what
+ * the Worker actually returns. Affected callers in
+ * useAdminAndGarageManagement.ts, useGarageSession.ts, and
+ * authSessionService.ts were updated to drop the dead branches.
  */
 
 export type AuthFailureType =
-  | 'session_occupied'
   | 'rate_limited'
   | 'pin_not_unique'
   | 'invalid_credentials'
@@ -31,12 +39,6 @@ export interface AuthFailureClassification {
   type: AuthFailureType;
   message: string;
 }
-
-const SESSION_OCCUPIED_ERRORS = new Set([
-  'SESSION_OCCUPIED',
-  'DELEGATE_SESSION_OCCUPIED',
-  'ACCESS_DENIED_ACTIVE_SESSION_EXISTS',
-]);
 
 const RATE_LIMIT_ERRORS = new Set([
   'RATE_LIMIT_EXCEEDED',
@@ -56,18 +58,9 @@ const INVALID_CRED_ERRORS = new Set([
  * Usage:
  *   const { type, message } = classifyAuthFailure(err);
  *   if (type !== 'unknown') showToast(message, 'error');
- *   if (type === 'session_occupied') { /* release session logic *\/ }
  */
 export function classifyAuthFailure(error: string | undefined | null): AuthFailureClassification {
   const err = String(error || '').trim();
-
-  // Session occupied — account active on another device
-  if (
-    SESSION_OCCUPIED_ERRORS.has(err) ||
-    err.includes('مستخدم على جهاز آخر')
-  ) {
-    return { type: 'session_occupied', message: 'هذا الحساب نشط حالياً على جهاز آخر' };
-  }
 
   // Rate limited — too many wrong attempts
   if (
@@ -94,16 +87,4 @@ export function classifyAuthFailure(error: string | undefined | null): AuthFailu
 
   // Unknown — show generic error
   return { type: 'unknown', message: 'تعذر تسجيل الدخول. يرجى المحاولة مرة أخرى' };
-}
-
-/**
- * Returns true if the error indicates the account is occupied on another device.
- * Convenience function for the session-release logic.
- */
-export function isSessionOccupiedError(error: string | undefined | null): boolean {
-  const err = String(error || '').trim();
-  return (
-    SESSION_OCCUPIED_ERRORS.has(err) ||
-    err.includes('مستخدم على جهاز آخر')
-  );
 }

@@ -11,7 +11,7 @@ import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { claimEntitySession, releaseEntitySession, recordSessionAsClaimed, EntityRole } from '../services/authSessionService';
 import { logDiagnostic } from '../utils/authDiagnosticLogger';
-import { classifyAuthFailure, isSessionOccupiedError } from '../utils/classifyAuthFailure';
+import { classifyAuthFailure } from '../utils/classifyAuthFailure';
 import { signInAnonymouslyOnce } from '../services/anonymousAuth';
 
 interface UseAdminAndGarageManagementProps {
@@ -182,30 +182,27 @@ export function useAdminAndGarageManagement({
           });
           console.warn('Login session claim error:', claimErr);
           const errMsg = claimErr?.message || String(claimErr);
-          if (
-isSessionOccupiedError(errMsg)
-          ) {
-            showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
-          } else if (errMsg.includes('permission') || errMsg.includes('Permission')) {
+          if (errMsg.includes('permission') || errMsg.includes('Permission')) {
             showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
           } else {
             showToast('تعذر تسجيل الدخول. يرجى المحاولة مرة أخرى', 'error');
           }
 
           // A failed claim can have committed remotely even when its response was lost.
-          // Release only this exact attempted session; never touch an occupied session.
-          const sessionOccupied =
-isSessionOccupiedError(errMsg);
-          if (!sessionOccupied) {
-            await releaseEntitySession({
-              role: role as EntityRole,
-              entityId,
-              sessionId,
-              uid,
-            }).catch((releaseError) => {
-              console.warn('Failed to release uncertain login claim:', releaseError);
-            });
-          }
+          // Release only this exact attempted session.
+          // REMOVED (2026-11-23): the `isSessionOccupiedError` guard. The Worker
+          // never returns SESSION_OCCUPIED / DELEGATE_SESSION_OCCUPIED /
+          // ACCESS_DENIED_ACTIVE_SESSION_EXISTS — multi-device login is the
+          // actual behavior. The guard was always false and could never fire,
+          // so release always runs. See server/auth/sessionMarkers.ts.
+          await releaseEntitySession({
+            role: role as EntityRole,
+            entityId,
+            sessionId,
+            uid,
+          }).catch((releaseError) => {
+            console.warn('Failed to release uncertain login claim:', releaseError);
+          });
           return;
         }
       }
@@ -346,11 +343,10 @@ isSessionOccupiedError(errMsg);
         } catch (claimErr: any) {
           console.warn('Delegate login session claim error:', claimErr);
           const errMsg = claimErr?.message || String(claimErr);
-          if (
-isSessionOccupiedError(errMsg)
-          ) {
-            showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
-          } else if (errMsg.includes('permission') || errMsg.includes('Permission')) {
+          // REMOVED (2026-11-23): the `isSessionOccupiedError` branch (dead —
+          // the Worker never returns SESSION_OCCUPIED). The remaining branches
+          // already cover the real failure modes.
+          if (errMsg.includes('permission') || errMsg.includes('Permission')) {
             showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
           } else {
             showToast('تعذر تسجيل الدخول. يرجى المحاولة مرة أخرى', 'error');
