@@ -299,6 +299,19 @@ export class MockFirestore {
     return new MockDocumentReference(id, path, this);
   }
 
+  // getAll — batched lookups used by production routes (credit-request
+  // previews, income-history legacy name resolution). Real Firestore bills
+  // one read per returned doc; the mock counts the same way via ref.get().
+  async getAll(...refs: Array<{ id: string; path: string }>) {
+    const snapshots = [];
+    for (const ref of refs) {
+      this.documentReadCount += 1;
+      const value = this.records.get(ref.path);
+      snapshots.push(new MockDocumentSnapshot(ref.id, value !== undefined, value, ref as any));
+    }
+    return snapshots;
+  }
+
   collection(path: string) {
     return new MockCollectionReference(this, path);
   }

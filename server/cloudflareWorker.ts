@@ -10,6 +10,7 @@ import { registerSubscriberRoutes } from './subscriberRoutes';
 import { registerFinancialRoutes } from './financialRoutes';
 import { registerGarageRoutes } from './garageRoutes';
 import { registerCreditRequestRoutes } from './creditRequestRoutes';
+import { registerIncomeRoutes } from './incomeRoutes';
 
 import { PinRateLimiterNamespace } from './workerPinRateLimiter';
 
@@ -314,6 +315,9 @@ workerApp.post('/api/activity-logs/add', requireWorkerAuth, async (c) => {
 
 // 11. Credit Request Routes (delegate → admin credit request flow)
 registerCreditRequestRoutes(workerApp);
+
+// 12. Admin Income page (lifetime total + paged paid_grant history, on demand)
+registerIncomeRoutes(workerApp);
 
 export { workerApp };
 

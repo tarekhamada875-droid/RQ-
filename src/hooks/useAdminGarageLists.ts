@@ -32,7 +32,7 @@ export type AdminTab =
   | 'overview' | 'garages' | 'packages' | 'people' | 'delegates'
   | 'requests' | 'trial_leads' | 'supervisors' | 'admin-pin'
   | 'catalog_settings' | 'active_sessions' | 'wallet_settings'
-  | 'credit_rate_settings' | 'daily_garage_reports';
+  | 'credit_rate_settings' | 'daily_garage_reports' | 'income';
 
 const SUB_TABS_RETURNING_TO_CATALOG: ReadonlySet<AdminTab> = new Set([
   'admin-pin',
@@ -40,6 +40,7 @@ const SUB_TABS_RETURNING_TO_CATALOG: ReadonlySet<AdminTab> = new Set([
   'wallet_settings',
   'credit_rate_settings',
   'daily_garage_reports',
+  'income',
 ]);
 
 export interface UseAdminGarageListsResult {
