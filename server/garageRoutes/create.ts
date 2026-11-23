@@ -18,6 +18,7 @@ import { checkPinAvailabilityAcrossAll, saveEntityPinInTransaction } from '../pi
 import { generateUniquePin } from '../pinGeneration';
 import { validateIdempotencyKey, validateNewPin, validateNumber, validateString, sanitizePayload } from '../validation';
 import { getCairoDayBounds } from '../projections';
+import { buildActivityLogEntry } from '../activityLogWriter';
 import { mapDomainErrorToStatus } from '../routes/helpers';
 
 export function registerGarageCreate(app: WorkerApp): void {
@@ -214,7 +215,7 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       garageDoc.referredByGarageName = referredByGarageName || '';
     }
 
-    const activityLog = {
+    const activityLog = buildActivityLogEntry({
       garageId,
       garageName: garageDoc.name,
       staffId: callerUid || null,
@@ -230,7 +231,7 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
         isTrial,
         trialCreditsGranted: trialCreditAmount
       }
-    };
+    });
     const result = { success: true, id: garageId };
     let replayedResult: any;
     let isReplay = false;
