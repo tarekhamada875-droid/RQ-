@@ -7,8 +7,36 @@ const { getIncomeSummary, getIncomeHistoryPage } = vi.hoisted(() => ({
   getIncomeHistoryPage: vi.fn(),
 }));
 
+const {
+  fetchAllIncomeRows,
+  buildIncomeCsv,
+  buildIncomeStatementHtml,
+  downloadIncomeCsv,
+  printHtmlDocument,
+} = vi.hoisted(() => ({
+  fetchAllIncomeRows: vi.fn(),
+  buildIncomeCsv: vi.fn(),
+  buildIncomeStatementHtml: vi.fn(),
+  downloadIncomeCsv: vi.fn(),
+  printHtmlDocument: vi.fn(),
+}));
+
 vi.mock('../../services/adminIncomeService', () => ({
   adminIncomeService: { getIncomeSummary, getIncomeHistoryPage },
+}));
+
+vi.mock('../../utils/incomeExport', () => ({
+  INCOME_EXPORT_PAGE_SIZE: 100,
+  incomeSourceLabel: (source?: string) =>
+    source === 'credit_request_approval' ? 'طلب مندوب'
+      : source === 'admin_entered_grant' ? 'إضافة يدوية'
+        : 'شحن رصيد',
+  incomeCsvFilename: () => 'سجل-الدخل-2026-11-23.csv',
+  fetchAllIncomeRows,
+  buildIncomeCsv,
+  buildIncomeStatementHtml,
+  downloadIncomeCsv,
+  printHtmlDocument,
 }));
 
 const row = (overrides: Record<string, unknown>) => ({
@@ -29,6 +57,9 @@ describe('AdminIncomeView — admin income page (الدخل)', () => {
     vi.clearAllMocks();
     getIncomeSummary.mockResolvedValue({ totalIncomeEgp: 1234, recounted: false });
     getIncomeHistoryPage.mockResolvedValue({ rows: [], hasMore: false, nextCursor: null });
+    fetchAllIncomeRows.mockResolvedValue({ rows: [], truncated: false });
+    buildIncomeCsv.mockReturnValue('CSV');
+    buildIncomeStatementHtml.mockReturnValue('<html />');
   });
 
   it('shows the lifetime total in Arabic numerals', async () => {
@@ -114,5 +145,89 @@ describe('AdminIncomeView — admin income page (الدخل)', () => {
     await waitFor(() => {
       expect(getIncomeSummary).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it('shows the print and CSV export tools once the history is ready', async () => {
+    render(<AdminIncomeView onBack={vi.fn()} />);
+
+    expect(await screen.findByLabelText('أدوات التصدير')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'طباعة الكشف' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'تنزيل ملف CSV' })).toBeEnabled();
+  });
+
+  it('print walks the whole ledger and prints a statement carrying the lifetime total', async () => {
+    fetchAllIncomeRows.mockResolvedValue({ rows: [row({})], truncated: false });
+    render(<AdminIncomeView onBack={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'طباعة الكشف' }));
+
+    await waitFor(() => {
+      expect(printHtmlDocument).toHaveBeenCalledTimes(1);
+    });
+    expect(fetchAllIncomeRows).toHaveBeenCalledWith(expect.any(Function));
+    expect(buildIncomeStatementHtml).toHaveBeenCalledWith({
+      rows: [row({})],
+      lifetimeTotalEgp: 1234,
+      generatedAt: expect.any(Date),
+      truncated: false,
+    });
+    expect(downloadIncomeCsv).not.toHaveBeenCalled();
+  });
+
+  it('csv walks the ledger, downloads a dated file, and confirms with a toast', async () => {
+    const showToast = vi.fn();
+    fetchAllIncomeRows.mockResolvedValue({ rows: [row({}), row({ id: 'r2' })], truncated: false });
+    render(<AdminIncomeView onBack={vi.fn()} showToast={showToast} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'تنزيل ملف CSV' }));
+
+    await waitFor(() => {
+      expect(downloadIncomeCsv).toHaveBeenCalledWith('CSV', 'سجل-الدخل-2026-11-23.csv');
+    });
+    expect(buildIncomeCsv).toHaveBeenCalledWith([row({}), row({ id: 'r2' })]);
+    expect(printHtmlDocument).not.toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalledWith(expect.stringContaining('2 عملية'), 'success');
+  });
+
+  it('discloses a truncated export with an info toast and passes the flag to the statement', async () => {
+    const showToast = vi.fn();
+    fetchAllIncomeRows.mockResolvedValue({ rows: [row({}), row({ id: 'r2' })], truncated: true });
+    render(<AdminIncomeView onBack={vi.fn()} showToast={showToast} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'طباعة الكشف' }));
+
+    await waitFor(() => {
+      expect(printHtmlDocument).toHaveBeenCalledTimes(1);
+    });
+    expect(buildIncomeStatementHtml).toHaveBeenCalledWith(
+      expect.objectContaining({ truncated: true, rows: [row({}), row({ id: 'r2' })] })
+    );
+    expect(showToast).toHaveBeenCalledWith(expect.stringContaining('أول 2 عملية بس'), 'info');
+  });
+
+  it('reports a failed export with an error toast and re-enables the buttons', async () => {
+    const showToast = vi.fn();
+    fetchAllIncomeRows.mockRejectedValue(new Error('boom'));
+    render(<AdminIncomeView onBack={vi.fn()} showToast={showToast} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'تنزيل ملف CSV' }));
+
+    await waitFor(() => {
+      expect(showToast).toHaveBeenCalledWith(expect.stringContaining('حصلت مشكلة'), 'error');
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'تنزيل ملف CSV' })).toBeEnabled();
+    });
+  });
+
+  it('disables both export buttons and shows progress while preparing', async () => {
+    fetchAllIncomeRows.mockImplementationOnce(() => new Promise(() => { /* pending walk */ }));
+    render(<AdminIncomeView onBack={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'طباعة الكشف' }));
+
+    expect(await screen.findByText('بيجهّز الكشف...')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'طباعة الكشف' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'تنزيل ملف CSV' })).toBeDisabled();
   });
 });

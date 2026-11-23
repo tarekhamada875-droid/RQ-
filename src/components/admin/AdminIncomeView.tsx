@@ -1,6 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Banknote, ChevronRight, Loader2 } from 'lucide-react';
+import { Banknote, ChevronRight, Download, Loader2, Printer } from 'lucide-react';
 import { adminIncomeService, type AdminIncomeRow } from '../../services/adminIncomeService';
+import {
+  INCOME_EXPORT_PAGE_SIZE,
+  buildIncomeCsv,
+  buildIncomeStatementHtml,
+  downloadIncomeCsv,
+  fetchAllIncomeRows,
+  incomeCsvFilename,
+  incomeSourceLabel,
+  printHtmlDocument
+} from '../../utils/incomeExport';
 import { safeDate } from '../../utils/dates';
 
 interface AdminIncomeViewProps {
@@ -16,12 +26,12 @@ const formatDate = (timestamp: unknown) => safeDate(timestamp).toLocaleDateStrin
 
 const sourceChip = (source: string | undefined): { label: string; className: string } => {
   if (source === 'credit_request_approval') {
-    return { label: 'طلب مندوب', className: 'bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300' };
+    return { label: incomeSourceLabel(source), className: 'bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300' };
   }
   if (source === 'admin_entered_grant') {
-    return { label: 'إضافة يدوية', className: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300' };
+    return { label: incomeSourceLabel(source), className: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300' };
   }
-  return { label: 'شحن رصيد', className: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' };
+  return { label: incomeSourceLabel(source), className: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' };
 };
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -35,7 +45,9 @@ type LoadState = 'loading' | 'ready' | 'error';
  * total reads the O(1) admin summary; the first-ever open may take a few
  * extra seconds while the Worker performs its one-time income alignment.
  *
- * Print/export lands in a follow-up PR (step 2, owner-approved plan).
+ * Print & CSV export (owner-approved step 2): two buttons walk the same
+ * paged history door to the end, only when pressed — 1 read per row,
+ * capped at INCOME_EXPORT_MAX_ROWS with an honest partial-data warning.
  */
 export const AdminIncomeView: React.FC<AdminIncomeViewProps> = ({ onBack, showToast }) => {
   const [summaryState, setSummaryState] = useState<LoadState>('loading');
@@ -45,6 +57,7 @@ export const AdminIncomeView: React.FC<AdminIncomeViewProps> = ({ onBack, showTo
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [historyState, setHistoryState] = useState<LoadState>('loading');
   const [loadingMore, setLoadingMore] = useState(false);
+  const [exporting, setExporting] = useState<'csv' | 'print' | null>(null);
 
   const loadSummary = useCallback(async () => {
     setSummaryState('loading');
@@ -87,6 +100,38 @@ export const AdminIncomeView: React.FC<AdminIncomeViewProps> = ({ onBack, showTo
       showToast?.('حصلت مشكلة وإحنا بنحمّل باقي السجل.', 'error');
     } finally {
       setLoadingMore(false);
+    }
+  };
+
+  const runExport = async (kind: 'csv' | 'print') => {
+    if (exporting) return;
+    setExporting(kind);
+    try {
+      // The export re-walks the history door itself, so it works even when
+      // the on-screen list is still loading or failed — the statement is
+      // always the complete, freshest money-in record.
+      const { rows: allRows, truncated } = await fetchAllIncomeRows(
+        (cursor) => adminIncomeService.getIncomeHistoryPage(cursor, INCOME_EXPORT_PAGE_SIZE)
+      );
+      if (truncated) {
+        showToast?.(`السجل أطول من حد التصدير — الكشف بيشمل أول ${allRows.length} عملية بس.`, 'info');
+      }
+      if (kind === 'csv') {
+        const generatedAt = new Date();
+        downloadIncomeCsv(buildIncomeCsv(allRows), incomeCsvFilename(generatedAt));
+        showToast?.(`تم تنزيل سجل الدخل — ${allRows.length} عملية.`, 'success');
+      } else {
+        printHtmlDocument(buildIncomeStatementHtml({
+          rows: allRows,
+          lifetimeTotalEgp: total ?? 0,
+          generatedAt: new Date(),
+          truncated,
+        }));
+      }
+    } catch {
+      showToast?.('حصلت مشكلة وإحنا بنجهّز الكشف. جرّب تاني.', 'error');
+    } finally {
+      setExporting(null);
     }
   };
 
@@ -143,6 +188,39 @@ export const AdminIncomeView: React.FC<AdminIncomeViewProps> = ({ onBack, showTo
 
       {/* History */}
       <h3 className="mt-8 mb-4 text-sm font-black text-slate-900 dark:text-white">{'سجل الدخل'}</h3>
+      {historyState === 'ready' ? (
+        <div className="mb-4 flex items-center gap-2" aria-label="أدوات التصدير">
+          <button
+            type="button"
+            onClick={() => runExport('print')}
+            disabled={exporting !== null}
+            className="h-10 px-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-extrabold text-xs rounded-xl cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {exporting === 'print' ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Printer className="w-4 h-4" />
+            )}
+            <span>{'طباعة الكشف'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => runExport('csv')}
+            disabled={exporting !== null}
+            className="h-10 px-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-extrabold text-xs rounded-xl cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {exporting === 'csv' ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            <span>{'تنزيل ملف CSV'}</span>
+          </button>
+          {exporting !== null ? (
+            <span className="text-xs font-bold text-slate-400">{'بيجهّز الكشف...'}</span>
+          ) : null}
+        </div>
+      ) : null}
       {historyState === 'loading' ? (
         <div className="space-y-3" aria-label="بيتحمل سجل الدخل">
           {[1, 2, 3].map((item) => (

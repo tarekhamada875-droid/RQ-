@@ -38,11 +38,13 @@ export const adminIncomeService = {
   getIncomeSummary: (): Promise<AdminIncomeSummary> =>
     apiCall<AdminIncomeSummary>('/api/admin/income/summary'),
 
-  getIncomeHistoryPage: async (cursor?: string | null): Promise<AdminIncomeHistoryPage> => {
+  getIncomeHistoryPage: async (cursor?: string | null, limit = 50): Promise<AdminIncomeHistoryPage> => {
     const cursorQuery = cursor ? `&cursor=${encodeURIComponent(cursor)}` : '';
     // The endpoint nests { rows, hasMore, nextCursor } inside data so the
     // single envelope unwrap in apiCall keeps the paging fields together.
-    const page = await apiCall<AdminIncomeHistoryPage>(`/api/admin/income/history?limit=50${cursorQuery}`);
+    // Screens use the default 50-row wallet; the export walk passes 100
+    // (server max) purely to halve round trips — per-row cost is unchanged.
+    const page = await apiCall<AdminIncomeHistoryPage>(`/api/admin/income/history?limit=${limit}${cursorQuery}`);
     return {
       rows: page?.rows || [],
       hasMore: !!page?.hasMore,
