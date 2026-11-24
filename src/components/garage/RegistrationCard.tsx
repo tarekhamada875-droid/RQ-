@@ -5,6 +5,9 @@ import { Garage, Vehicle } from '../../types';
 import { LicensePlateKeyboard } from './LicensePlateKeyboard';
 import { FitText } from '../ui/FitText';
 import { vehicleService } from '../../services';
+// OFFLINE STEP 2: direct module import — the drawer mirror answers "is this
+// plate on THIS phone?" before any server/cache read.
+import { envelopeQueue } from '../../services/envelopeQueue';
 
 interface RegistrationCardProps {
   isInputFocused: boolean;
@@ -86,6 +89,32 @@ export const RegistrationCard = memo(({
     }
     const generation = ++lookupGenerationRef.current;
     const timer = setTimeout(async () => {
+      // ── OFFLINE STEP 2: the drawer mirror ──────────────────────
+      // (1) A pending check-in envelope means the car exists only on this
+      // phone (its Firestore doc is not written until the flush) — answer
+      // from the envelope so the offline exit flow still works.
+      const pendingCheckIn = envelopeQueue.findPendingCheckIn(garage.id, rawPlate);
+      if (pendingCheckIn) {
+        if (lookupGenerationRef.current !== generation) return;
+        setInsideVehicleForPlate({
+          id: rawPlate, // vehicle doc ID === normalized plate raw
+          plateNumber: pendingCheckIn.plateNumber,
+          plateNumberRaw: rawPlate,
+          entryTime: new Date(pendingCheckIn.entryTimeIso) as any,
+          type: pendingCheckIn.vehicleType,
+          garageId: garage.id,
+          status: 'inside',
+        } as Vehicle);
+        return;
+      }
+      // (2) A pending check-out envelope means the car already left on this
+      // phone — the cached Firestore doc may still say 'inside' until the
+      // flush lands, so suppress the second-exit offer explicitly.
+      if (envelopeQueue.hasPendingCheckout(garage.id, rawPlate)) {
+        if (lookupGenerationRef.current !== generation) return;
+        setInsideVehicleForPlate(null);
+        return;
+      }
       try {
         const doc = await vehicleService.getVehicleDocOnce(garage.id, rawPlate);
         if (lookupGenerationRef.current !== generation) return; // a newer lookup superseded this one

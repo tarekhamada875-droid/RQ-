@@ -95,7 +95,11 @@ export const vehicleService = {
       });
       return { success: true, data: data.data };
     } catch (err: any) {
-      return { success: false, error: err.message };
+      // OFFLINE STEP 2: preserve the ApiError code so the envelope-flush loop
+      // can tell network-shaped failures (NETWORK_ERROR / API_TIMEOUT → keep
+      // the envelope, retry later) from server business rejections
+      // (INSUFFICIENT_*, ALREADY_INSIDE… → park the envelope as rejected).
+      return { success: false, error: err.message, code: err?.code };
     }
   },
   
@@ -123,7 +127,8 @@ export const vehicleService = {
         lastTransactionDate: data.data?.lastTransactionDate
       };
     } catch (err: any) {
-      return { success: false, error: err.message };
+      // OFFLINE STEP 2: same code preservation as check-in (see above).
+      return { success: false, error: err.message, code: err?.code };
     }
   },
   

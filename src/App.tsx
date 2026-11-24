@@ -93,7 +93,11 @@ export default function App() {
 
   if (isLoggingOut) return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm">جاري الخروج...</p></div>;
   if (isLandscapeMobile) return <LandscapeMobileView garage={view === 'garage' ? garage : null} />;
-  if (showOfflineScreen) return <OfflineView />;
+  // OFFLINE STEP 2 (owner-approved): the garage dashboard keeps working
+  // offline (envelope drawer) — the full-screen OfflineView takeover must
+  // NOT replace it. Login/admin/delegate stay online-only by design and
+  // keep the takeover.
+  if (showOfflineScreen && view !== 'garage') return <OfflineView />;
   // Initial-sync gate (fixes the reopen-refresh race): for the garage view
   // only, keep the loading screen up until both Firestore listeners have
   // delivered their first fresh (non-cached) snapshot, OR the 10s safety
