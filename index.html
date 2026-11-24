@@ -122,7 +122,14 @@
               });
             }
             var updateOnForeground = function() {
-              if (document.visibilityState === 'visible') reg.update();
+              // OFFLINE (owner debug file 2026-11-24, seq 5): a visibility
+              // flip while the line is down rejects update() with
+              // "Failed to fetch sw.js" — an UNHANDLED rejection that showed
+              // up as a red JS error in the debug recorder. A failed update
+              // check is normal offline behavior: the old worker keeps
+              // serving the cached shell, and the next visible flip retries.
+              // Swallow the rejection calmly.
+              if (document.visibilityState === 'visible') reg.update().catch(function() {});
             };
             document.addEventListener('visibilitychange', updateOnForeground);
             window.addEventListener('pageshow', updateOnForeground);
