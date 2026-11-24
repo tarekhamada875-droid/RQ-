@@ -8,7 +8,7 @@
 import type { WorkerApp } from '../cloudflareWorker';
 import { adminDb } from '../firebaseAdmin';
 import { requireWorkerAuth } from '../sessionInfrastructure';
-import { validateIdempotencyKey, normalizePlateRaw } from '../validation';
+import { validateIdempotencyKey, normalizePlateRaw, parsePlausibleClientTime } from '../validation';
 import { mapDomainErrorToStatus } from '../routes/helpers';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from '../idempotency';
 import { recordDomainEventInTransaction } from '../events';
@@ -92,14 +92,27 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
 
       const resolvedStaffName = user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? 'مدير الجراج' : 'موظف'));
 
-      const cost = calculateVehicleCost(vehicleData, garageData);
+      // OFFLINE STEP 3 (2026-11-24, owner debug file rq-debug-2026-11-24):
+      // bill from the true exit tap time. A checkout envelope can sit in the
+      // offline drawer for hours — billing from the flush moment would charge
+      // the drawer wait to the customer. Falls back to the server clock when
+      // the client time is implausible or would end the stay before it began.
+      const exitCandidate = parsePlausibleClientTime(body.exitTimeIso, Date.now()) ?? new Date();
+      const entryMs = vehicleData.entryTime?.toDate
+        ? (vehicleData.entryTime.toDate() as Date).getTime()
+        : (vehicleData.entryTime ? new Date(vehicleData.entryTime as any).getTime() : NaN);
+      const exitAt = Number.isFinite(entryMs) && exitCandidate.getTime() >= entryMs
+        ? exitCandidate
+        : new Date();
+
+      const cost = calculateVehicleCost(vehicleData, garageData, exitAt.getTime());
       const decision = decideVehicleCheckOut({ today, cost }, checkOutGarage, checkOutVehicle);
       if (decision.ok === false) throw new Error(decision.error);
       const { cost: finalDecisionCost, isNewDay } = decision.value;
 
       t.set(vehicleRef, {
         status: 'outside',
-        exitTime: new Date(),
+        exitTime: exitAt,
         totalCost: finalDecisionCost,
         operationId,
         operationVersion: nextOperationVersion(vehicleData.operationVersion)

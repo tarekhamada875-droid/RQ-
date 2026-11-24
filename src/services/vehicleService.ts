@@ -88,6 +88,10 @@ export const vehicleService = {
           type: vehicleData.type,
           isSubscriber: vehicleData.isSubscriber,
           staffName: vehicleData.staffName,
+          // OFFLINE STEP 3: the true entry tap time rides only on offline
+          // envelope flushes — the live path passes no field and the bank
+          // stamps its own clock.
+          ...(vehicleData.entryTimeIso ? { entryTimeIso: vehicleData.entryTimeIso } : {}),
           // accept a caller-provided idempotency key so retries can
           // reuse the same key. If none provided, generate a fresh one (legacy).
           idempotencyKey: idempotencyKey || generateIdempotencyKey('vehicle_checkin')
@@ -103,7 +107,7 @@ export const vehicleService = {
     }
   },
   
-  checkOutVehicle: async (garageId: string, vehicleId: string, _cost: number, staffName?: string, _staffId?: string, idempotencyKey?: string) => {
+  checkOutVehicle: async (garageId: string, vehicleId: string, _cost: number, staffName?: string, _staffId?: string, idempotencyKey?: string, exitTimeIso?: string) => {
     try {
       const data = await apiFetch('/api/vehicles/check-out', {
         method: 'POST',
@@ -111,6 +115,9 @@ export const vehicleService = {
           garageId,
           vehicleId,
           staffName,
+          // OFFLINE STEP 3: the true exit tap time (offline envelope flushes
+          // only) — the bank bills the stay from it, not from the flush moment.
+          ...(exitTimeIso ? { exitTimeIso } : {}),
           // accept a caller-provided idempotency key so retries can
           // reuse the same key. If none provided, generate a fresh one (legacy).
           idempotencyKey: idempotencyKey || generateIdempotencyKey('vehicle_checkout')
