@@ -12,6 +12,11 @@ import { calculateCost } from '../utils/cost';
 import { safeDate } from '../utils/dates';
 import { getRawPlate, formatPlateNumber } from '../utils/plates';
 import { getCairoDateKey } from '../domain/garage/businessDay';
+// OFFLINE DEBUG (owner request 2026-11-24, "I can't type them"): the drawer
+// narrates its whole life into the black-box recorder — queue, flush tries,
+// duplicate resolutions, refusals, retries. Plates travel only as plateKey
+// fingerprints; the debug file never carries plate text.
+import { debugRecorder, plateKey } from '../debug/debugRecorder';
 
 const pendingOperations = new Set<string>();
 function withAsyncLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
@@ -269,7 +274,7 @@ export function useVehicleOperations({
 
       // The envelope: exact Worker payload + its own idempotency key that
       // stays with it for life (replays return the committed result).
-      envelopeQueue.enqueue({
+      const envelope = envelopeQueue.enqueue({
         id: generateIdempotencyKey('vehicle_checkin'),
         garageId: garage.id,
         kind: 'checkin',
@@ -281,6 +286,12 @@ export function useVehicleOperations({
         staffId: currentStaff ? currentStaff.id : null,
         isSubscriber: false,
         createdAt: Date.now(),
+      });
+      debugRecorder.envelopeEvent('checkin_queued', {
+        envId: envelope.id,
+        garageId: garage.id,
+        type,
+        plateKey: plateKey(raw),
       });
 
       // Optimistic notebook patch — the same fields the Worker response
@@ -489,7 +500,7 @@ export function useVehicleOperations({
       acquireTransactionLock();
       setCheckoutJustSucceeded(false);
 
-      envelopeQueue.enqueue({
+      const checkoutEnvelope = envelopeQueue.enqueue({
         id: generateIdempotencyKey('vehicle_checkout'),
         garageId: garage.id,
         kind: 'checkout',
@@ -509,6 +520,12 @@ export function useVehicleOperations({
         // resolves (duplicate exit) or refuses instead of committing.
         phoneCost: cost,
         createdAt: Date.now(),
+      });
+      debugRecorder.envelopeEvent('checkout_queued', {
+        envId: checkoutEnvelope.id,
+        garageId: garage.id,
+        plateKey: plateKey(vehicleToOut.id),
+        phoneCost: cost,
       });
 
       // Optimistic notebook patch. todayCount stays untouched — it counts
@@ -786,11 +803,18 @@ export function useVehicleOperations({
     // the old build never applied phone-math debits, so there is nothing to
     // roll back). Sweep them quietly so the red chip doesn't stick forever
     // on phones that ran the old build.
-    envelopeQueue.list(garage.id)
-      .filter((item) => item.status === 'rejected' && isResolvedDuplicateAnswer(item.lastError))
-      .forEach((item) => envelopeQueue.remove(item.id));
+    const staleRejected = envelopeQueue.list(garage.id)
+      .filter((item) => item.status === 'rejected' && isResolvedDuplicateAnswer(item.lastError));
+    staleRejected.forEach((item) => envelopeQueue.remove(item.id));
+    if (staleRejected.length > 0) {
+      debugRecorder.envelopeEvent('stale_rejected_swept', { count: staleRejected.length });
+    }
 
     const queue = envelopeQueue.list(garage.id).filter((item) => item.status === 'pending');
+    debugRecorder.envelopeEvent('flush_start', {
+      count: queue.length,
+      online: typeof navigator === 'undefined' ? null : navigator.onLine,
+    });
     for (const envelope of queue) {
       try {
         if (envelope.kind === 'checkin') {
@@ -808,18 +832,21 @@ export function useVehicleOperations({
             const errorText = res.error || 'flush failed';
             if (isRetryableFlushFailure(code)) {
               envelopeQueue.markFailed(envelope.id, errorText, false);
+              debugRecorder.envelopeEvent('flush_retry', { envId: envelope.id, code: code ?? null, text: String(errorText).slice(0, 160) });
               return; // door locked for a moment — wait for the next trigger
             }
             if (isResolvedDuplicateAnswer(errorText)) {
               // The bank already had the car inside — no debit happened.
               rollbackCheckInPatch();
               envelopeQueue.remove(envelope.id);
+              debugRecorder.envelopeEvent('flush_duplicate_resolved', { envId: envelope.id, text: String(errorText).slice(0, 160) });
               showToast('العربية كانت مسجلة جوه بالفعل — البنك منع التكرار ومفيش خصم', 'info');
               continue;
             }
             // True refusal: the bank said no to the money.
             rollbackCheckInPatch();
             envelopeQueue.markFailed(envelope.id, errorText, true);
+            debugRecorder.envelopeEvent('flush_refused', { envId: envelope.id, text: String(errorText).slice(0, 160) });
             showToast('السيرفر رفض تسجيل سيارة معلقة: ' + errorText, 'error');
             continue;
           }
@@ -838,6 +865,7 @@ export function useVehicleOperations({
             const errorText = res.error || 'flush failed';
             if (isRetryableFlushFailure(code)) {
               envelopeQueue.markFailed(envelope.id, errorText, false);
+              debugRecorder.envelopeEvent('flush_retry', { envId: envelope.id, code: code ?? null, text: String(errorText).slice(0, 160) });
               return;
             }
             if (isResolvedDuplicateAnswer(errorText)) {
@@ -845,17 +873,20 @@ export function useVehicleOperations({
               // fee happened. Put the provisional receipt numbers back.
               rollbackCheckOutPatch(envelope.phoneCost ?? 0);
               envelopeQueue.remove(envelope.id);
+              debugRecorder.envelopeEvent('flush_duplicate_resolved', { envId: envelope.id, text: String(errorText).slice(0, 160) });
               showToast('فاتورة الخروج دي كانت متسجلة من قبل — البنك عدلها ومفيش فلوس اتخصمت', 'info');
               continue;
             }
             rollbackCheckOutPatch(envelope.phoneCost ?? 0);
             envelopeQueue.markFailed(envelope.id, errorText, true);
+            debugRecorder.envelopeEvent('flush_refused', { envId: envelope.id, text: String(errorText).slice(0, 160) });
             showToast('السيرفر رفض فاتورة خروج معلقة: ' + errorText, 'error');
             continue;
           }
           applyCheckOutConfirmation(res);
         }
         envelopeQueue.remove(envelope.id);
+        debugRecorder.envelopeEvent('flush_committed', { envId: envelope.id });
       } catch (error) {
         // Unexpected shape (parse error, missing field) — treat as
         // retryable and stop the drain so FIFO order stays intact.
@@ -864,6 +895,11 @@ export function useVehicleOperations({
           error instanceof Error ? error.message : String(error),
           false,
         );
+        debugRecorder.envelopeEvent('flush_retry', {
+          envId: envelope.id,
+          code: 'UNEXPECTED_SHAPE',
+          text: String(error instanceof Error ? error.message : error).slice(0, 160),
+        });
         return;
       }
     }

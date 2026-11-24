@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { sanitizeValue, debugRecorder } from './debugRecorder';
+import { sanitizeValue, debugRecorder, plateKey } from './debugRecorder';
+import { envelopeQueue } from '../services/envelopeQueue';
 
 describe('sanitizeValue (PII-safe structural snapshot)', () => {
   it('keeps numbers, booleans and null untouched', () => {
@@ -274,6 +275,71 @@ describe('debugRecorder auth + session helpers (audit extension)', () => {
     expect(authEvents.find((e) => e.ev === 'signin_anon_error')).toBeUndefined();
     expect(sessionEvents.find((e) => e.ev === 'coordinator_signin_done')).toBeUndefined();
     expect(sessionEvents.find((e) => e.ev === 'coordinator_signin_error')).toBeUndefined();
+  });
+});
+
+describe('envelope drawer story (owner request 2026-11-24: "I can\'t type them")', () => {
+  beforeEach(() => {
+    debugRecorder.resetForTests();
+    try { localStorage.removeItem('app_offline_envelopes'); } catch { /* ignore */ }
+  });
+
+  it('plateKey is deterministic, differs per plate, and never carries plate text', () => {
+    const key = plateKey('سجط1234');
+    expect(key).toBe(plateKey('سجط1234'));
+    expect(key).not.toBe(plateKey('سنا9876'));
+    expect(key).toMatch(/^p[0-9a-f]+$/);
+    expect(JSON.stringify([key])).not.toContain('سجط');
+  });
+
+  it('envelope events land in the export with the drawer snapshot attached', () => {
+    envelopeQueue.enqueue({
+      id: 'vehicle_checkin_test1',
+      garageId: 'g1',
+      kind: 'checkin',
+      plateNumber: 'س ج ط 1 2 3 4',
+      plateRaw: 'سجط1234',
+      vehicleType: 'hourly',
+      entryTimeIso: new Date().toISOString(),
+      staffName: 'مدير الجراج',
+      staffId: null,
+      isSubscriber: false,
+      createdAt: Date.now(),
+    });
+    debugRecorder.envelopeEvent('checkin_queued', {
+      envId: 'vehicle_checkin_test1',
+      plateKey: plateKey('سجط1234'),
+    });
+
+    const parsed = JSON.parse(debugRecorder.exportJson());
+    const envEvents = parsed.entries.filter((e: { cat: string }) => e.cat === 'envelope');
+    expect(envEvents).toHaveLength(1);
+    expect(envEvents[0].ev).toBe('checkin_queued');
+    expect(envEvents[0].plateKey).toBe(plateKey('سجط1234'));
+    // The drawer snapshot rides along — plate text never does.
+    expect(parsed.meta.envelopeDrawer).toHaveLength(1);
+    expect(parsed.meta.envelopeDrawer[0].plateKey).toBe(plateKey('سجط1234'));
+    expect(JSON.stringify(parsed)).not.toContain('سجط1234');
+  });
+
+  it('the one-screen summary reports the drawer state', () => {
+    envelopeQueue.enqueue({
+      id: 'vehicle_checkin_test2',
+      garageId: 'g1',
+      kind: 'checkin',
+      plateNumber: 'س ج ط 5 5 5 5',
+      plateRaw: 'سجط5555',
+      vehicleType: 'hourly',
+      entryTimeIso: new Date().toISOString(),
+      staffName: 'مدير الجراج',
+      staffId: null,
+      isSubscriber: false,
+      createdAt: Date.now(),
+    });
+    debugRecorder.envelopeEvent('flush_retry', { envId: 'vehicle_checkin_test2' });
+    const summary = debugRecorder.getSummary();
+    expect(summary).toContain('Envelope events: 1');
+    expect(summary).toContain('drawer now: 1 pending / 0 rejected');
   });
 });
 
