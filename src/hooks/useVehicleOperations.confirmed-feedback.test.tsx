@@ -55,7 +55,6 @@ function renderOperations(initialGarage: Garage) {
       garage,
       setGarage,
       currentStaff: null,
-      isOnline: true,
       showToast,
       closeKeyboard,
     });

@@ -40,8 +40,6 @@ export const APP_TEXT = {
     TOTAL_COLLECTED: "إجمالي المحصل اليوم",
     VEHICLES_EXITED: "عدد السيارات المغادرة",
     NO_TRANSACTIONS: "لا توجد عمليات خروج اليوم بعد",
-    OFFLINE_MODE: "أنت تعمل الآن بدون إنترنت - سيتم حفظ البيانات محلياً",
-    ONLINE_MODE: "متصل بالإنترنت",
   },
   ADMIN: {
     TITLE: "لوحة تحكم النظام",

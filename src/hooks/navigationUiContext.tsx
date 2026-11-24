@@ -4,14 +4,13 @@ import type { GarageDeletionProgress } from '../services/garageDeletionService';
 import type { useGarageInput } from './garageInput';
 
 /**
- * Navigation/UI shared state — view, selection, dialogs, toast, keyboard, online.
+ * Navigation/UI shared state — view, selection, dialogs, toast, keyboard.
  *
  * Previously drilled: useGarageApp.navigationUi → AppRoutes → LoginView /
  * AdminDashboard / AdminGarageDetailsView / AdminDelegateDetailsView /
  * GarageDashboardView (view, setView, selectedGarageForDetails,
  * selectedDelegateForDetails, showSubscribers, showDeleteConfirm,
- * garageDeletionProgress, showToast, closeKeyboard, isOnline,
- * showOfflineScreen through 3–4 layers).
+ * garageDeletionProgress, showToast, closeKeyboard through 3–4 layers).
  *
  * Now: App wraps the tree with NavigationUiProvider; descendants call
  * useNavigationUi() to get what they need.
@@ -33,8 +32,6 @@ export interface NavigationUiContextValue {
   setShowSubscribers: (show: boolean) => void;
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   closeKeyboard: ReturnType<typeof useGarageInput>['closeKeyboard'];
-  isOnline: boolean;
-  showOfflineScreen: boolean;
 }
 
 const NavigationUiContext = createContext<NavigationUiContextValue | null>(null);

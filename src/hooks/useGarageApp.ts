@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Garage, Staff } from '../types';
 import type { GarageDeletionProgress } from '../services/garageDeletionService';
 import { useLocalStorageState } from './useLocalStorage';
-import { useOnlineStatus } from './useOnlineStatus';
 import { useToast } from './toast';
 import { useGarageInput } from './garageInput';
 import { soundManager } from '../utils/sounds';
@@ -101,8 +100,6 @@ export function useGarageApp() {
 
   const { closeKeyboard } = useGarageInput();
 
-  const { isOnline, showOfflineScreen } = useOnlineStatus();
-
   const { showToast: contextShowToast } = useToast();
 
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success', _silent: boolean = false) => {
@@ -167,7 +164,6 @@ export function useGarageApp() {
     garage,
     setGarage,
     currentStaff,
-    isOnline,
     showToast,
     closeKeyboard,
   });
@@ -188,7 +184,6 @@ export function useGarageApp() {
     setShowDeleteConfirm,
     setGarageDeletionProgress,
     sessionId: session.sessionId,
-    isOnline,
     isLoading: vehicleOperations.isLoading,
     closeKeyboard,
     showToast,
@@ -218,8 +213,6 @@ export function useGarageApp() {
     setShowSubscribers,
     showToast,
     closeKeyboard,
-    isOnline,
-    showOfflineScreen,
   }), [
     isLandscapeMobile,
     view,
@@ -237,8 +230,6 @@ export function useGarageApp() {
     setShowSubscribers,
     showToast,
     closeKeyboard,
-    isOnline,
-    showOfflineScreen,
   ]);
 
   // PR-H: memoize the garageData context bucket. Spreads syncData (which

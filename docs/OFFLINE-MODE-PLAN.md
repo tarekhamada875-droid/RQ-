@@ -1,11 +1,15 @@
 # Offline Mode for Garages — Plan of Record
 
 **Status:** SHELVED by owner decision (2026-11-14). Step 1 was implemented (#751) and
-rolled back the same day (#752) — the offline wall (`OfflineView`) remains the behavior
-for every role. The owner chose to cut Firestore read/write costs with lighter polling
-and on-demand loading instead (#755–#757). This doc is historical evidence of an
-approved-then-shelved design (like `docs/LAST-PLAN-BEFORE-PRODUCTION.md`); do not
-resume it without explicit owner approval.
+rolled back the same day (#752). On 2026-11-24 the owner went further and removed the
+remaining offline UX entirely ("i dont want offline anymore"): the offline wall
+(`OfflineView`), the network banner (`NetworkStatusBanner`), the `useOnlineStatus`
+hook, and every `!isOnline` pre-flight check were deleted — the app is a plain
+online app again (see `docs/PROJECT.md`). The owner chose to cut Firestore read/write
+costs with lighter polling and on-demand loading instead (#755–#757). This doc is
+historical evidence of an approved-then-shelved design (like
+`docs/LAST-PLAN-BEFORE-PRODUCTION.md`); do not resume it without explicit owner
+approval.
 
 **The one-line version:** "WhatsApp, but for cars." When internet dies, the garage keeps
 working; each action shows a little clock ("saved, waiting"); when internet returns,
@@ -15,8 +19,9 @@ everything delivers itself — once, never twice — and the money settles in on
 
 ## 1. The story (why this exists)
 
-Today, when a garage loses internet, `App.tsx` blocks the entire app behind
-`OfflineView` (the full-screen "مفيش اتصال بالإنترنت" red wall) after 2 seconds.
+When the offline plan was written (2026-11-14), a garage that lost internet had the
+entire app blocked behind `OfflineView` (the full-screen "مفيش اتصال بالإنترنت" red
+wall) after 2 seconds.
 The garage stops working: cars during the outage are turned away, credits are never
 earned, reports have holes. The owner's admin and delegates are unaffected by this
 decision — they keep today's behavior exactly.
@@ -81,8 +86,8 @@ through: per-car stamped replay (rejected as over-complicated) → count-only se
 | Piece | Where | Note |
 | --- | --- | --- |
 | Persistent on-device cache (IndexedDB, multi-tab) | `src/firebase.ts` (`persistentLocalCache` + `persistentMultipleTabManager`, PR-E) | Already ON, with graceful memory fallback. Client-side writes queue automatically offline and self-sync — the "notebook" is Google's, not ours. |
-| Online-status hook (2s grace) | `src/hooks/useOnlineStatus.ts` | Returns `isOnline`, `showOfflineScreen`. |
-| The red wall | `src/components/layout/OfflineView.tsx`, mounted at `App.tsx` (`if (showOfflineScreen) return <OfflineView />`) | Blocks everyone today; becomes garages-exempt in step 1. |
+| Online-status hook (2s grace) | `src/hooks/useOnlineStatus.ts` | **REMOVED 2026-11-24** (owner decision — no offline special-casing remains). |
+| The red wall | `src/components/layout/OfflineView.tsx`, mounted at `App.tsx` (`if (showOfflineScreen) return <OfflineView />`) | **REMOVED 2026-11-24** (owner decision). Blocks everyone today; becomes garages-exempt in step 1. |
 | Check-in goes through the Worker | `src/services/vehicleService.ts` → `POST /api/vehicles/check-in` | Accepts caller-provided `idempotencyKey` — retries reuse the same key. |
 | Check-in transaction (~5 writes) | `server/vehicleRoutes.ts` | subscriber authoritative lookup; debit only if `prepaidCreditsEnabled && !isSubscriberAuthoritative`; writes credit_ledger + vehicle + garage + dailyStats + idempotency stamp. |
 | Flat fee, no negatives, deterministic ledger IDs | `server/domain/prepaidCreditLedger.ts` | `debitRegularEntry` hard-locks 1 credit; balance never goes below zero; `materializeCreditLedgerEntry` builds deterministic entryIds. |

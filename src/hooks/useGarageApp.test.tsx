@@ -35,7 +35,6 @@ vi.mock('./useLocalStorage', () => ({
     return [values[key] ?? initial, mocks.setters.get(key)];
   })
 }));
-vi.mock('./useOnlineStatus', () => ({ useOnlineStatus: () => ({ isOnline: true, showOfflineScreen: false }) }));
 vi.mock('./useServerTime', () => ({ useServerTime: () => ({ now: new Date('2026-10-18T10:00:00.000Z') }) }));
 vi.mock('../utils/sounds', () => ({ soundManager: { play: vi.fn(), resume: vi.fn() } }));
 vi.mock('./useGarageSession', () => ({

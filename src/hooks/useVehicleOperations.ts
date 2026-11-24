@@ -24,7 +24,6 @@ interface UseVehicleOperationsProps {
   garage: Garage | null;
   setGarage: React.Dispatch<React.SetStateAction<Garage | null>>;
   currentStaff: Staff | null;
-  isOnline: boolean;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   closeKeyboard: () => void;
   /** Called after a confirmed check-out. Used by the dashboard to return to
@@ -36,7 +35,6 @@ export function useVehicleOperations({
   garage,
   setGarage,
   currentStaff,
-  isOnline,
   showToast,
   closeKeyboard,
   onCheckOutComplete,
@@ -126,10 +124,6 @@ export function useVehicleOperations({
   // string when the caller should restore it (on error), or null on
   // success / no-restore-needed.
   const handleCheckIn = useCallback(async (type: 'hourly' | 'overnight', plateValue: string): Promise<string | null> => {
-    if (!isOnline) {
-      showToast('لا يوجد اتصال بالإنترنت. يرجى إعادة المحاولة عند عودة النت.', 'error');
-      return null;
-    }
     if (!garage || !plateValue || isTransactionLocked()) return null;
     closeKeyboard();
 
@@ -304,17 +298,13 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, setGarage, isLoading, closeKeyboard, currentStaff, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
+  }, [garage, setGarage, isLoading, closeKeyboard, currentStaff, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
   // PR-U: removed newPlateNumber from deps — it's now a parameter, not state.
   // PR2 (2026-11-23): vehicles/setVehicles removed from deps — the local
   // vehicles cache is gone.
 
   // Check Out
   const confirmCheckOut = useCallback(async () => {
-    if (!isOnline) {
-      showToast('لا يوجد اتصال بالإنترنت. يرجى إعادة المحاولة عند عودة النت.', 'error');
-      return;
-    }
     if (!garage || !selectedVehicle || isTransactionLocked()) return;
     closeKeyboard();
 
@@ -411,7 +401,7 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, onCheckOutComplete]);
+  }, [garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, onCheckOutComplete]);
 
   // Delete Vehicle — receipt-mode (mirrors check-in/check-out).
   //
@@ -426,10 +416,6 @@ export function useVehicleOperations({
   // a delete can't overlap an in-flight check-in or check-out (previously the
   // `isTransactionLocked()` guard in those flows did not see delete as locked).
   const handleDeleteVehicle = useCallback(async () => {
-    if (!isOnline) {
-      showToast('لا يوجد اتصال بالإنترنت. يرجى إعادة المحاولة عند عودة النت.', 'error');
-      return;
-    }
     if (!garage || !selectedVehicle) return;
 
     const entrantEntityId = currentStaff?.id ?? garage.id;
@@ -514,7 +500,7 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, selectedVehicle, currentStaff, showToast, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
+  }, [garage, selectedVehicle, currentStaff, showToast, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
 
   // PR-H2: memoize the return value. Previously exempted in PR-H with
   // incorrect React logic ("useCallback handlers are stable so consumers

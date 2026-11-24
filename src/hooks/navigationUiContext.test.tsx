@@ -26,8 +26,6 @@ const stubNavigationUi: NavigationUiContextValue = {
   setShowSubscribers: vi.fn(),
   showToast: vi.fn(),
   closeKeyboard: vi.fn(),
-  isOnline: true,
-  showOfflineScreen: false,
 };
 
 function Consumer() {
