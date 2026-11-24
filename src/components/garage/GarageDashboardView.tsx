@@ -22,7 +22,9 @@ import { SmartActionPrompt } from "./SmartActionPrompt";
 import { GarageDashboardHeaderAndDrawer } from "./dashboard/GarageDashboardHeaderAndDrawer";
 import { GarageSubscriptionCard } from "./dashboard/GarageSubscriptionCard";
 import { GarageActiveCountCard } from "./dashboard/GarageActiveCountCard";
+import { OfflinePendingChip } from "./dashboard/OfflinePendingChip";
 import { useGarageDashboardLiveData } from "../../hooks/useGarageDashboardLiveData";
+import { useEnvelopeCounts } from "../../hooks/useEnvelopeCounts";
 import { getCairoDateKey } from "../../domain/garage/businessDay";
 import type { Garage, Staff } from "../../types";
 
@@ -159,6 +161,11 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const systemConfig = useSystemConfig();
   const paymentWalletNumber = systemConfig?.paymentWalletNumber;
 
+  // OFFLINE STEP 2: the drawer's tick light — envelopes waiting to reach
+  // the bank (plus any the bank refused). Zero Firestore observers; reads
+  // the local drawer store via useSyncExternalStore.
+  const { pending: pendingEnvelopes, rejected: rejectedEnvelopes } = useEnvelopeCounts(garage?.id);
+
   return (
     <div
       className="h-screen h-[100dvh] bg-[#faf9f6] dark:bg-transparent font-sans w-full flex flex-col items-center overflow-hidden relative"
@@ -236,6 +243,10 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
                     : 'جاري تنفيذ العملية...'}
             </span>
           </div>
+        )}
+
+        {!isInputFocused && (
+          <OfflinePendingChip pending={pendingEnvelopes} rejected={rejectedEnvelopes} />
         )}
 
         {!isInputFocused && (
