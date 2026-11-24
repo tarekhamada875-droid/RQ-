@@ -52,6 +52,15 @@ interface UseVehicleOperationsProps {
   setGarage: React.Dispatch<React.SetStateAction<Garage | null>>;
   currentStaff: Staff | null;
   isOnline: boolean;
+  /** OFFLINE STEP 2c (owner debug file 2026-11-24 13:16): the drawer must
+   *  wait until the bank knows who we are. On a cached-session boot the
+   *  garage hydrates from storage in ~300ms while the session claim lands
+   *  at ~1.7s — a flush fired in that window went out WITHOUT credentials,
+   *  came back 401 "session expired", and the forced-logout handler then
+   *  showed the scary red toast and kicked the operator to the PIN screen
+   *  (the trace shows the owner re-typing the PIN twice in 3 minutes).
+   *  isSessionReady flips true right after the session claim completes. */
+  isSessionReady: boolean;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   closeKeyboard: () => void;
   /** Called after a confirmed check-out. Used by the dashboard to return to
@@ -64,6 +73,7 @@ export function useVehicleOperations({
   setGarage,
   currentStaff,
   isOnline,
+  isSessionReady,
   showToast,
   closeKeyboard,
   onCheckOutComplete,
@@ -984,9 +994,13 @@ export function useVehicleOperations({
   }, [garage?.id, showToast, applyCheckInConfirmation, applyCheckOutConfirmation, rollbackCheckInPatch, rollbackCheckOutPatch]);
 
   useEffect(() => {
-    if (!isOnline || !garage?.id) return;
+    // OFFLINE STEP 2c: three gates, in order — line up, garage known, and
+    // the bank knows who we are. Skipping the last one is exactly how the
+    // boot-time 401 storm happened (owner trace 2026-11-24 13:16: flush at
+    // msSinceBoot ~313, auth ready at ~591).
+    if (!isOnline || !garage?.id || !isSessionReady) return;
     void flushEnvelopes();
-  }, [isOnline, garage?.id, flushEnvelopes]);
+  }, [isOnline, garage?.id, isSessionReady, flushEnvelopes]);
 
   // OFFLINE STEP 2b: self-healing drain. The reconnect trigger can race a
   // not-yet-ready line (the browser flips navigator.onLine before DNS/TLS
@@ -996,12 +1010,12 @@ export function useVehicleOperations({
   // retry gently every 30 seconds. Local timer only: no Firestore observers,
   // no extra reads when the drawer is empty (the common case).
   useEffect(() => {
-    if (!isOnline || !garage?.id) return;
+    if (!isOnline || !garage?.id || !isSessionReady) return;
     const timer = setInterval(() => {
       if (envelopeQueue.pendingCount(garage.id) > 0) void flushEnvelopes();
     }, 30000);
     return () => clearInterval(timer);
-  }, [isOnline, garage?.id, flushEnvelopes]);
+  }, [isOnline, garage?.id, isSessionReady, flushEnvelopes]);
 
   // PR-H2: memoize the return value. Previously exempted in PR-H with
   // incorrect React logic ("useCallback handlers are stable so consumers
