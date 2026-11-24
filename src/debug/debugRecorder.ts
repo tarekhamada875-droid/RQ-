@@ -20,13 +20,20 @@
  * most recent LS_FLUSH_KEEP entries, throttled.
  */
 
+import { envelopeQueue } from '../services/envelopeQueue';
+
 // AUDIT EXTENSION (2026-11-19, owner login-hang investigation): the recorder
 // was blind to the Firebase Auth + session-coordinator pipeline. A hung login
 // produced a debug file with 0 API calls and 0 errors — no signal at all.
 // `auth` and `session` categories expose onAuthStateChanged, signInAnonymously,
 // getIdToken, and the runCoordinator phase progression so the next hung-login
 // file shows exactly which promise is not resolving.
-export type DebugCategory = 'api' | 'error' | 'listener' | 'nav' | 'env' | 'note' | 'auth' | 'session';
+//
+// OWNER REQUEST (2026-11-24, "a lot of stuff going wrong and I can't type
+// them"): the `envelope` category exposes the offline drawer's whole life —
+// queue, flush tries, duplicate resolutions, refusals, retries — so the next
+// debug file tells the offline story without the owner typing a word.
+export type DebugCategory = 'api' | 'error' | 'listener' | 'nav' | 'env' | 'note' | 'auth' | 'session' | 'envelope';
 
 export interface DebugEntry {
   seq: number;
@@ -83,6 +90,22 @@ const PII_KEY_RE = /phone|mobile|whatsapp|name|email|address|notes?|plate|letter
 
 const SAFE_STRING_RE = /^[A-Za-z0-9_.:\-/@+]+$/;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?$/;
+
+/**
+ * Deterministic correlation key for a plate WITHOUT recording the plate.
+ * The debug file leaves the device and plates are customer PII (the
+ * sanitizer redacts any `plate` field), but offline debugging needs to
+ * follow ONE car across events (queued → flushed → duplicate-refused).
+ * djb2 hex gives a stable, compact, PII-free fingerprint: same plate →
+ * same key everywhere in the file, actual plate never appears.
+ */
+export function plateKey(plateRaw: string): string {
+  let hash = 5381;
+  for (let i = 0; i < plateRaw.length; i += 1) {
+    hash = ((hash << 5) + hash + plateRaw.charCodeAt(i)) >>> 0;
+  }
+  return `p${hash.toString(16)}`;
+}
 
 function redactedString(value: string): string {
   return `«str:${value.length}»`;
@@ -296,6 +319,13 @@ class DebugRecorder {
     this.record('session', { ev, msSinceBoot: this.msSinceBoot(), ...data });
   }
 
+  /** OWNER REQUEST (2026-11-24): the offline drawer's life, event by event.
+   *  Every queue/flush/duplicate/refusal/retry lands here so the debug file
+   *  tells the offline story without the owner typing a word. */
+  envelopeEvent(ev: string, data: Record<string, unknown> = {}): void {
+    this.record('envelope', { ev, msSinceBoot: this.msSinceBoot(), ...data });
+  }
+
   private msSinceBoot(): number {
     return Date.now() - new Date(this.startedAt).getTime();
   }
@@ -354,11 +384,13 @@ class DebugRecorder {
     const sessionPhase = sessionEntries.length
       ? sessionEntries.map((e) => String(e.ev)).join(', ')
       : '—';
+    const envelopeEntries = this.entries.filter((e) => e.cat === 'envelope');
     return [
       `RQ Debug Summary (${this.entries.length} events, since ${this.startedAt})`,
       `API calls: ${apiEntries.length} | failed: ${failed.length} | still-pending: ${pending.length} | JS errors: ${errors.length}`,
       `Auth events: ${authEntries.length} | ${authPhase}`,
       `Session events: ${sessionEntries.length} | ${sessionPhase}`,
+      `Envelope events: ${envelopeEntries.length} | drawer now: ${envelopeQueue.pendingCount()} pending / ${envelopeQueue.rejectedCount()} rejected`,
       slowest.length ? `Slowest:\n  ${slowest.join('\n  ')}` : '',
     ].filter(Boolean).join('\n');
   }
@@ -380,6 +412,20 @@ class DebugRecorder {
         apiClientMsP90: pick(0.9),
         apiClientMsP99: pick(0.99),
         ...this.collectEnvMeta(),
+        // OFFLINE (2026-11-24): the drawer's current state rides along with
+        // every export — events older than the ring window can't tell the
+        // whole story by themselves. Plates appear only as plateKey
+        // fingerprints, never as text (the file leaves the device).
+        envelopeDrawer: envelopeQueue.list().map((item) => ({
+          id: item.id,
+          kind: item.kind,
+          status: item.status,
+          attempts: item.attempts,
+          plateKey: plateKey(item.plateRaw),
+          phoneCost: item.phoneCost ?? null,
+          createdAt: item.createdAt,
+          lastError: item.lastError ? item.lastError.slice(0, 120) : null,
+        })),
       },
       entries: this.entries,
     }, null, 1);

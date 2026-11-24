@@ -6,6 +6,15 @@
  * on every view (login included) and survives provider-level failures. It
  * dynamically imports the firebase module only when exporting, so the app
  * shell bundle is unaffected (see main.tsx app-shell perf notes).
+ *
+ * VISIBILITY HISTORY: the 2026-11-21 audit hid the HUD behind ?debug=1
+ * because the export embeds sessionId / UA / URL and must not be reachable
+ * by every garage worker. OWNER REQUEST (2026-11-24, "there is a lot of
+ * stuff going wrong and I can't type them — I just give you the debug
+ * file"): typing URL parameters on the workshop phone is not realistic, so
+ * the pill is visible on every view again — but the panel opens only after
+ * a DELIBERATE gesture: 5 taps on the pill within 2.5s (a worker cannot
+ * stumble into it), or a single tap when the app was opened with ?debug=1.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -14,22 +23,42 @@ import { debugRecorder } from './debugRecorder';
 type HudPhase = 'idle' | 'exporting' | 'done';
 
 export function DebugHud({ enabled = false }: { enabled?: boolean }) {
-  // Audit fix (2026-11-21): the HUD (and its debug-file export, which embeds
-  // sessionId / UA / URL) previously rendered for EVERY user. It now mounts
-  // only when the app is opened with ?debug=1 in the URL (see main.tsx).
-  // `enabled` is fixed at boot from the URL; hooks below run unconditionally
-  // (rules of hooks) and the early return sits after them.
+  // `enabled` is fixed at boot from the URL (?debug=1); hooks below run
+  // unconditionally (rules of hooks) and the early return sits after them.
   const [count, setCount] = useState(debugRecorder.count);
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<HudPhase>('idle');
   const [note, setNote] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  // 5-taps-within-2.5s unlock (see header comment). Plain counter ref: no
+  // re-renders per tap, the panel opening is the only visible feedback.
+  const tapStreakRef = useRef({ count: 0, lastAt: 0 });
 
   useEffect(() => {
-    if (!enabled) return undefined;
+    // Live event counter for the pill. Runs on every view (owner request
+    // 2026-11-24); setState with the same number is a React no-op, so the
+    // 1.5s tick is free when nothing was recorded.
     const timer = window.setInterval(() => setCount(debugRecorder.count), 1500);
     return () => window.clearInterval(timer);
-  }, [enabled]);
+  }, []);
+
+  const handlePillTap = () => {
+    // ?debug=1 keeps the original single-tap developer path; everyone else
+    // needs the deliberate 5-tap streak (privacy, 2026-11-21 audit).
+    if (enabled) {
+      setOpen(true);
+      return;
+    }
+    const now = Date.now();
+    const streak = tapStreakRef.current;
+    streak.count = now - streak.lastAt < 2500 ? streak.count + 1 : 1;
+    streak.lastAt = now;
+    if (streak.count >= 5) {
+      streak.count = 0;
+      setOpen(true);
+      setNote('وضع التشخيص مفتوح — نزّل الملف وابعته للمطور');
+    }
+  };
 
   const handleDownload = async () => {
     setPhase('exporting');
@@ -57,8 +86,6 @@ export function DebugHud({ enabled = false }: { enabled?: boolean }) {
       setNote('فشل النسخ — استخدم التنزيل');
     }
   };
-
-  if (!enabled) return null;
 
   return (
     <div className="fixed bottom-3 left-3 z-[9999] font-sans" dir="rtl" ref={panelRef}>
@@ -105,7 +132,7 @@ export function DebugHud({ enabled = false }: { enabled?: boolean }) {
       )}
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={handlePillTap}
         aria-label="Debug recorder"
         className="flex h-10 items-center gap-1 rounded-full bg-slate-900/70 px-3 text-[11px] font-bold text-slate-200 shadow-lg backdrop-blur active:bg-slate-900"
       >
