@@ -1,26 +1,18 @@
-import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { Vehicle, Garage, Staff } from '../types';
 import { adminService, vehicleService } from '../services';
-// OFFLINE STEP 2: direct module import (NOT the services barrel) — the
-// envelope drawer is a local store, not a remote service, and flow tests
-// mock the barrel while exercising the real drawer.
-import { envelopeQueue } from '../services/envelopeQueue';
 import { soundManager } from '../utils/sounds';
 import { useServerTimeNow } from './serverTimeContext';
 import { generateIdempotencyKey } from '../types/apiContracts';
 import { calculateCost } from '../utils/cost';
 import { safeDate } from '../utils/dates';
 import { getRawPlate, formatPlateNumber } from '../utils/plates';
-// OFFLINE MISTAKE RULE (owner request 2026-11-24): the offline check-out
-// must refuse a just-entered car exactly like the live modal does — the
-// same 5-minute entry-error window decides both.
+// MISTAKE RULE (owner request 2026-11-24: "exiting a car that just entered
+// shows 0 to pay — it must not"): the live check-out refuses a just-entered
+// car exactly like the modal does — the same 5-minute entry-error window
+// decides both (defense against a stale open modal).
 import { isWithinEntryErrorWindow } from '../utils/graceWindow';
 import { getCairoDateKey } from '../domain/garage/businessDay';
-// OFFLINE DEBUG (owner request 2026-11-24, "I can't type them"): the drawer
-// narrates its whole life into the black-box recorder — queue, flush tries,
-// duplicate resolutions, refusals, retries. Plates travel only as plateKey
-// fingerprints; the debug file never carries plate text.
-import { debugRecorder, plateKey } from '../debug/debugRecorder';
 
 const pendingOperations = new Set<string>();
 function withAsyncLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
@@ -33,38 +25,10 @@ function withAsyncLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
   });
 }
 
-// OFFLINE STEP 2b: ApiError codes that mean "the bank's door was locked for
-// a moment" — the drawer must KEEP the envelope and retry, never park it as
-// a refusal. Everything the server answers with a recognized business NO
-// (credits, locked garage, scope, validation, conflicts) outside this set
-// is terminal for that envelope.
-const FLUSH_RETRYABLE_CODES = new Set([
-  'NETWORK_ERROR', 'API_TIMEOUT',
-  'UNAUTHORIZED', 'SESSION_EXPIRED', 'SESSION_REVOKED', 'INVALID_TOKEN',
-  'ADMIN_AUTH_NOT_INITIALIZED', 'SESSION_VALIDATION_UNAVAILABLE',
-  'RATE_LIMIT_EXCEEDED', 'INVALID_RESPONSE',
-]);
-
-// One drain at a time: the reconnect effect and the 30-second heal timer can
-// both fire while a slow request is still in flight. Idempotency keys make a
-// double send harmless, but two interleaved drains double the traffic and can
-// stack toasts. A module flag (not a ref) also covers remounts of the hook.
-let drainInFlight = false;
-
 interface UseVehicleOperationsProps {
   garage: Garage | null;
   setGarage: React.Dispatch<React.SetStateAction<Garage | null>>;
   currentStaff: Staff | null;
-  isOnline: boolean;
-  /** OFFLINE STEP 2c (owner debug file 2026-11-24 13:16): the drawer must
-   *  wait until the bank knows who we are. On a cached-session boot the
-   *  garage hydrates from storage in ~300ms while the session claim lands
-   *  at ~1.7s — a flush fired in that window went out WITHOUT credentials,
-   *  came back 401 "session expired", and the forced-logout handler then
-   *  showed the scary red toast and kicked the operator to the PIN screen
-   *  (the trace shows the owner re-typing the PIN twice in 3 minutes).
-   *  isSessionReady flips true right after the session claim completes. */
-  isSessionReady: boolean;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   closeKeyboard: () => void;
   /** Called after a confirmed check-out. Used by the dashboard to return to
@@ -76,8 +40,6 @@ export function useVehicleOperations({
   garage,
   setGarage,
   currentStaff,
-  isOnline,
-  isSessionReady,
   showToast,
   closeKeyboard,
   onCheckOutComplete,
@@ -123,102 +85,6 @@ export function useVehicleOperations({
 
   const deletingVehicleRef = useRef<string | null>(null);
 
-  // ── OFFLINE STEP 2: shared confirmation writers ────────────────────────
-  // Both the live Worker paths and the offline envelope flush apply the
-  // server's numbers through these two writers — one patch shape, one
-  // writer, no drift between online and flushed truth.
-  const applyCheckInConfirmation = useCallback((serverData: any) => {
-    const countPatch: Partial<Garage> = {};
-    if (typeof serverData?.carsInside === 'number') countPatch.carsInside = serverData.carsInside;
-    if (typeof serverData?.dailyCount === 'number') {
-      countPatch.todayCount = serverData.dailyCount;
-      countPatch.lastTransactionDate = typeof serverData.lastTransactionDate === 'string'
-        ? serverData.lastTransactionDate
-        : getCairoDateKey();
-    }
-    if (Object.keys(countPatch).length > 0) {
-      (countPatch as any)._confirmedTransactionUntil = Date.now() + 2000;
-      setGarage(prev => prev ? { ...prev, ...countPatch } : prev);
-    }
-    // Credits land with the count — the bank's debit is the truth the gauge
-    // shows (see the live path comment below for the simultaneity history).
-    if (typeof serverData?.credits === 'number') {
-      // RECORDER v1.1: the gauge story for the next debug file — the bank's
-      // truth after the debit (pairs with phone_credit_debit / _rollback).
-      debugRecorder.envelopeEvent('bank_credits_applied', { credits: serverData.credits });
-      setGarage(prev => prev ? {
-        ...prev,
-        credits: serverData.credits,
-        _confirmedTransactionUntil: Date.now() + 2000,
-      } : prev);
-    }
-  }, [setGarage]);
-
-  const applyCheckOutConfirmation = useCallback((res: any) => {
-    const serverGaragePatch: Partial<Garage> = {};
-    if (typeof res?.carsInside === 'number') serverGaragePatch.carsInside = res.carsInside;
-    if (typeof res?.totalVehiclesOut === 'number') serverGaragePatch.totalVehiclesOut = res.totalVehiclesOut;
-    if (typeof res?.todayRevenue === 'number') serverGaragePatch.todayRevenue = res.todayRevenue;
-    if (typeof res?.totalRevenue === 'number') serverGaragePatch.totalRevenue = res.totalRevenue;
-    if (typeof res?.todayCount === 'number') serverGaragePatch.todayCount = res.todayCount;
-    if (typeof res?.lastTransactionDate === 'string') serverGaragePatch.lastTransactionDate = res.lastTransactionDate;
-    if (Object.keys(serverGaragePatch).length > 0) {
-      (serverGaragePatch as any)._confirmedTransactionUntil = Date.now() + 2000;
-      setGarage(prev => prev ? { ...prev, ...serverGaragePatch } : prev);
-    }
-  }, [setGarage]);
-
-  // ── OFFLINE STEP 2b: notebook rollbacks ─────────────────────────────────
-  // The optimistic offline patch is provisional. When the bank answers with
-  // anything other than a commit — a resolved duplicate or a true refusal —
-  // the notebook must go back to where it was: the bank's NO means the debit
-  // never happened, so phone math must not keep showing the entry/exit/fee.
-  // The next fresh Firestore snapshot re-affirms bank truth either way; the
-  // rollback just keeps the notebook honest in the seconds before it lands.
-  const rollbackCheckInPatch = useCallback(() => {
-    // RECORDER v1.1: the bank said no (or had already resolved the car) — the
-    // phone-math debit must not stick, so the gauge goes back up one.
-    debugRecorder.envelopeEvent('phone_credit_rollback', {});
-    setGarage(prev => prev ? {
-      ...prev,
-      carsInside: Math.max(0, (prev.carsInside || 0) - 1),
-      todayCount: Math.max(0, (prev.todayCount || 0) - 1),
-      credits: typeof prev.credits === 'number' ? prev.credits + 1 : prev.credits,
-      _confirmedTransactionUntil: Date.now() + 2000,
-    } : prev);
-  }, [setGarage]);
-
-  const rollbackCheckOutPatch = useCallback((phoneCost: number) => {
-    setGarage(prev => prev ? {
-      ...prev,
-      carsInside: (prev.carsInside || 0) + 1,
-      todayRevenue: Math.max(0, (prev.todayRevenue || 0) - phoneCost),
-      totalRevenue: Math.max(0, (prev.totalRevenue || 0) - phoneCost),
-      totalVehiclesOut: Math.max(0, (prev.totalVehiclesOut || 0) - 1),
-      _confirmedTransactionUntil: Date.now() + 2000,
-    } : prev);
-  }, [setGarage]);
-
-  // ── Offline delete rollbacks (owner rule 2026-11-24) ────────────────────
-  // The offline delete optimistically gives back the check-in credit and
-  // charges one slot of the 3-mistakes-a-day budget. When the bank later
-  // refuses the delete (budget spent on another device, car already gone),
-  // the notebook must go back to exactly where it was — same rule as the
-  // check-in/check-out rollbacks above.
-  const rollbackDeletePatch = useCallback((refundAmount: number, dayKey?: string) => {
-    setGarage(prev => prev ? {
-      ...prev,
-      carsInside: (prev.carsInside || 0) + 1,
-      credits: refundAmount > 0 && typeof prev.credits === 'number'
-        ? Math.max(0, prev.credits - refundAmount)
-        : prev.credits,
-      ...(dayKey ? {
-        dailyDeletionCount: Math.max(0, (prev.lastDeletionDate === dayKey ? (prev.dailyDeletionCount || 0) : 0) - 1),
-      } : {}),
-      _confirmedTransactionUntil: Date.now() + 2000,
-    } : prev);
-  }, [setGarage]);
-
   // ── Transaction lock (Manus reliability model) ──────────────────────────
   // A shared, per-garage transaction lock that prevents overlapping check-in
   // and check-out. The lock has a 3-second minimum floor from submission —
@@ -263,120 +129,6 @@ export function useVehicleOperations({
   // string when the caller should restore it (on error), or null on
   // success / no-restore-needed.
   const handleCheckIn = useCallback(async (type: 'hourly' | 'overnight', plateValue: string): Promise<string | null> => {
-    if (!isOnline) {
-      // ── OFFLINE STEP 2 (2026-11-24, owner-approved envelope drawer) ────
-      // The operation lands on the phone's notebook first; the bank gets it
-      // when the line returns (flush effect below). Same endpoint, same
-      // idempotency rules — and the bank still owns the money: it
-      // re-derives subscriber status (isSubscriberAuthoritative) and
-      // re-validates credits when the envelope arrives.
-      if (!garage || !plateValue || isTransactionLocked()) return null;
-      closeKeyboard();
-
-      const raw = getRawPlate(plateValue);
-      const formatted = formatPlateNumber(plateValue);
-
-      // Notebook duplicate guard: this phone already holds a pending
-      // check-in envelope for this plate — the server-side ALREADY_INSIDE
-      // check is not reachable offline, so the drawer is the backstop.
-      if (envelopeQueue.findPendingCheckIn(garage.id, raw)) {
-        showToast('هذه السيارة موجودة بالفعل بالداخل', 'error');
-        return null; // clear the plate — same UX as the online duplicate path
-      }
-
-      // Subscriber status from the notebook (cached Firestore read — the
-      // persistent cache answers offline). If the read itself fails we
-      // refuse: never guess subscriber status for money. The bank would
-      // still re-derive it on flush, but the phone must not promise a free
-      // entry it cannot see.
-      let isSubscriber = false;
-      if (garage.hasMonthlySubscribers) {
-        try {
-          const subData = await adminService.getSubscriberByPlateOnce(garage.id, raw);
-          if (subData && subData.endDate) {
-            const end = safeDate(subData.endDate);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            if (end.getTime() >= today.getTime()) {
-              isSubscriber = true;
-            }
-          }
-        } catch {
-          showToast('تعذر التحقق من حالة الاشتراك أوفلاين. جرب مرة أخرى أو انتظر عودة النت.', 'error');
-          return formatted;
-        }
-      }
-
-      if (isSubscriber) {
-        setSubscriberWarningPlate(formatted);
-        setShowSubscriberWarning(true);
-        soundManager.play('error');
-        return formatted; // restore plate so user sees what triggered the warning
-      }
-
-      setIsLoading(true);
-      setLoadingType(type);
-      acquireTransactionLock();
-
-      // The envelope: exact Worker payload + its own idempotency key that
-      // stays with it for life (replays return the committed result).
-      const envelope = envelopeQueue.enqueue({
-        id: generateIdempotencyKey('vehicle_checkin'),
-        garageId: garage.id,
-        kind: 'checkin',
-        plateNumber: formatted,
-        plateRaw: raw,
-        vehicleType: type,
-        entryTimeIso: new Date(now).toISOString(),
-        staffName: currentStaff ? currentStaff.name : 'مدير الجراج',
-        staffId: currentStaff ? currentStaff.id : null,
-        isSubscriber: false,
-        createdAt: Date.now(),
-      });
-      debugRecorder.envelopeEvent('checkin_queued', {
-        envId: envelope.id,
-        garageId: garage.id,
-        type,
-        plateKey: plateKey(raw),
-      });
-
-      // Optimistic notebook patch — the same fields the Worker response
-      // would confirm, guarded against stale snapshots the same way.
-      // Daily counters roll over on the Cairo business-day key.
-      //
-      // OFFLINE STEP 2b (owner bug report 2026-11-24: "the credit doesn't
-      // decrease when I'm offline"): the credit gauge is part of the
-      // notebook math. Each paid entry the phone queues is -1 on the gauge,
-      // floored at 0 (the app never goes minus — the same rule as the live
-      // debit). Bank truth overwrites it on flush: applyCheckInConfirmation
-      // on commit, rollbackCheckInPatch when the bank resolves/refuses.
-      // Cached garage snapshots never clobber it while offline (the
-      // useGarageSync cached-snapshot rule preserves local credits).
-      const todayKey = getCairoDateKey();
-      // RECORDER v1.1: compute the debit OUTSIDE the state updater (updaters
-      // must stay pure — StrictMode double-invokes them) so the recorder can
-      // narrate the exact gauge move the owner sees (STEP 2b phone math).
-      const creditsBefore = typeof garage.credits === 'number' ? garage.credits : null;
-      const creditsAfter = creditsBefore === null ? null : Math.max(0, creditsBefore - 1);
-      if (creditsBefore !== null) {
-        debugRecorder.envelopeEvent('phone_credit_debit', { from: creditsBefore, to: creditsAfter });
-      }
-      setGarage(prev => prev ? {
-        ...prev,
-        carsInside: (prev.carsInside || 0) + 1,
-        todayCount: (prev.lastTransactionDate === todayKey ? (prev.todayCount || 0) : 0) + 1,
-        lastTransactionDate: todayKey,
-        credits: creditsAfter !== null ? creditsAfter : prev.credits,
-        _confirmedTransactionUntil: Date.now() + 2000,
-      } : prev);
-      soundManager.play('checkIn');
-      showToast('اتسجل أوفلاين — هتتبعت للسيرفر أول ما النت يرجع', 'info');
-
-      await releaseTransactionLock();
-      setIsLoading(false);
-      setLoadingType(null);
-      return null; // success on this phone — RegistrationCard clears the plate
-    }
     if (!garage || !plateValue || isTransactionLocked()) return null;
     closeKeyboard();
 
@@ -475,11 +227,34 @@ export function useVehicleOperations({
 
       const serverData = (res as any).data;
 
-      // Apply the bank's numbers through the shared writer (same patches
-      // the offline flush uses — one writer, no drift).
-      applyCheckInConfirmation(serverData);
+      const countPatch: Partial<Garage> = {};
+      if (typeof serverData?.carsInside === 'number') countPatch.carsInside = serverData.carsInside;
+      if (typeof serverData?.dailyCount === 'number') {
+        countPatch.todayCount = serverData.dailyCount;
+        countPatch.lastTransactionDate = typeof serverData.lastTransactionDate === 'string'
+          ? serverData.lastTransactionDate
+          : getCairoDateKey();
+      }
+      if (Object.keys(countPatch).length > 0) {
+        (countPatch as any)._confirmedTransactionUntil = Date.now() + 2000;
+        setGarage(prev => prev ? { ...prev, ...countPatch } : prev);
+      }
       soundManager.play('checkIn');
 
+      // Apply credits + arrows SIMULTANEOUSLY with the count change.
+      // Pre-fix: a 600ms delay separated count change from credit update
+      // to create a "staggered" effect. The user hated it — they want
+      // everything to happen at once like a calculator: tap → done → next.
+      // Also removed the 1800ms wait for arrows to finish (PR #695) —
+      // the arrows play in the BACKGROUND while the user can already
+      // type the next plate. They're decoration, not a blocker.
+      if (typeof serverData?.credits === 'number') {
+        setGarage(prev => prev ? {
+          ...prev,
+          credits: serverData.credits,
+          _confirmedTransactionUntil: Date.now() + 2000,
+        } : prev);
+      }
       return null; // success — RegistrationCard clears the plate
     } catch (error: any) {
       if (error?.message === 'Operation already in progress') {
@@ -528,106 +303,31 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, setGarage, isLoading, closeKeyboard, currentStaff, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, applyCheckInConfirmation, now]);
+  }, [garage, setGarage, isLoading, closeKeyboard, currentStaff, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
   // PR-U: removed newPlateNumber from deps — it's now a parameter, not state.
   // PR2 (2026-11-23): vehicles/setVehicles removed from deps — the local
   // vehicles cache is gone.
 
   // Check Out
   const confirmCheckOut = useCallback(async () => {
-    if (!isOnline) {
-      // ── OFFLINE STEP 2 (owner-approved envelope drawer) ───────────
-      // The receipt prints from the phone's math (the same calculateCost
-      // preview the live flow shows). The bank re-computes the
-      // authoritative fee from the vehicle doc when the envelope lands
-      // (calculateVehicleCost server-side) and the flush applies the
-      // server truth — the printed receipt is provisional, the bank's
-      // number always wins.
-      if (!garage || !selectedVehicle || isTransactionLocked()) return;
-      closeKeyboard();
-
-      const vehicleToOut = selectedVehicle;
-      const cost = calculateCost(vehicleToOut, garage, now);
-
-      // OFFLINE MISTAKE RULE (owner request 2026-11-24: "exiting a car that
-      // just entered shows 0 to pay — it must not"): inside the 5-minute
-      // entry-error window a just-entered car is a MISTAKE, not a free
-      // exit. The live modal offers only delete; this guard stops a stale
-      // open modal from slipping a 0-EGP exit through the drawer either.
-      // (After the window the hourly math always bills at least one hour,
-      // so this only ever fires for the just-entered case.)
-      const stayMs = Math.max(0, new Date(now).getTime() - safeDate(vehicleToOut.entryTime).getTime());
-      if (!vehicleToOut.isSubscriber && isWithinEntryErrorWindow(stayMs)) {
-        showToast('العربية لسه داخلية — استنى ٥ دقايق من دخولها أو امسحها لو دخول غلط', 'info');
-        return;
-      }
-
-      setIsLoading(true);
-      setLoadingType('checkout');
-      acquireTransactionLock();
-      setCheckoutJustSucceeded(false);
-
-      const checkoutEnvelope = envelopeQueue.enqueue({
-        id: generateIdempotencyKey('vehicle_checkout'),
-        garageId: garage.id,
-        kind: 'checkout',
-        plateNumber: vehicleToOut.plateNumber,
-        // The vehicle doc ID IS the normalized plate raw (see
-        // vehicleService.getVehicleDocOnce) — so a queued checkout always
-        // finds its vehicle on the server, whether the entry came from
-        // Firestore or from a queued check-in envelope flushed first.
-        plateRaw: vehicleToOut.id,
-        vehicleType: vehicleToOut.type === 'overnight' ? 'overnight' : 'hourly',
-        entryTimeIso: safeDate(vehicleToOut.entryTime).toISOString(),
-        // OFFLINE STEP 3: the exit tap time travels with the envelope so the
-        // bank bills the true stay (the flush may happen hours later).
-        exitTimeIso: new Date(now).toISOString(),
-        staffName: currentStaff ? currentStaff.name : 'مدير الجراج',
-        staffId: currentStaff ? currentStaff.id : null,
-        isSubscriber: Boolean((vehicleToOut as any)?.isSubscriber),
-        // OFFLINE STEP 2b: the provisional phone cost rides on the envelope
-        // so the flush can roll the revenue counters back if the bank
-        // resolves (duplicate exit) or refuses instead of committing.
-        phoneCost: cost,
-        createdAt: Date.now(),
-      });
-      debugRecorder.envelopeEvent('checkout_queued', {
-        envId: checkoutEnvelope.id,
-        garageId: garage.id,
-        plateKey: plateKey(vehicleToOut.id),
-        phoneCost: cost,
-      });
-
-      // Optimistic notebook patch. todayCount stays untouched — it counts
-      // entries, not exits (the server's flush response re-affirms it).
-      setGarage(prev => prev ? {
-        ...prev,
-        carsInside: Math.max(0, (prev.carsInside || 0) - 1),
-        todayRevenue: (prev.todayRevenue || 0) + cost,
-        totalRevenue: (prev.totalRevenue || 0) + cost,
-        totalVehiclesOut: (prev.totalVehiclesOut || 0) + 1,
-        _confirmedTransactionUntil: Date.now() + 2000,
-      } : prev);
-
-      setShowCheckOutModal(false);
-      setSelectedVehicle(null);
-      soundManager.play('checkOut');
-      setCheckoutJustSucceeded(true);
-      // return to the main dashboard so the user sees the large
-      // inside-car count decrease (same as the live success path).
-      onCheckOutComplete?.();
-      showToast('الفاتورة اتصدرت أوفلاين — هتتبعت أول ما النت يرجع', 'info');
-
-      await releaseTransactionLock();
-      setIsLoading(false);
-      setLoadingType(null);
-      return;
-    }
     if (!garage || !selectedVehicle || isTransactionLocked()) return;
     closeKeyboard();
 
     const vehicleToOut = selectedVehicle;
     const cost = calculateCost(vehicleToOut, garage, now);
+
+    // MISTAKE RULE (owner request 2026-11-24): inside the 5-minute
+    // entry-error window a just-entered car is a MISTAKE, not a free
+    // exit — the live modal offers only delete (CheckOutModal). This
+    // guard stops a stale open modal from slipping a 0-EGP exit through.
+    // (After the window the hourly math always bills at least one hour,
+    // so this only ever fires for the just-entered case.)
+    const stayMs = Math.max(0, new Date(now).getTime() - safeDate(vehicleToOut.entryTime).getTime());
+    if (!vehicleToOut.isSubscriber && isWithinEntryErrorWindow(stayMs)) {
+      showToast('العربية لسه داخلية — استنى ٥ دقايق من دخولها أو امسحها لو دخول غلط', 'info');
+      return;
+    }
+
     setIsLoading(true);
     setLoadingType('checkout');
     acquireTransactionLock();
@@ -651,9 +351,17 @@ export function useVehicleOperations({
         throw new Error(res.error);
       }
 
-      // Apply the bank's numbers through the shared writer (same patches
-      // the offline flush uses — one writer, no drift).
-      applyCheckOutConfirmation(res);
+      const serverGaragePatch: Partial<Garage> = {};
+      if (typeof res.carsInside === 'number') serverGaragePatch.carsInside = res.carsInside;
+      if (typeof res.totalVehiclesOut === 'number') serverGaragePatch.totalVehiclesOut = res.totalVehiclesOut;
+      if (typeof res.todayRevenue === 'number') serverGaragePatch.todayRevenue = res.todayRevenue;
+      if (typeof res.totalRevenue === 'number') serverGaragePatch.totalRevenue = res.totalRevenue;
+      if (typeof res.todayCount === 'number') serverGaragePatch.todayCount = res.todayCount;
+      if (typeof res.lastTransactionDate === 'string') serverGaragePatch.lastTransactionDate = res.lastTransactionDate;
+      if (Object.keys(serverGaragePatch).length > 0) {
+        (serverGaragePatch as any)._confirmedTransactionUntil = Date.now() + 2000;
+        setGarage(prev => prev ? { ...prev, ...serverGaragePatch } : prev);
+      }
       setShowCheckOutModal(false);
       setSelectedVehicle(null);
       // PR-U: setNewPlateNumber('') removed — RegistrationCard owns the draft.
@@ -711,7 +419,7 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, onCheckOutComplete, applyCheckOutConfirmation]);
+  }, [garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, onCheckOutComplete]);
 
   // Delete Vehicle — receipt-mode (mirrors check-in/check-out).
   //
@@ -726,128 +434,6 @@ export function useVehicleOperations({
   // a delete can't overlap an in-flight check-in or check-out (previously the
   // `isTransactionLocked()` guard in those flows did not see delete as locked).
   const handleDeleteVehicle = useCallback(async () => {
-    // ── OFFLINE DELETE (owner rule 2026-11-24: offline UX = online UX) ────
-    // Deleting a just-entered mistake must work with no line, like every
-    // other drawer letter. Two shapes:
-    //   A) The bank already knows the car (checked in online, or its check-in
-    //      envelope already flushed) → queue a delete envelope. The Worker
-    //      keeps every rule it owns — entrant check, 3/day budget, credit
-    //      restore — and the same idempotency key replays on every retry.
-    //   B) This phone still holds a PENDING check-in envelope for the plate
-    //      (the bank never saw the car) → tear up the local papers: drop
-    //      the pending check-in, roll the phone-math debit back, charge one
-    //      mistake slot. No bank letter needed — there is nothing at the
-    //      bank to delete.
-    if (!isOnline) {
-      if (!garage || !selectedVehicle || isTransactionLocked()) return;
-
-      const entrantEntityId = currentStaff?.id ?? garage.id;
-      const entrantRole = currentStaff ? 'staff' : 'garage';
-      const isEntrant = selectedVehicle.enteredByEntityId === entrantEntityId && selectedVehicle.enteredByRole === entrantRole;
-      if (!isEntrant) {
-        showToast('يمكن فقط لمسجّل هذه السيارة حذفها', 'error');
-        return;
-      }
-
-      const todayYMD = getCairoDateKey();
-      if (garage.lastDeletionDate === todayYMD && (garage.dailyDeletionCount ?? 0) >= 3) {
-        showToast('وصلت للحد الأقصى للحذف اليوم (3 مرات)', 'error');
-        return;
-      }
-
-      // Delete is the grace-window action — but ONLY inside it. A stale
-      // modal must not delete a car whose 5-minute window already closed
-      // (the entry is locked in then, same rule the live modal renders).
-      const stayMs = Math.max(0, new Date(now).getTime() - safeDate(selectedVehicle.entryTime).getTime());
-      if (selectedVehicle.isSubscriber || !isWithinEntryErrorWindow(stayMs)) {
-        showToast('الحذف متاح بس في أول ٥ دقايق من دخول العربية', 'error');
-        return;
-      }
-
-      if (deletingVehicleRef.current === selectedVehicle.id) return;
-
-      const vehicleToDelete = selectedVehicle;
-      const pendingCheckIn = envelopeQueue.findPendingCheckIn(garage.id, vehicleToDelete.id);
-
-      deletingVehicleRef.current = vehicleToDelete.id;
-      soundManager.play('checkOut');
-      setShowCheckOutModal(false);
-      setSelectedVehicle(null);
-      setIsLoading(true);
-      setLoadingType('delete');
-      acquireTransactionLock();
-
-      if (pendingCheckIn) {
-        // Shape B: the bank never saw this car — tear up the local papers.
-        envelopeQueue.remove(pendingCheckIn.id);
-        rollbackCheckInPatch();
-        setGarage(prev => prev ? {
-          ...prev,
-          dailyDeletionCount: (prev.lastDeletionDate === todayYMD ? (prev.dailyDeletionCount || 0) : 0) + 1,
-          lastDeletionDate: todayYMD,
-          _confirmedTransactionUntil: Date.now() + 2000,
-        } : prev);
-        debugRecorder.envelopeEvent('offline_delete_torn_up', {
-          envId: pendingCheckIn.id,
-          garageId: garage.id,
-          plateKey: plateKey(vehicleToDelete.id),
-        });
-        showToast('الدخول المعلق اتشال من الجهاز — مفيش فلوس اتخصمت', 'success');
-        await releaseTransactionLock();
-        setIsLoading(false);
-        setLoadingType(null);
-        return;
-      }
-
-      // Shape A: the bank knows the car — queue the delete letter.
-      const refundAmount = ((vehicleToDelete as any)?.creditDebit?.amount ?? 0);
-      const deleteEnvelope = envelopeQueue.enqueue({
-        id: generateIdempotencyKey('vehicle_delete'),
-        garageId: garage.id,
-        kind: 'delete',
-        plateNumber: vehicleToDelete.plateNumber,
-        // The vehicle doc ID IS the normalized plate raw — same identity
-        // rule the checkout envelope uses, so the Worker route always
-        // finds the exact vehicle doc.
-        plateRaw: vehicleToDelete.id,
-        vehicleType: vehicleToDelete.type === 'overnight' ? 'overnight' : 'hourly',
-        entryTimeIso: safeDate(vehicleToDelete.entryTime).toISOString(),
-        staffName: currentStaff ? currentStaff.name : 'مدير الجراج',
-        staffId: currentStaff ? currentStaff.id : null,
-        isSubscriber: Boolean(vehicleToDelete.isSubscriber),
-        refundAmount,
-        deleteDayKey: todayYMD,
-        createdAt: Date.now(),
-      });
-      debugRecorder.envelopeEvent('delete_queued', {
-        envId: deleteEnvelope.id,
-        garageId: garage.id,
-        plateKey: plateKey(vehicleToDelete.id),
-        refundAmount,
-      });
-
-      // Optimistic notebook patch — the same fields the live delete applies
-      // after the Worker confirms (carsInside down, credit refund), plus the
-      // local mistake-budget charge so the 3/day rule stays honest while the
-      // line is down. The flush rollback undoes all of it if the bank
-      // refuses the letter.
-      setGarage(prev => prev ? {
-        ...prev,
-        carsInside: Math.max(0, (prev.carsInside || 0) - 1),
-        ...(refundAmount > 0 && typeof prev.credits === 'number'
-          ? { credits: prev.credits + refundAmount }
-          : {}),
-        dailyDeletionCount: (prev.lastDeletionDate === todayYMD ? (prev.dailyDeletionCount || 0) : 0) + 1,
-        lastDeletionDate: todayYMD,
-        _confirmedTransactionUntil: Date.now() + 2000,
-      } : prev);
-      showToast('الحذف اتحجز أوفلاين — هيوصل البنك أول ما النت يرجع', 'info');
-
-      await releaseTransactionLock();
-      setIsLoading(false);
-      setLoadingType(null);
-      return;
-    }
     if (!garage || !selectedVehicle) return;
 
     const entrantEntityId = currentStaff?.id ?? garage.id;
@@ -932,321 +518,7 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, selectedVehicle, currentStaff, showToast, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, now, rollbackCheckInPatch]);
-
-  // ── OFFLINE STEP 2: the drawer flush ─────────────────────────────────────
-  // When the line is back (and on every garage mount, e.g. envelopes queued
-  // before a crash), drain the drawer FIFO. Order matters: a queued check-in
-  // lands before its own queued check-out, so the server computes the exit
-  // fee from the entry time it just created. Every envelope keeps ONE
-  // idempotency key for its whole life — replays return the originally
-  // committed result instead of duplicating the transaction.
-  //
-  // OFFLINE STEP 2b (2026-11-24, owner bug report: "when I came back online
-  // they got rejected"): the bank's answers land in three classes —
-  //   1. COMMITTED (res.success) → apply bank truth; the envelope leaves
-  //      the drawer.
-  //   2. RESOLVED DUPLICATE → the bank already had the car in that state and
-  //      its duplicate guards run BEFORE the credit debit, so NO money moved:
-  //        check-in  → "هذه السيارة موجودة بالفعل بالداخل"  (ALREADY_INSIDE)
-  //        check-out → "تم تسجيل خروج هذه السيارة بالفعل"  (ALREADY_OUTSIDE)
-  //                    "السيارة غير موجودة بالداخل"       (never entered)
-  //      Roll the optimistic notebook patch back (the notebook must match
-  //      the bank), remove the envelope, calm info toast. NEVER a red chip —
-  //      nothing needs admin review. This is the exact hole the owner hit:
-  //      offline re-entries of cars already inside surfaced as red
-  //      "اترفضت من السيرفر" chips, because the phone cannot always tell
-  //      which cars the bank already has inside (Worker writes bypass the
-  //      Firestore cache, so the cached plate lookup can be stale/empty).
-  //   3. TRUE REFUSAL → a known business NO from the bank (credits, locked
-  //      garage, scope, validation). Park the envelope 'rejected' (red chip)
-  //      + roll the optimistic patch back so the notebook mirrors the bank's
-  //      refusal. The reason stays on the envelope for the review UI.
-  //   EVERYTHING ELSE — network shapes (NETWORK_ERROR/API_TIMEOUT), auth
-  //      hiccups (UNAUTHORIZED/SESSION_*/INVALID_TOKEN), server 5xx,
-  //      rate limits, unknown codes — keeps the envelope 'pending' and waits
-  //      for the next trigger. The bank's door being locked for a moment is
-  //      NOT the bank saying no to the money; parking those as rejected was
-  //      the classification bug behind the owner's red chips.
-  const flushEnvelopes = useCallback(async () => {
-    if (!garage?.id) return;
-    if (drainInFlight) return;
-    drainInFlight = true;
-    try {
-    // The server's conflict family shares one generic code ('CONFLICT'), so
-    // resolved-duplicates are recognized by their Arabic answer text (see
-    // server/routes/helpers.ts mapDomainErrorToStatus).
-    const isResolvedDuplicateAnswer = (text?: string) =>
-      typeof text === 'string' && (
-        text.includes('موجودة بالفعل بالداخل') ||
-        text.includes('تم تسجيل خروج هذه السيارة بالفعل') ||
-        text.includes('السيارة غير موجودة بالداخل'));
-    // Known "door/line was locked" codes: they are answers about the BANK or
-    // the LINE, not about this envelope — the drain stops (see below).
-    const isKnownRetryableCode = (code: unknown): code is string =>
-      typeof code === 'string' && FLUSH_RETRYABLE_CODES.has(code);
-    // Unknown/missing classification: never gamble a money letter on an
-    // unclassified answer — keep THIS envelope pending, but let its siblings
-    // through: one stuck envelope must not block the whole drawer.
-    const isUnknownAnswerCode = (code: unknown) =>
-      typeof code !== 'string' || code.length === 0;
-
-    // OFFLINE STEP 2b heal: envelopes parked 'rejected' by the previous build
-    // for what are actually resolved-duplicate answers are not refusals —
-    // the bank had already resolved the car's state and no money moved (and
-    // the old build never applied phone-math debits, so there is nothing to
-    // roll back). Sweep them quietly so the red chip doesn't stick forever
-    // on phones that ran the old build.
-    const staleRejected = envelopeQueue.list(garage.id)
-      .filter((item) => item.status === 'rejected' && isResolvedDuplicateAnswer(item.lastError));
-    staleRejected.forEach((item) => envelopeQueue.remove(item.id));
-    if (staleRejected.length > 0) {
-      debugRecorder.envelopeEvent('stale_rejected_swept', { count: staleRejected.length });
-    }
-
-    const queue = envelopeQueue.list(garage.id).filter((item) => item.status === 'pending');
-    debugRecorder.envelopeEvent('flush_start', {
-      count: queue.length,
-      online: typeof navigator === 'undefined' ? null : navigator.onLine,
-    });
-    for (const envelope of queue) {
-      try {
-        if (envelope.kind === 'checkin') {
-          const res = await vehicleService.checkInVehicle(envelope.garageId, {
-            plateNumber: envelope.plateNumber,
-            plateNumberRaw: envelope.plateRaw,
-            type: envelope.vehicleType,
-            garageId: envelope.garageId,
-            staffId: envelope.staffId,
-            staffName: envelope.staffName,
-            isSubscriber: envelope.isSubscriber,
-            // OFFLINE STEP 3: the true entry tap time — the bank stamps the
-            // vehicle with it so the exit fee bills the real stay.
-            entryTimeIso: envelope.entryTimeIso,
-          }, envelope.id);
-          if (!res.success) {
-            const code = (res as any).code;
-            const errorText = res.error || 'flush failed';
-            // CLASS ORDER MATTERS (owner debug file 2026-11-24 13:16): the
-            // bank's own answer text outranks the machine code. The deployed
-            // vehicle routes omit the code field on 409 duplicates
-            // (server/vehicleRoutes/checkIn.ts destructures only statusCode
-            // + message), so code arrives null — and the old code-first
-            // order misfiled the duplicate as "unknown → retryable". The
-            // envelope then looped forever and every envelope behind it
-            // starved in the drawer with attempts: 0.
-            if (isResolvedDuplicateAnswer(errorText)) {
-              // The bank already had the car inside — no debit happened.
-              rollbackCheckInPatch();
-              envelopeQueue.remove(envelope.id);
-              debugRecorder.envelopeEvent('flush_duplicate_resolved', { envId: envelope.id, text: String(errorText).slice(0, 160) });
-              showToast('العربية كانت مسجلة جوه بالفعل — البنك منع التكرار ومفيش خصم', 'info');
-              continue;
-            }
-            if (isKnownRetryableCode(code)) {
-              // The bank's door or the line itself is down — not an answer
-              // about this envelope. Stop the drain: hammering the siblings
-              // into a dead line just stacks 15-second timeouts (and, for
-              // auth shapes, fires one session-expired event per envelope).
-              // The online flip and the heal timer re-fire the drain.
-              envelopeQueue.markFailed(envelope.id, errorText, false);
-              debugRecorder.envelopeEvent('flush_retry', { envId: envelope.id, code, text: String(errorText).slice(0, 160) });
-              return;
-            }
-            if (isUnknownAnswerCode(code)) {
-              // Unclassified answer: don't gamble this envelope, but DON'T
-              // block the siblings — each one gets its own classification.
-              envelopeQueue.markFailed(envelope.id, errorText, false);
-              debugRecorder.envelopeEvent('flush_retry', { envId: envelope.id, code: code ?? null, text: String(errorText).slice(0, 160) });
-              continue;
-            }
-            // True refusal: the bank said no to the money.
-            rollbackCheckInPatch();
-            envelopeQueue.markFailed(envelope.id, errorText, true);
-            debugRecorder.envelopeEvent('flush_refused', { envId: envelope.id, text: String(errorText).slice(0, 160) });
-            showToast('السيرفر رفض تسجيل سيارة معلقة: ' + errorText, 'error');
-            continue;
-          }
-          applyCheckInConfirmation((res as any).data);
-        } else if (envelope.kind === 'delete') {
-          // ── OFFLINE DELETE flush (owner rule 2026-11-24) ────────────
-          // The mistake-delete letter goes through the SAME worker
-          // endpoint and the SAME answer classes as every other envelope.
-          // FIFO safety net: if this plate still has a pending check-in in
-          // the drawer, the bank has not seen the entry yet — the delete
-          // letter waits for it to land first (crash-race guard).
-          if (envelopeQueue.findPendingCheckIn(envelope.garageId, envelope.plateRaw)) {
-            debugRecorder.envelopeEvent('flush_skipped_until_checkin', {
-              envId: envelope.id,
-              plateKey: plateKey(envelope.plateRaw),
-            });
-            continue;
-          }
-          try {
-            // Committed: the bank deleted the car and applied its own
-            // counters (budget, credit restore, todayCount) — the
-            // optimistic notebook patch stands and the next fresh
-            // snapshot re-affirms the bank's numbers.
-            await vehicleService.deleteVehicle(
-              envelope.garageId,
-              envelope.plateRaw,
-              undefined,
-              envelope.staffName,
-              envelope.staffId ?? undefined,
-              envelope.id,
-            );
-          } catch (err: any) {
-            // deleteVehicle THROWS (legacy contract) instead of returning
-            // a failure object — classify the thrown answer here. The
-            // budget-limit refusal rewraps the ApiError as `cause`.
-            const code = err?.code ?? err?.cause?.code;
-            const errorText = err?.message || err?.cause?.message || 'flush failed';
-            // CLASS ORDER — the bank's own words outrank the machine code
-            // (the same lesson as the check-in branch below):
-            if (errorText.includes('reached_daily_deletion_limit') || errorText.includes('الحد الأقصى اليومي لعمليات الحذف')) {
-              // True refusal — the 3/day budget was spent (another device
-              // used it). The car is still inside at the bank: undo the
-              // optimistic patch (car back inside, refund taken back,
-              // budget slot given back) so the notebook mirrors the bank.
-              rollbackDeletePatch(envelope.refundAmount ?? 0, envelope.deleteDayKey);
-              envelopeQueue.markFailed(envelope.id, errorText, true);
-              debugRecorder.envelopeEvent('flush_refused', { envId: envelope.id, text: String(errorText).slice(0, 160) });
-              showToast('وصلت للحد الأقصى للحذف اليوم (3 مرات) — العربية فضلت داخلية', 'error');
-              continue;
-            }
-            if (isResolvedDuplicateAnswer(errorText)) {
-              // The bank has no such car inside — nothing was deleted and
-              // no credit moved there. Tear up the optimistic patch and
-              // drop the letter calmly (never a red chip).
-              rollbackDeletePatch(envelope.refundAmount ?? 0, envelope.deleteDayKey);
-              envelopeQueue.remove(envelope.id);
-              debugRecorder.envelopeEvent('flush_duplicate_resolved', { envId: envelope.id, text: String(errorText).slice(0, 160) });
-              showToast('البنك كان مسجل العربية بحالة تانية — الحذف اتلغى ومفيش تغيير', 'info');
-              continue;
-            }
-            if (isKnownRetryableCode(code)) {
-              // Door/line shaped — stop the drain (same as the other kinds).
-              envelopeQueue.markFailed(envelope.id, errorText, false);
-              debugRecorder.envelopeEvent('flush_retry', { envId: envelope.id, code, text: String(errorText).slice(0, 160) });
-              return;
-            }
-            if (isUnknownAnswerCode(code)) {
-              envelopeQueue.markFailed(envelope.id, errorText, false);
-              debugRecorder.envelopeEvent('flush_retry', { envId: envelope.id, code: code ?? null, text: String(errorText).slice(0, 160) });
-              continue;
-            }
-            // Any other true refusal: roll the notebook back, park the
-            // letter as rejected so the operator can see what the bank
-            // refused — never silently dropped.
-            rollbackDeletePatch(envelope.refundAmount ?? 0, envelope.deleteDayKey);
-            envelopeQueue.markFailed(envelope.id, errorText, true);
-            debugRecorder.envelopeEvent('flush_refused', { envId: envelope.id, text: String(errorText).slice(0, 160) });
-            showToast('السيرفر رفض حذف سيارة معلقة: ' + errorText, 'error');
-            continue;
-          }
-        } else {
-          // FIFO dependency (owner debug file 2026-11-24 13:16): an exit
-          // letter must not reach the bank while its own entry letter is
-          // still in the drawer — the bank would answer "car not inside",
-          // and the provisional receipt numbers would churn for nothing.
-          // Skip it this round; it goes out right after its check-in lands.
-          if (envelopeQueue.findPendingCheckIn(envelope.garageId, envelope.plateRaw)) {
-            debugRecorder.envelopeEvent('flush_skipped_until_checkin', {
-              envId: envelope.id,
-              plateKey: plateKey(envelope.plateRaw),
-            });
-            continue;
-          }
-          const res = await vehicleService.checkOutVehicle(
-            envelope.garageId,
-            envelope.plateRaw,
-            0, // the server re-computes the fee from the vehicle doc
-            envelope.staffName,
-            envelope.staffId ?? undefined,
-            envelope.id,
-            // OFFLINE STEP 3: the true exit tap time — the bank bills the
-            // stay from it, not from this flush moment.
-            envelope.exitTimeIso,
-          );
-          if (!res.success) {
-            const code = (res as any).code;
-            const errorText = res.error || 'flush failed';
-            // Same class order as the check-in branch above (text first).
-            if (isResolvedDuplicateAnswer(errorText)) {
-              // The car already left (or never entered) at the bank — no
-              // fee happened. Put the provisional receipt numbers back.
-              rollbackCheckOutPatch(envelope.phoneCost ?? 0);
-              envelopeQueue.remove(envelope.id);
-              debugRecorder.envelopeEvent('flush_duplicate_resolved', { envId: envelope.id, text: String(errorText).slice(0, 160) });
-              showToast('فاتورة الخروج دي كانت متسجلة من قبل — البنك عدلها ومفيش فلوس اتخصمت', 'info');
-              continue;
-            }
-            if (isKnownRetryableCode(code)) {
-              // Door/line shaped — stop the drain (see the check-in branch).
-              envelopeQueue.markFailed(envelope.id, errorText, false);
-              debugRecorder.envelopeEvent('flush_retry', { envId: envelope.id, code, text: String(errorText).slice(0, 160) });
-              return;
-            }
-            if (isUnknownAnswerCode(code)) {
-              envelopeQueue.markFailed(envelope.id, errorText, false);
-              debugRecorder.envelopeEvent('flush_retry', { envId: envelope.id, code: code ?? null, text: String(errorText).slice(0, 160) });
-              continue;
-            }
-            rollbackCheckOutPatch(envelope.phoneCost ?? 0);
-            envelopeQueue.markFailed(envelope.id, errorText, true);
-            debugRecorder.envelopeEvent('flush_refused', { envId: envelope.id, text: String(errorText).slice(0, 160) });
-            showToast('السيرفر رفض فاتورة خروج معلقة: ' + errorText, 'error');
-            continue;
-          }
-          applyCheckOutConfirmation(res);
-        }
-        envelopeQueue.remove(envelope.id);
-        debugRecorder.envelopeEvent('flush_committed', { envId: envelope.id });
-      } catch (error) {
-        // Unexpected shape (parse error, missing field) — treat as an
-        // unclassified answer: keep this envelope pending but let the
-        // siblings through (same rule as isUnknownAnswerCode above).
-        envelopeQueue.markFailed(
-          envelope.id,
-          error instanceof Error ? error.message : String(error),
-          false,
-        );
-        debugRecorder.envelopeEvent('flush_retry', {
-          envId: envelope.id,
-          code: 'UNEXPECTED_SHAPE',
-          text: String(error instanceof Error ? error.message : error).slice(0, 160),
-        });
-        continue;
-      }
-    }
-    } finally {
-      drainInFlight = false;
-    }
-  }, [garage?.id, showToast, applyCheckInConfirmation, applyCheckOutConfirmation, rollbackCheckInPatch, rollbackCheckOutPatch, rollbackDeletePatch]);
-
-  useEffect(() => {
-    // OFFLINE STEP 2c: three gates, in order — line up, garage known, and
-    // the bank knows who we are. Skipping the last one is exactly how the
-    // boot-time 401 storm happened (owner trace 2026-11-24 13:16: flush at
-    // msSinceBoot ~313, auth ready at ~591).
-    if (!isOnline || !garage?.id || !isSessionReady) return;
-    void flushEnvelopes();
-  }, [isOnline, garage?.id, isSessionReady, flushEnvelopes]);
-
-  // OFFLINE STEP 2b: self-healing drain. The reconnect trigger can race a
-  // not-yet-ready line (the browser flips navigator.onLine before DNS/TLS
-  // are actually usable), so the first flush try can fail with NETWORK_ERROR
-  // and — without this backstop — nothing re-fires until the next online
-  // toggle or remount. While envelopes are pending and the line is up,
-  // retry gently every 30 seconds. Local timer only: no Firestore observers,
-  // no extra reads when the drawer is empty (the common case).
-  useEffect(() => {
-    if (!isOnline || !garage?.id || !isSessionReady) return;
-    const timer = setInterval(() => {
-      if (envelopeQueue.pendingCount(garage.id) > 0) void flushEnvelopes();
-    }, 30000);
-    return () => clearInterval(timer);
-  }, [isOnline, garage?.id, isSessionReady, flushEnvelopes]);
+  }, [garage, selectedVehicle, currentStaff, showToast, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
 
   // PR-H2: memoize the return value. Previously exempted in PR-H with
   // incorrect React logic ("useCallback handlers are stable so consumers

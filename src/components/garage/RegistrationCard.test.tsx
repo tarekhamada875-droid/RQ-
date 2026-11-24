@@ -183,7 +183,7 @@ describe('RegistrationCard already-inside mode (server lookup, PR2 2026-11-23)',
     expect(screen.getByRole('button', { name: /^ساعة/ })).toBeInTheDocument();
   });
 
-  it('hides the ساعة/مبيت buttons when the prepaid balance is depleted (OFFLINE STEP 1)', async () => {
+  it('hides the ساعة/مبيت buttons when the prepaid balance is depleted (zero-credit rule)', async () => {
     renderRegistrationCard({ isInputFocused: true, isBalanceDepleted: true });
 
     typePlateSa5();

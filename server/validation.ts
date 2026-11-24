@@ -325,37 +325,4 @@ export function isValidSessionId(sid: any): boolean {
   return true;
 }
 
-// ── OFFLINE STEP 3 (2026-11-24) ────────────────────────────────────────────
-// Plausibility bounds for client-supplied tap timestamps (car entry / exit
-// moments queued offline). The phone clock is server-synced via
-// useServerTime, but a broken clock must never move money, so the window is
-// deliberately tight.
-export const CLIENT_TIME_MAX_FUTURE_MS = 2 * 60 * 1000;
-export const CLIENT_TIME_MAX_PAST_MS = 7 * 24 * 60 * 60 * 1000;
-
-/**
- * Validates a client-supplied ISO timestamp standing for a real-world tap
- * moment that may have waited in the offline envelope drawer for hours
- * before reaching the bank. The bank must bill from the TRUE tap time, not
- * from the flush moment — the owner's debug file (rq-debug-2026-11-24)
- * showed a car queued at 11:49 stamped by the bank at 12:16, and the
- * 5-minute grace then turned genuinely-parked cars into free stays.
- *
- * Returns a Date only when the value is plausible:
- *   - parses as a real date,
- *   - at most CLIENT_TIME_MAX_FUTURE_MS in the future (clock skew),
- *   - at most CLIENT_TIME_MAX_PAST_MS in the past (an envelope older than
- *     a week is nonsense — the car cannot have been parked that long).
- * Returns null otherwise (missing, malformed, out of bounds); callers fall
- * back to the server clock.
- */
-export function parsePlausibleClientTime(val: any, now: number = Date.now()): Date | null {
-  if (typeof val !== 'string' || val.length === 0) return null;
-  const parsed = new Date(val);
-  if (isNaN(parsed.getTime())) return null;
-  if (parsed.getTime() > now + CLIENT_TIME_MAX_FUTURE_MS) return null;
-  if (parsed.getTime() < now - CLIENT_TIME_MAX_PAST_MS) return null;
-  return parsed;
-}
-
 

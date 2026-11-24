@@ -88,10 +88,6 @@ export const vehicleService = {
           type: vehicleData.type,
           isSubscriber: vehicleData.isSubscriber,
           staffName: vehicleData.staffName,
-          // OFFLINE STEP 3: the true entry tap time rides only on offline
-          // envelope flushes — the live path passes no field and the bank
-          // stamps its own clock.
-          ...(vehicleData.entryTimeIso ? { entryTimeIso: vehicleData.entryTimeIso } : {}),
           // accept a caller-provided idempotency key so retries can
           // reuse the same key. If none provided, generate a fresh one (legacy).
           idempotencyKey: idempotencyKey || generateIdempotencyKey('vehicle_checkin')
@@ -99,15 +95,11 @@ export const vehicleService = {
       });
       return { success: true, data: data.data };
     } catch (err: any) {
-      // OFFLINE STEP 2: preserve the ApiError code so the envelope-flush loop
-      // can tell network-shaped failures (NETWORK_ERROR / API_TIMEOUT → keep
-      // the envelope, retry later) from server business rejections
-      // (INSUFFICIENT_*, ALREADY_INSIDE… → park the envelope as rejected).
-      return { success: false, error: err.message, code: err?.code };
+      return { success: false, error: err.message };
     }
   },
   
-  checkOutVehicle: async (garageId: string, vehicleId: string, _cost: number, staffName?: string, _staffId?: string, idempotencyKey?: string, exitTimeIso?: string) => {
+  checkOutVehicle: async (garageId: string, vehicleId: string, _cost: number, staffName?: string, _staffId?: string, idempotencyKey?: string) => {
     try {
       const data = await apiFetch('/api/vehicles/check-out', {
         method: 'POST',
@@ -115,9 +107,6 @@ export const vehicleService = {
           garageId,
           vehicleId,
           staffName,
-          // OFFLINE STEP 3: the true exit tap time (offline envelope flushes
-          // only) — the bank bills the stay from it, not from the flush moment.
-          ...(exitTimeIso ? { exitTimeIso } : {}),
           // accept a caller-provided idempotency key so retries can
           // reuse the same key. If none provided, generate a fresh one (legacy).
           idempotencyKey: idempotencyKey || generateIdempotencyKey('vehicle_checkout')
@@ -134,12 +123,11 @@ export const vehicleService = {
         lastTransactionDate: data.data?.lastTransactionDate
       };
     } catch (err: any) {
-      // OFFLINE STEP 2: same code preservation as check-in (see above).
-      return { success: false, error: err.message, code: err?.code };
+      return { success: false, error: err.message };
     }
   },
   
-  deleteVehicle: async (garageId: string, vehicleId: string, _passedTodayYMD?: string, staffName?: string, _staffId?: string, idempotencyKey?: string) => {
+  deleteVehicle: async (garageId: string, vehicleId: string, _passedTodayYMD?: string, staffName?: string, _staffId?: string) => {
     try {
       await apiFetch('/api/vehicles/delete', {
         method: 'POST',
@@ -148,12 +136,7 @@ export const vehicleService = {
           vehicleId,
           refundAmount: 0,
           staffName,
-          // Accept a caller-provided idempotency key so the offline drawer
-          // flush can replay the SAME key on every retry — the Worker then
-          // returns the originally committed result instead of double-
-          // counting the daily deletion budget. Live deletes generate a
-          // fresh key per attempt exactly as before.
-          idempotencyKey: idempotencyKey || generateIdempotencyKey('vehicle_delete')
+          idempotencyKey: generateIdempotencyKey('vehicle_delete')
         }
       });
       return true;

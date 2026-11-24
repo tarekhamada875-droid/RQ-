@@ -8,7 +8,7 @@
 import type { WorkerApp } from '../cloudflareWorker';
 import { adminDb } from '../firebaseAdmin';
 import { requireWorkerAuth } from '../sessionInfrastructure';
-import { validateIdempotencyKey, validatePlate, parsePlausibleClientTime } from '../validation';
+import { validateIdempotencyKey, validatePlate } from '../validation';
 import { mapDomainErrorToStatus } from '../routes/helpers';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from '../idempotency';
 import { recordDomainEventInTransaction } from '../events';
@@ -58,13 +58,6 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
     }
     const entrantEntityId = user?.entityId;
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
-
-    // OFFLINE STEP 3 (2026-11-24, owner debug file rq-debug-2026-11-24): an
-    // offline envelope can reach the bank hours after the real tap. The
-    // vehicle must be stamped with the TRUE entry tap time — it drives the
-    // hourly/overnight fee at check-out. The server clock is the fallback
-    // only for live traffic, legacy envelopes and implausible clocks.
-    const entryAt = parsePlausibleClientTime(body.entryTimeIso, requestStartedAt) ?? new Date();
 
     const today = getCairoDateKey(new Date());
     const requestFingerprint = createRequestFingerprint({ garageId, plateNumber, plateRaw, type: vehicleType });
@@ -140,7 +133,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         plateNumberRaw: plateRaw,
         type: vehicleType,
         isSubscriber: isSubscriberAuthoritative,
-        entryTime: entryAt,
+        entryTime: new Date(),
         status: 'inside',
         staffId: entrantEntityId || null,
         staffName: resolvedStaffName,
@@ -206,7 +199,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
           plateNumberRaw: plateRaw,
           type: vehicleType,
           status: 'inside',
-          entryTime: entryAt.toISOString(),
+          entryTime: new Date().toISOString(),
           staffId: entrantEntityId || null,
           staffName: resolvedStaffName,
           enteredByUid: user?.uid || null,
@@ -265,12 +258,8 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
     return c.json({ success: true, data: resultData });
   } catch (err: any) {
     console.error('[Worker] Check-in error:', err);
-    // The machine code MUST ride on the body: phones classify the bank's
-    // answer by it (envelope flush answer classes). Owner debug file
-    // 2026-11-24 13:16 — a 409 duplicate without `code` arrived as
-    // errorCode:null and the phone misfiled it as retryable.
-    const { statusCode, code, message } = mapDomainErrorToStatus(err);
-    return c.json({ success: false, error: message, code }, statusCode as any);
+    const { statusCode, message } = mapDomainErrorToStatus(err);
+    return c.json({ success: false, error: message }, statusCode as any);
   }
 });
 }

@@ -275,8 +275,8 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
     return c.json({ success: true });
   } catch (err: any) {
     console.error('[Worker] Delete/refund error:', err);
-    const { statusCode, code, message } = mapDomainErrorToStatus(err);
-    const errorResponse = { success: false, error: message, code };
+    const { statusCode, message } = mapDomainErrorToStatus(err);
+    const errorResponse = { success: false, error: message };
     return c.json(
       err?.message === 'IDEMPOTENCY_KEY_REUSE'
         ? { ...errorResponse, code: 'IDEMPOTENCY_KEY_REUSE' }
