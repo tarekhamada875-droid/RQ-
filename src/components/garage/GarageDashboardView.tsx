@@ -186,25 +186,33 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
           <GarageSubscriptionCard garage={garage} />
         )}
 
-        {shouldShowSmartPrompt ? (
+        {/* OFFLINE STEP 1 (2026-11-24, owner design): when the prepaid balance
+            is depleted the registration card STAYS MOUNTED. Staff can still
+            type a plate that is inside and issue its exit receipt; only the
+            hourly/overnight check-in buttons are hidden (see RegistrationCard).
+            The recharge prompt no longer REPLACES the plate input — it renders
+            below the card (hidden while the keyboard is focused, same rule as
+            the balance card above). */}
+        <RegistrationCard
+          isInputFocused={isInputFocused}
+          setIsInputFocused={setIsInputFocused}
+          plateInputRef={plateInputRef}
+          garage={garage}
+          handleCheckIn={handleCheckIn}
+          isBalanceDepleted={isBalanceDepleted}
+          onCheckOut={(vehicle) => {
+            setSelectedVehicle(vehicle);
+            setShowCheckOutModal(true);
+          }}
+          closeKeyboard={closeKeyboard}
+          inputRef={inputRef}
+          isLoading={isLoading}
+        />
+
+        {!isInputFocused && shouldShowSmartPrompt && (
           <SmartActionPrompt
             garage={garage}
             paymentWalletNumber={paymentWalletNumber}
-          />
-        ) : (
-          <RegistrationCard
-            isInputFocused={isInputFocused}
-            setIsInputFocused={setIsInputFocused}
-            plateInputRef={plateInputRef}
-            garage={garage}
-            handleCheckIn={handleCheckIn}
-            onCheckOut={(vehicle) => {
-              setSelectedVehicle(vehicle);
-              setShowCheckOutModal(true);
-            }}
-            closeKeyboard={closeKeyboard}
-            inputRef={inputRef}
-            isLoading={isLoading}
           />
         )}
 

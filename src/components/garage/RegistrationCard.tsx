@@ -12,6 +12,16 @@ interface RegistrationCardProps {
   plateInputRef: React.RefObject<HTMLInputElement>;
   garage: Garage;
   handleCheckIn: (type: 'hourly' | 'overnight', plateValue: string) => Promise<string | null>;
+  /**
+   * OFFLINE STEP 1 (2026-11-24, owner design): true when the prepaid balance
+   * hit zero. The card itself STAYS MOUNTED — staff can still type a plate
+   * that is inside and issue its exit receipt (the red checkout button below
+   * is unaffected). Only the ساعة/مبيت check-in buttons are hidden: with no
+   * credits left there is nothing to debit, so paid entry must not be
+   * offered. Subscriber handling and debit-skip rules are enforced by the
+   * server (checkIn.ts) and are unchanged.
+   */
+  isBalanceDepleted?: boolean;
   onCheckOut: (vehicle: Vehicle) => void;
   closeKeyboard: () => void;
   inputRef: React.RefObject<HTMLDivElement>;
@@ -28,6 +38,7 @@ export const RegistrationCard = memo(({
   plateInputRef: _plateInputRef,
   garage,
   handleCheckIn,
+  isBalanceDepleted = false,
   onCheckOut,
   closeKeyboard,
   inputRef,
@@ -282,6 +293,11 @@ export const RegistrationCard = memo(({
               </div>
             ) : (isInputFocused || (newPlateNumber && isPlateValidMemo)) ? (
                   <div className="overflow-hidden">
+                    {/* OFFLINE STEP 1: depleted balance hides the paid-entry
+                        buttons entirely — the keyboard below stays available
+                        so staff can type an inside plate and reach the red
+                        exit button. */}
+                    {!isBalanceDepleted && (
                     <div className="flex gap-4 mt-1">
                       {(showBoth || showOnlyHourly) && (
                         <button 
@@ -324,6 +340,7 @@ export const RegistrationCard = memo(({
                         </button>
                       )}
                     </div>
+                    )}
 
                     {isInputFocused && (
                       <div className="mt-4 md:mt-8">
