@@ -20,7 +20,8 @@ import { NavigationUiProvider } from './hooks/navigationUiContext';
 import { GarageDataProvider } from './hooks/garageDataContext';
 import { AdminMutationsProvider } from './hooks/adminMutationsContext';
 import { shouldWaitForSessionReady } from './utils/authViewGuard';
-import { DelayedFallback, PageSkeleton } from './components/layout/LoadingFallbacks';
+import { DelayedFallback } from './components/layout/LoadingFallbacks';
+import { DestinationScreen, SuspenseRoleSkeleton } from './components/layout/RoleSkeletons';
 import { AppRoutes } from './components/app/AppRoutes';
 import { AppOverlays } from './components/app/AppOverlays';
 import { useTheme } from './utils/ThemeContext';
@@ -103,15 +104,36 @@ export default function App() {
   // gated — they use different listeners and were never affected by the
   // race.
   //
-  // LOGIN-SPEED (2026-11-23, owner initiative): the gate screen is now
-  // a PageSkeleton (dashboard-shaped gray placeholders) instead of a
-  // bare spinner. Same data flow / timing — purely visual. The user
-  // sees the dashboard's shape immediately and the real content fills
-  // in as listeners deliver, instead of staring at a spinner that
-  // makes the app feel broken on slow 4G.
+  // LOADING-UX (2026-11-25, owner initiative "A+B+C") — the gate now shows
+  // the DESTINATION screen, resolved from the persisted view + stored
+  // identities (resolveBootShape, zero network involved):
+  //   (A) headed to a login view → the REAL login screen. It is fully
+  //       static (plate + keypad need no data), so a cold start shows the
+  //       actual screen immediately instead of a fake preview of it.
+  //   (B) headed to a dashboard → a skeleton mirroring THAT dashboard's
+  //       real layout (garage / admin / delegate), so slow loads read as
+  //       "the screen filling in" instead of a generic broken-looking ghost.
+  //   (C) the very first gate still renders IMMEDIATELY so the handoff from
+  //       main.tsx's BootSplash stays seamless (BootSplash shows the same
+  //       brand family); re-gates after real content keep the 250ms
+  //       no-flash delay. Fast re-gates (<250ms) show nothing at all.
+  //   The old generic PageSkeleton (spinner pill + "جاري التحميل..." +
+  //   unrelated gray blocks) is gone from this path — it matched no real
+  //   screen (owner screenshot 2026-11-24).
   if (isGateActive) {
     logDiagnostic(!isAuthReady ? 'APP_WAITING_FOR_AUTH_READY' : (waitingForInitialSyncEarly ? 'APP_WAITING_FOR_INITIAL_SYNC' : 'APP_WAITING_FOR_SESSION_READY'), { isAuthReady, isSessionReady, view, isInitialSyncComplete: garageData.isInitialSyncComplete });
-    const gateScreen = <PageSkeleton hint="جاري التحميل..." />;
+    const gateScreen = (
+      <DestinationScreen
+        view={view}
+        loginProps={{
+          loginPhone: navigationUi.loginPhone,
+          setLoginPhone: navigationUi.setLoginPhone,
+          handleGarageLogin: adminManagement.handleGarageLogin,
+          isLoading: isLoading || !isAuthReady,
+          closeKeyboard: navigationUi.closeKeyboard,
+        }}
+      />
+    );
     return hasRenderedContentRef.current ? <DelayedFallback>{gateScreen}</DelayedFallback> : gateScreen;
   }
 
@@ -125,7 +147,7 @@ export default function App() {
     <ErrorBoundary>
       <NetworkStatusBanner />
       <AppOverlays />
-      <Suspense fallback={<DelayedFallback><PageSkeleton /></DelayedFallback>}>
+      <Suspense fallback={<DelayedFallback><SuspenseRoleSkeleton /></DelayedFallback>}>
         <AppRoutes />
       </Suspense>
     </ErrorBoundary>
