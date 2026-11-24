@@ -42,18 +42,16 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
   const entrantEntityId = currentStaff?.id ?? garage.id;
   const entrantRole = currentStaff ? 'staff' : 'garage';
   const canDelete = selectedVehicle.enteredByEntityId === entrantEntityId && selectedVehicle.enteredByRole === entrantRole;
-  // During grace window: only delete is allowed (no checkout) — a
-  // just-entered car is a MISTAKE, not a free exit (owner rule 2026-11-24:
-  // the old build showed "0 to pay" here when delete was not possible).
-  // After grace: only checkout is allowed (no delete). Delete respects the
-  // 3/day limit from the Worker — when the budget is spent, or when the
-  // operator is not the entrant, the modal shows a calm wait note and the
-  // operator checks out normally once the window ends.
+  // During grace window: only delete is allowed (no checkout). After grace:
+  // only checkout is allowed (no delete). This prevents 0-EGP checkouts that
+  // look broken in reports. Delete respects the 3/day limit from the Worker.
+  // If daily deletions are exhausted, the user must wait out the grace window
+  // and then checkout normally.
   const todayYMD = getCairoDateKey(new Date());
   const deletionsToday = garage.lastDeletionDate === todayYMD ? (garage.dailyDeletionCount || 0) : 0;
   const deletionsRemaining = Math.max(0, 3 - deletionsToday);
   const showDeleteButton = isInitialMinute && canDelete && deletionsRemaining > 0;
-  const showCheckoutButtons = !isInitialMinute;
+  const showCheckoutButtons = !isInitialMinute || !canDelete || deletionsRemaining === 0;
 
   const [confirmingSide, setConfirmingSide] = React.useState<'left' | 'right' | null>(null);
   const [showLargeButton, setShowLargeButton] = React.useState(false);
@@ -195,18 +193,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
               className="flex-1 flex flex-col items-center overflow-y-auto scrollbar-hide max-h-[calc(92vh-90px)] max-h-[calc(92dvh-90px)] w-full px-1"
             >
                 <>
-                  {isInitialMinute ? (
-                    showDeleteButton ? null : (
-                      /* Grace window, delete not possible (another entrant,
-                         or the 3/day budget is spent): a calm wait note
-                         replaces the price — never a "0 to pay" panel. */
-                      <div className="flex flex-col items-center justify-center mt-2 sm:mt-4 md:mt-6 h-20 sm:h-32 md:h-36 mb-2 sm:mb-4 shrink-0 px-4">
-                        <div className="px-5 py-2.5 sm:px-8 sm:py-5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-2xl sm:rounded-[2rem] border border-amber-200 dark:border-amber-800 text-sm sm:text-lg font-black leading-relaxed text-center">
-                          العربية لسه داخلية — استنى ٥ دقايق من دخولها وبعدين اخرجها عادي
-                        </div>
-                      </div>
-                    )
-                  ) : (
+                  {showDeleteButton ? null : (
                 <div className="flex flex-col items-center justify-center mt-2 sm:mt-4 md:mt-6 h-20 sm:h-32 md:h-36 mb-2 sm:mb-4 shrink-0">
                   {selectedVehicle.isSubscriber ? (
                     <div className="flex flex-col items-center">

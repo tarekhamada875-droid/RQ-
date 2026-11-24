@@ -8,6 +8,8 @@ import { useLocalStorageState } from './hooks/useLocalStorage';
 import { useSystemConfig } from './hooks/useSystemConfig';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { LandscapeMobileView } from './components/layout/LandscapeMobileView';
+import { OfflineView } from './components/layout/OfflineView';
+import { NetworkStatusBanner } from './components/NetworkStatusBanner';
 import { logDiagnostic } from './utils/authDiagnosticLogger';
 import { useGarageApp } from './hooks/useGarageApp';
 import { useBackTrapping } from './hooks/useBackTrapping';
@@ -27,7 +29,7 @@ export default function App() {
   const app = useGarageApp();
   const { session, navigationUi, garageData, vehicleOperations, adminManagement } = app;
   const { isAuthReady, isSessionReady, isLoggingOut, currentStaff, showLogoutConfirm, setShowLogoutConfirm } = session;
-  const { view, setView, isLandscapeMobile, showSubscribers, setShowSubscribers, showDeleteConfirm, setShowDeleteConfirm, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails } = navigationUi;
+  const { view, setView, showOfflineScreen, isLandscapeMobile, showSubscribers, setShowSubscribers, showDeleteConfirm, setShowDeleteConfirm, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails } = navigationUi;
   const { garage, delegate } = garageData;
   const { isLoading, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, showSubscriberWarning, setShowSubscriberWarning, setSelectedVehicle, setSubscriberWarningPlate } = vehicleOperations;
 
@@ -91,6 +93,7 @@ export default function App() {
 
   if (isLoggingOut) return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm">جاري الخروج...</p></div>;
   if (isLandscapeMobile) return <LandscapeMobileView garage={view === 'garage' ? garage : null} />;
+  if (showOfflineScreen) return <OfflineView />;
   // Initial-sync gate (fixes the reopen-refresh race): for the garage view
   // only, keep the loading screen up until both Firestore listeners have
   // delivered their first fresh (non-cached) snapshot, OR the 10s safety
@@ -112,6 +115,7 @@ export default function App() {
     <AdminMutationsProvider value={adminManagement}>
     <VehicleOpsProvider value={vehicleOperations}>
     <ErrorBoundary>
+      <NetworkStatusBanner />
       <AppOverlays />
       <Suspense fallback={<DelayedFallback><PageSkeleton /></DelayedFallback>}>
         <AppRoutes />

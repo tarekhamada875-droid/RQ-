@@ -61,12 +61,10 @@ createRoot(document.getElementById('root')!).render(
       {/* DEBUG (owner audit 2026-11-17): outside the provider tree so the
           export button survives provider-level failures and works on every
           view, including the login screen.
-          Audit fix (2026-11-21): export gated away from casual users — the
-          file embeds sessionId / UA / URL and must not be one accidental
-          tap away for every garage worker.
-          OWNER REQUEST (2026-11-24, "I can't type them"): the pill is
-          visible on every view again; the panel opens only via a deliberate
-          5-tap streak within 2.5s, or 1 tap when opened with ?debug=1. */}
+          Audit fix (2026-11-21): gated behind ?debug=1 — the HUD previously
+          rendered for EVERY user (all garage workers, login screen), exposing
+          a debug file export containing sessionId / UA / URL to anyone.
+          Open the app with ?debug=1 in the URL to show it. */}
       <DebugHud enabled={new URLSearchParams(window.location.search).has('debug')} />
       <ThemeProvider>
         <BackHandlerProvider>

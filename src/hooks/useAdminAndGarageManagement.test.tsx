@@ -81,6 +81,7 @@ const createProps = () => ({
   setShowDeleteConfirm: vi.fn(),
   setGarageDeletionProgress: vi.fn(),
   sessionId: 'session-1',
+  isOnline: true,
   isLoading: false,
   closeKeyboard: vi.fn(),
   showToast: vi.fn(),

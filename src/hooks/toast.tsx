@@ -7,7 +7,6 @@ import {
   type ReactNode,
 } from 'react';
 import { CheckCircle2, XCircle, X } from 'lucide-react';
-import { debugRecorder, eventCodeFromText } from '../debug/debugRecorder';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -34,15 +33,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback((message: string, type: ToastType = 'success') => {
-    // RECORDER v1.1: narrate what the operator saw. The Arabic text itself
-    // never enters the debug file — only kind, length and any latin server
-    // code inside the message (see eventCodeFromText).
-    debugRecorder.record('note', {
-      ev: 'toast',
-      kind: type,
-      chars: message.length,
-      code: eventCodeFromText(message),
-    });
     // Clear any existing timer before setting a new toast.
     if (timerRef.current) {
       clearTimeout(timerRef.current);

@@ -7,11 +7,6 @@ import { generateIdempotencyKey } from '../types/apiContracts';
 import { calculateCost } from '../utils/cost';
 import { safeDate } from '../utils/dates';
 import { getRawPlate, formatPlateNumber } from '../utils/plates';
-// MISTAKE RULE (owner request 2026-11-24: "exiting a car that just entered
-// shows 0 to pay — it must not"): the live check-out refuses a just-entered
-// car exactly like the modal does — the same 5-minute entry-error window
-// decides both (defense against a stale open modal).
-import { isWithinEntryErrorWindow } from '../utils/graceWindow';
 import { getCairoDateKey } from '../domain/garage/businessDay';
 
 const pendingOperations = new Set<string>();
@@ -29,6 +24,7 @@ interface UseVehicleOperationsProps {
   garage: Garage | null;
   setGarage: React.Dispatch<React.SetStateAction<Garage | null>>;
   currentStaff: Staff | null;
+  isOnline: boolean;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   closeKeyboard: () => void;
   /** Called after a confirmed check-out. Used by the dashboard to return to
@@ -40,6 +36,7 @@ export function useVehicleOperations({
   garage,
   setGarage,
   currentStaff,
+  isOnline,
   showToast,
   closeKeyboard,
   onCheckOutComplete,
@@ -129,6 +126,10 @@ export function useVehicleOperations({
   // string when the caller should restore it (on error), or null on
   // success / no-restore-needed.
   const handleCheckIn = useCallback(async (type: 'hourly' | 'overnight', plateValue: string): Promise<string | null> => {
+    if (!isOnline) {
+      showToast('لا يوجد اتصال بالإنترنت. يرجى إعادة المحاولة عند عودة النت.', 'error');
+      return null;
+    }
     if (!garage || !plateValue || isTransactionLocked()) return null;
     closeKeyboard();
 
@@ -303,31 +304,22 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [garage, setGarage, isLoading, closeKeyboard, currentStaff, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
+  }, [isOnline, garage, setGarage, isLoading, closeKeyboard, currentStaff, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
   // PR-U: removed newPlateNumber from deps — it's now a parameter, not state.
   // PR2 (2026-11-23): vehicles/setVehicles removed from deps — the local
   // vehicles cache is gone.
 
   // Check Out
   const confirmCheckOut = useCallback(async () => {
+    if (!isOnline) {
+      showToast('لا يوجد اتصال بالإنترنت. يرجى إعادة المحاولة عند عودة النت.', 'error');
+      return;
+    }
     if (!garage || !selectedVehicle || isTransactionLocked()) return;
     closeKeyboard();
 
     const vehicleToOut = selectedVehicle;
     const cost = calculateCost(vehicleToOut, garage, now);
-
-    // MISTAKE RULE (owner request 2026-11-24): inside the 5-minute
-    // entry-error window a just-entered car is a MISTAKE, not a free
-    // exit — the live modal offers only delete (CheckOutModal). This
-    // guard stops a stale open modal from slipping a 0-EGP exit through.
-    // (After the window the hourly math always bills at least one hour,
-    // so this only ever fires for the just-entered case.)
-    const stayMs = Math.max(0, new Date(now).getTime() - safeDate(vehicleToOut.entryTime).getTime());
-    if (!vehicleToOut.isSubscriber && isWithinEntryErrorWindow(stayMs)) {
-      showToast('العربية لسه داخلية — استنى ٥ دقايق من دخولها أو امسحها لو دخول غلط', 'info');
-      return;
-    }
-
     setIsLoading(true);
     setLoadingType('checkout');
     acquireTransactionLock();
@@ -419,7 +411,7 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, onCheckOutComplete]);
+  }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, onCheckOutComplete]);
 
   // Delete Vehicle — receipt-mode (mirrors check-in/check-out).
   //
@@ -434,6 +426,10 @@ export function useVehicleOperations({
   // a delete can't overlap an in-flight check-in or check-out (previously the
   // `isTransactionLocked()` guard in those flows did not see delete as locked).
   const handleDeleteVehicle = useCallback(async () => {
+    if (!isOnline) {
+      showToast('لا يوجد اتصال بالإنترنت. يرجى إعادة المحاولة عند عودة النت.', 'error');
+      return;
+    }
     if (!garage || !selectedVehicle) return;
 
     const entrantEntityId = currentStaff?.id ?? garage.id;
@@ -518,7 +514,7 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [garage, selectedVehicle, currentStaff, showToast, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
+  }, [isOnline, garage, selectedVehicle, currentStaff, showToast, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
 
   // PR-H2: memoize the return value. Previously exempted in PR-H with
   // incorrect React logic ("useCallback handlers are stable so consumers

@@ -16,8 +16,6 @@ The referral reward is 10 credits (owner decision, PR #666), awarded once to the
 
 Read/write economy (owner decision, 2026-11-14, to stay on the Firestore free tier): garage reports (daily/monthly) and subscriber data load on demand when their screens are opened, not via always-on listeners; delegate and admin request polling runs every 5 minutes (previously 30 seconds); `system_config` is cached in localStorage with a silent fallback when storage is unavailable. Do not reintroduce always-on listeners or fast polling for these views.
 
-Online-only, no offline special-casing (owner decision, 2026-11-24, "i dont want offline anymore"): the offline stack built the same day (#835–#845 — envelope drawer, offline check-in/check-out/delete, notebook-first paint, pending chip) and the legacy offline UX (wall `OfflineView`, `NetworkStatusBanner`, `useOnlineStatus`, every `!isOnline` pre-flight check) were all removed. The app never branches on connection state — a request that cannot reach the server fails with the normal `NETWORK_ERROR` / `API_TIMEOUT` toast from `src/api/apiClient.ts`, online or offline alike. Opening the app still requires the network (session boot is fail-closed), and the server stamps its own clock on every transaction (client tap times are not accepted). Owner-approved rules that do not depend on offline were kept: (1) the mistake rule — a just-entered car (inside the 5-minute entry-error window) can only be deleted by its entrant (3/day budget), never checked out for 0 EGP; (2) the zero-credit UI rule — when the prepaid balance hits 0 the registration card stays mounted, the ساعة/مبيت buttons hide, and the exit receipt path stays reachable. The workbox service worker stays: it precaches the app shell for deploy safety (no mid-action chunk 404s), not for offline use. Do not reintroduce offline screens, banners, pre-flight checks, or client-supplied transaction times.
-
 Admin revenue (the EGP collected from garages for credits) is tracked separately on each garage doc as `totalAdminRevenue` and aggregated in the admin summary. Garage revenue (money collected from drivers at check-out, plus the monthly-renewal debit amount recorded as renewal income) is tracked separately as `totalRevenue` / `todayRevenue`.
 
 The admin Income page (الدخل, owner decision 2026-11-23) shows the lifetime EGP collected from garages plus the paged history of paid grants, from a settings-tab sub-page. The lifetime total reads `admin_summary/global.totalAdminRevenue` (O(1), 1 read); the history reads `credit_ledger` with `kind=paid_grant` (50 rows per page, on demand only — no listener, no polling). On the first open the Worker performs a one-time alignment: `aligned = summary + max(0, sum of garage-doc totalAdminRevenue − summary)`, stamped as `incomeRecountAt` so it never runs twice; the total is never lowered by the alignment (money already received from deleted garages stays received, since garage deletion deliberately does not decrement the summary). New `credit_ledger` paid-grant entries stamp `garageName` so history rows need no per-row garage lookups. The history query requires the `credit_ledger (kind, occurredAt)` composite index from firestore.indexes.json; without it the endpoint returns `INCOME_HISTORY_INDEX_MISSING` instead of wrong data. Print/export for accounting is a planned follow-up (step 2).
@@ -65,18 +63,14 @@ Growth math at the owner's stated scale ceiling (700 garages × 1,000 cars/day):
 
 Every Worker write to `activity_logs` MUST go through `server/activityLogWriter.ts:buildActivityLogEntry()`, which attaches `expireAt: timestamp + 30 days`. The Firestore TTL policy on the `expireAt` field auto-deletes expired entries (typically within 72 hours of the expireAt timestamp, per Firestore's documentation).
 
-**STATUS (2026-11-24): PARKED — switch NOT flipped.** The owner declined to enable billing (no card on file; TTL deletes are billing-gated per Firestore's pricing docs), so the `expireAt` field is written but nothing deletes old logs yet. At current scale this is harmless — revisit the moment the project enables billing (Blaze). The two one-time commands below were verified end-to-end in Cloud Shell against the real database on 2026-11-24 (the first attempt failed NOT_FOUND because the app's Firestore is a NAMED database, not `(default)`; the second failed PERMISSION_DENIED on billing).
-
-One-time operator setup (NOT part of `firebase deploy`; TTL is managed via gcloud/Google Cloud console — there is no Firebase-console TTL UI). Project: `gen-lang-client-0091669619`; database: `ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759` (both pinned in `wrangler.deploy.toml`). The command (run once, ~10 min to activate):
+One-time operator setup (NOT part of `firebase deploy`): the TTL policy on the `activity_logs.expireAt` field must be configured via the gcloud CLI or Firebase console. The command (run once per database):
 ```
-gcloud firestore fields ttls update expireAt \
+gcloud firestore fields ttls update \
   --collection-group=activity_logs \
-  --project=gen-lang-client-0091669619 \
-  --database=ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759 \
+  --field=expireAt \
   --enable-ttl
 ```
-Verify (expect `expireAt` with state ACTIVE; `0 items` before the switch):
-`gcloud firestore fields ttls list --collection-group=activity_logs --project=gen-lang-client-0091669619 --database=ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759`
+Verify with `gcloud firestore fields ttls list --collection-group=activity_logs`.
 
 Entries that must NOT expire (audit logs for legal/finance records) should live in a different collection — `activity_logs` is for live + recent operational visibility only. The current `actionType` set (check_out, credit_grant, credit_correction, credit_referral_award, delete_refund, garage_delete, create) all qualify as recent operational visibility; none are legal/finance records (those live in `credit_ledger` and `admin_summary`, neither of which has a TTL).
 
