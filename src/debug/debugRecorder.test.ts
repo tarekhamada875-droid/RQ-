@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { sanitizeValue, debugRecorder, eventCodeFromText } from './debugRecorder';
+import { sanitizeValue, debugRecorder } from './debugRecorder';
 
 describe('sanitizeValue (PII-safe structural snapshot)', () => {
   it('keeps numbers, booleans and null untouched', () => {
@@ -274,27 +274,6 @@ describe('debugRecorder auth + session helpers (audit extension)', () => {
     expect(authEvents.find((e) => e.ev === 'signin_anon_error')).toBeUndefined();
     expect(sessionEvents.find((e) => e.ev === 'coordinator_signin_done')).toBeUndefined();
     expect(sessionEvents.find((e) => e.ev === 'coordinator_signin_error')).toBeUndefined();
-  });
-});
-
-describe('RECORDER v1.1: eventCodeFromText (PII-safe toast codes)', () => {
-  it('extracts the latin server code from a mixed-language message', () => {
-    expect(eventCodeFromText('السيرفر رفض تسجيل سيارة معلقة: INSUFFICIENT_ELIGIBLE_CREDITS'))
-      .toBe('INSUFFICIENT_ELIGIBLE_CREDITS');
-  });
-
-  it('caps extraction at 5 tokens (retry/limit code families)', () => {
-    expect(eventCodeFromText('NETWORK_ERROR API_TIMEOUT SESSION_EXPIRED RATE_LIMIT_EXCEEDED INVALID_TOKEN EXTRA_AFTER_CAP'))
-      .toBe('NETWORK_ERROR,API_TIMEOUT,SESSION_EXPIRED,RATE_LIMIT_EXCEEDED,INVALID_TOKEN');
-  });
-
-  it('returns null for pure-Arabic strings (fixed UI strings need no code)', () => {
-    expect(eventCodeFromText('هذه السيارة موجودة بالفعل بالداخل')).toBeNull();
-    expect(eventCodeFromText('اتسجل أوفلاين — هتتبعت للسيرفر أول ما النت يرجع')).toBeNull();
-  });
-
-  it('a plate inside the message contributes no token (Arabic letters + digits)', () => {
-    expect(eventCodeFromText('سيارة س ط ب 1234 مسجلة جوه بالفعل')).toBeNull();
   });
 });
 

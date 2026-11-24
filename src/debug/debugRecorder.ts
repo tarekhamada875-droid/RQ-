@@ -84,22 +84,6 @@ const PII_KEY_RE = /phone|mobile|whatsapp|name|email|address|notes?|plate|letter
 const SAFE_STRING_RE = /^[A-Za-z0-9_.:\-/@+]+$/;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?$/;
 
-/**
- * RECORDER v1.1 (owner 2026-11-24, "catch everything from business to UI"):
- * toasts are what the operator actually SAW, but their Arabic text can carry
- * customer data (plates, names) and must never enter the debug file. What a
- * remote diagnosis needs from a toast is its KIND, its length, and any latin
- * server/business code inside it (INSUFFICIENT_ELIGIBLE_CREDITS,
- * ALREADY_INSIDE, NETWORK_ERROR…). This extracts up to 5 latin identifiers
- * (4+ chars) from the text; returns null for pure-Arabic strings — those are
- * fixed UI strings known from the code, so kind + timing is the signal.
- */
-export function eventCodeFromText(text: string): string | null {
-  const tokens = text.match(/[A-Za-z][A-Za-z0-9_]{3,}/g);
-  if (!tokens || tokens.length === 0) return null;
-  return tokens.slice(0, 5).join(',');
-}
-
 function redactedString(value: string): string {
   return `«str:${value.length}»`;
 }

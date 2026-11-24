@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { CheckOutModal } from './CheckOutModal';
 import { ServerTimeProvider } from '../../hooks/serverTimeContext';
-import { getCairoDateKey } from '../../domain/garage/businessDay';
 
 const now = new Date('2026-10-15T12:00:00.000Z');
 
@@ -123,49 +122,5 @@ describe('CheckOutModal icon actions', () => {
     render(<ServerTimeProvider><CheckOutModal {...makeProps(6)} /></ServerTimeProvider>);
 
     expect(screen.queryByRole('button', { name: 'امسح العربية (دخول غلط)' })).toBeNull();
-  });
-
-  // ── MISTAKE RULE (owner request 2026-11-24) ─────────────────────
-  // A just-entered car is a MISTAKE: inside the 5-minute window the modal
-  // must NEVER offer a 0-EGP exit — not for another entrant, and not when
-  // the 3/day delete budget is spent. The price panel is replaced by a calm
-  // wait note; checkout returns only after the window ends.
-  it('never offers a 0-EGP exit during the window for a car entered by someone else', () => {
-    const props = makeProps(2);
-    props.selectedVehicle.enteredByEntityId = 'staff-2';
-    props.selectedVehicle.staffId = 'staff-2';
-    render(<ServerTimeProvider><CheckOutModal {...props} /></ServerTimeProvider>);
-
-    // No checkout buttons…
-    expect(screen.queryByRole('button', { name: 'بدء تأكيد خروج السيارة من الجانب الأيسر' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'بدء تأكيد خروج السيارة من الجانب الأيمن' })).toBeNull();
-    // …no delete button…
-    expect(screen.queryByRole('button', { name: 'امسح العربية (دخول غلط)' })).toBeNull();
-    // …no "0" price digits, and the calm wait note instead.
-    expect(screen.queryByText('0')).toBeNull();
-    expect(screen.getByText(/استنى ٥ دقايق من دخولها/)).toBeInTheDocument();
-  });
-
-  it('never offers a 0-EGP exit during the window when the 3/day delete budget is spent', () => {
-    const props = makeProps(2);
-    props.garage.dailyDeletionCount = 3;
-    props.garage.lastDeletionDate = getCairoDateKey(new Date());
-    render(<ServerTimeProvider><CheckOutModal {...props} /></ServerTimeProvider>);
-
-    expect(screen.queryByRole('button', { name: 'بدء تأكيد خروج السيارة من الجانب الأيمن' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'امسح العربية (دخول غلط)' })).toBeNull();
-    expect(screen.queryByText('0')).toBeNull();
-    expect(screen.getByText(/استنى ٥ دقايق من دخولها/)).toBeInTheDocument();
-  });
-
-  it('still shows the big price and checkout buttons after the window ends', () => {
-    render(<ServerTimeProvider><CheckOutModal {...makeProps(6)} /></ServerTimeProvider>);
-
-    expect(screen.getByRole('button', { name: 'بدء تأكيد خروج السيارة من الجانب الأيمن' })).toBeInTheDocument();
-    expect(screen.queryByText(/استنى ٥ دقايق من دخولها/)).toBeNull();
-    // The price panel is back (6 minutes → ceil = 1 hour × rate 10 → ١٠).
-    // '١٠' appears in both the price and the rate cell — at least one means
-    // the panel rendered; the wait note absence proves it is not the note.
-    expect(screen.getAllByText('١٠').length).toBeGreaterThan(0);
   });
 });

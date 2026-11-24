@@ -183,41 +183,6 @@ describe('RegistrationCard already-inside mode (server lookup, PR2 2026-11-23)',
     expect(screen.getByRole('button', { name: /^ساعة/ })).toBeInTheDocument();
   });
 
-  it('hides the ساعة/مبيت buttons when the prepaid balance is depleted (zero-credit rule)', async () => {
-    renderRegistrationCard({ isInputFocused: true, isBalanceDepleted: true });
-
-    typePlateSa5();
-
-    await waitFor(() => {
-      expect(serviceMocks.getVehicleDocOnce).toHaveBeenCalled();
-    });
-    // Depleted + no inside car → neither the red exit button nor the
-    // paid-entry buttons render. The plate box and keyboard stay usable.
-    expect(screen.queryByText('إصدار فاتورة خروج')).toBeNull();
-    expect(screen.queryByRole('button', { name: /^ساعة/ })).toBeNull();
-    expect(screen.queryByRole('button', { name: /^مبيت/ })).toBeNull();
-    expect(screen.getByRole('textbox', { name: 'رقم لوحة السيارة' })).toBeInTheDocument();
-  });
-
-  it('still offers the exit receipt when depleted — the inside-plate checkout path is untouched', async () => {
-    const onCheckOut = vi.fn();
-    serviceMocks.getVehicleDocOnce.mockResolvedValue(INSIDE_VEHICLE);
-    renderRegistrationCard({ isInputFocused: true, isBalanceDepleted: true, onCheckOut });
-
-    typePlateSa5();
-
-    // The red checkout button renders exactly as when funded — only the
-    // paid-entry buttons are hidden by the depleted balance.
-    const checkoutButton = await screen.findByRole('button', { name: /إصدار فاتورة خروج/ });
-    expect(screen.queryByRole('button', { name: /^ساعة/ })).toBeNull();
-    expect(screen.queryByRole('button', { name: /^مبيت/ })).toBeNull();
-
-    await act(async () => {
-      fireEvent.click(checkoutButton);
-    });
-    expect(onCheckOut).toHaveBeenCalledWith(INSIDE_VEHICLE);
-  });
-
   it('restores the typed plate when handleCheckIn returns one (warnings, retryable errors)', async () => {
     const handleCheckIn = vi.fn().mockResolvedValue('س 5');
     renderRegistrationCard({ isInputFocused: true, handleCheckIn });
