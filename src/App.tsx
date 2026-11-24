@@ -95,15 +95,23 @@ export default function App() {
   if (isLandscapeMobile) return <LandscapeMobileView garage={view === 'garage' ? garage : null} />;
   if (showOfflineScreen) return <OfflineView />;
   // Initial-sync gate (fixes the reopen-refresh race): for the garage view
-  // only, keep the loading screen up until both Firestore listeners have
-  // delivered their first fresh (non-cached) snapshot, OR the 10s safety
-  // timeout in useGarageSync fires. This prevents the user from starting a
-  // check-in/out during the brief window where stale cached snapshots could
-  // clobber optimistic UI writes. Admin/delegate views are not gated — they
-  // use different listeners and were never affected by the race.
+  // only, keep the loading screen up until Firestore has delivered its
+  // FIRST snapshot (cached OR fresh — see useGarageSync 2026-11-23), OR
+  // the 10s safety timeout fires. This prevents the user from starting
+  // a check-in/out during the brief window where stale cached snapshots
+  // could clobber optimistic UI writes. Admin/delegate views are not
+  // gated — they use different listeners and were never affected by the
+  // race.
+  //
+  // LOGIN-SPEED (2026-11-23, owner initiative): the gate screen is now
+  // a PageSkeleton (dashboard-shaped gray placeholders) instead of a
+  // bare spinner. Same data flow / timing — purely visual. The user
+  // sees the dashboard's shape immediately and the real content fills
+  // in as listeners deliver, instead of staring at a spinner that
+  // makes the app feel broken on slow 4G.
   if (isGateActive) {
     logDiagnostic(!isAuthReady ? 'APP_WAITING_FOR_AUTH_READY' : (waitingForInitialSyncEarly ? 'APP_WAITING_FOR_INITIAL_SYNC' : 'APP_WAITING_FOR_SESSION_READY'), { isAuthReady, isSessionReady, view, isInitialSyncComplete: garageData.isInitialSyncComplete });
-    const gateScreen = <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm">جاري التحميل...</p></div>;
+    const gateScreen = <PageSkeleton hint="جاري التحميل..." />;
     return hasRenderedContentRef.current ? <DelayedFallback>{gateScreen}</DelayedFallback> : gateScreen;
   }
 
