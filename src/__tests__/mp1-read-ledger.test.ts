@@ -24,7 +24,12 @@
  *
  * Five flows measured:
  *   1. Session open — auth + session claim
- *   2. Garage dashboard open — dashboard-summary + vehicles/inside + activity
+ *   2. Garage dashboard open — dashboard-summary (since PR #828/#829 on
+ *      2026-11-23 this is the ONLY Worker call at garage dashboard open:
+ *      the cars-inside list was retired and the always-on vehicles stream
+ *      was removed. The checkout plate-lookup is a CLIENT-side single-doc
+ *      read (vehicleService.getVehicleDocOnce — exactly 1 read per typed
+ *      valid plate), which is outside this Worker-side harness's scope.)
  *   3. Full check-in → check-out cycle — vehicle in + cost calculation + vehicle out
  *   4. Delegate dashboard poll — /api/delegates/dashboard (with PR-D piggyback)
  *   5. One admin view — /api/admin/delegates + admin garage page
@@ -82,6 +87,14 @@ const TODAY_ACTIVITY_PER_GARAGE = 8; // check-outs so far today (small garage)
 // reads fewer docs; admin-view also drifted on main since post-PR-F
 // (42 vs 27, code changes since HEAD 2a3ce74) and is re-pinned here.
 //
+// 2026-11-24 recalibration (PR #828/#829 follow-through): the garage
+// dashboard's Worker fan-out shrank from 3 endpoints to exactly 1
+// (dashboard-summary). The old Flow 2 fan-out (vehicles/inside +
+// vehicles/history) simulated endpoints the app no longer calls, so the
+// harness over-counted startup reads. Flow 2 now pins the single-call
+// reality; the vehicle-level reads moved client-side (1 lookup per typed
+// plate via getVehicleDocOnce) and stay outside this Worker-side ledger.
+//
 // Future runs will show divergence > 20% ONLY if:
 //   - A code change alters the read path (new query, removed doc, etc.)
 //   - The seed shape changes (more/fewer docs per garage)
@@ -90,6 +103,8 @@ const TODAY_ACTIVITY_PER_GARAGE = 8; // check-outs so far today (small garage)
 // Post-PR-F numbers (preserved for reference):
 //   sessionOpen: 17 (Flow 1 then proxied the removed garage-summary route)
 //   garageDashboardOpen: 39 (fan-out then included garage-summary)
+// 2026-11-21 numbers (preserved for reference):
+//   garageDashboardOpen: 22 (3-endpoint fan-out the app no longer does)
 //   checkInOutCycle: 10 (unchanged today)
 //   delegateDashboardPoll_piggyback: 6 (unchanged today)
 //   delegateDashboardPoll_noPiggyback: 7 (unchanged today)
@@ -108,7 +123,7 @@ const TODAY_ACTIVITY_PER_GARAGE = 8; // check-outs so far today (small garage)
 //     0 docs in the seed shape; admin-garages returns all 15 in 1 page)
 const MODEL = {
   sessionOpen: 8,
-  garageDashboardOpen: 22,
+  garageDashboardOpen: 8,
   checkInOutCycle: 10,
   delegateDashboardPoll_piggyback: 6,
   delegateDashboardPoll_noPiggyback: 7,
@@ -348,26 +363,20 @@ describe('MP-1 read-ledger harness — founding-shape per-flow read counts', () 
     }
   });
 
-  it('Flow 2 — garage dashboard open (3 read endpoints)', async () => {
+  it('Flow 2 — garage dashboard open (single Worker call since PR #829)', async () => {
     suppressConsole();
     try {
       const result = await measureFlow('garage-dashboard-open', MODEL.garageDashboardOpen, async () => {
-        // Simulate the dashboard initial-load fan-out: dashboard-summary,
-        // vehicles/inside, vehicle history. (2026-11-21: garage-summary was
-        // removed from this fan-out — the app never called it; the real
-        // fan-out is these three endpoints.)
+        // Since PR #828/#829 (2026-11-23) the dashboard's only Worker read
+        // call is dashboard-summary. vehicles/inside and vehicles/history
+        // were part of the OLD fan-out — the app stopped calling them when
+        // the cars-inside list retired (the count card is display-only,
+        // fed by totals in the garage doc; history is an on-demand
+        // client-side listener on the reports page).
         const garageToken = 'Bearer valid-garage-token-g1';
-        await Promise.all([
-          api.fetch(new Request('http://localhost/api/garages/g1/dashboard-summary', {
-            headers: { Authorization: garageToken },
-          })),
-          api.fetch(new Request('http://localhost/api/vehicles/inside?garageId=g1', {
-            headers: { Authorization: garageToken },
-          })),
-          api.fetch(new Request('http://localhost/api/vehicles/history?garageId=g1&limit=50', {
-            headers: { Authorization: garageToken },
-          })),
-        ]);
+        await api.fetch(new Request('http://localhost/api/garages/g1/dashboard-summary', {
+          headers: { Authorization: garageToken },
+        }));
       });
 
       console.log('[MP-1 harness] Flow 2 — garage dashboard open:', JSON.stringify(result));
