@@ -123,6 +123,9 @@ export function useVehicleOperations({
     // Credits land with the count — the bank's debit is the truth the gauge
     // shows (see the live path comment below for the simultaneity history).
     if (typeof serverData?.credits === 'number') {
+      // RECORDER v1.1: the gauge story for the next debug file — the bank's
+      // truth after the debit (pairs with phone_credit_debit / _rollback).
+      debugRecorder.envelopeEvent('bank_credits_applied', { credits: serverData.credits });
       setGarage(prev => prev ? {
         ...prev,
         credits: serverData.credits,
@@ -153,6 +156,9 @@ export function useVehicleOperations({
   // The next fresh Firestore snapshot re-affirms bank truth either way; the
   // rollback just keeps the notebook honest in the seconds before it lands.
   const rollbackCheckInPatch = useCallback(() => {
+    // RECORDER v1.1: the bank said no (or had already resolved the car) — the
+    // phone-math debit must not stick, so the gauge goes back up one.
+    debugRecorder.envelopeEvent('phone_credit_rollback', {});
     setGarage(prev => prev ? {
       ...prev,
       carsInside: Math.max(0, (prev.carsInside || 0) - 1),
@@ -307,12 +313,20 @@ export function useVehicleOperations({
       // Cached garage snapshots never clobber it while offline (the
       // useGarageSync cached-snapshot rule preserves local credits).
       const todayKey = getCairoDateKey();
+      // RECORDER v1.1: compute the debit OUTSIDE the state updater (updaters
+      // must stay pure — StrictMode double-invokes them) so the recorder can
+      // narrate the exact gauge move the owner sees (STEP 2b phone math).
+      const creditsBefore = typeof garage.credits === 'number' ? garage.credits : null;
+      const creditsAfter = creditsBefore === null ? null : Math.max(0, creditsBefore - 1);
+      if (creditsBefore !== null) {
+        debugRecorder.envelopeEvent('phone_credit_debit', { from: creditsBefore, to: creditsAfter });
+      }
       setGarage(prev => prev ? {
         ...prev,
         carsInside: (prev.carsInside || 0) + 1,
         todayCount: (prev.lastTransactionDate === todayKey ? (prev.todayCount || 0) : 0) + 1,
         lastTransactionDate: todayKey,
-        credits: typeof prev.credits === 'number' ? Math.max(0, prev.credits - 1) : prev.credits,
+        credits: creditsAfter !== null ? creditsAfter : prev.credits,
         _confirmedTransactionUntil: Date.now() + 2000,
       } : prev);
       soundManager.play('checkIn');

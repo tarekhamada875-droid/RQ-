@@ -6,6 +6,7 @@ import { vehicleService } from '../services';
 import { calculateCost } from '../utils/cost';
 import { envelopeQueue } from '../services/envelopeQueue';
 import { useVehicleOperations } from '../hooks/useVehicleOperations';
+import { debugRecorder } from '../debug/debugRecorder';
 import { ServerTimeProvider } from '../hooks/serverTimeContext';
 
 /**
@@ -551,5 +552,36 @@ describe('offline envelope drawer flow', () => {
     const tappedAt = new Date(exitIso as string).getTime();
     expect(tappedAt).toBeGreaterThanOrEqual(tappedAtFloor);
     expect(tappedAt).toBeLessThanOrEqual(Date.now());
+  }, 15000);
+
+  it('the recorder narrates the credit gauge story (phone debit → bank truth)', async () => {
+    const narration = vi.spyOn(debugRecorder, 'envelopeEvent');
+    try {
+      const { result } = renderOperations(createGarage(), false);
+
+      let operation!: Promise<string | null>;
+      await act(async () => {
+        operation = result.current.handleCheckIn('hourly', 'س ج ط 1 2 3 4');
+      });
+      await operation;
+
+      // The move the owner watches on screen: 5 → 4 (phone math).
+      expect(result.current.garage?.credits).toBe(4);
+      expect(narration).toHaveBeenCalledWith('phone_credit_debit', { from: 5, to: 4 });
+
+      vi.mocked(vehicleService.checkInVehicle).mockResolvedValue({
+        success: true,
+        data: { carsInside: 1, dailyCount: 1, credits: 4, lastTransactionDate: '2026-11-24' },
+      } as any);
+      await act(async () => {
+        result.current.setOnline(true);
+      });
+      await waitFor(() => expect(vehicleService.checkInVehicle).toHaveBeenCalledTimes(1));
+
+      // The bank's truth lands on the same story line for the next debug file.
+      expect(narration).toHaveBeenCalledWith('bank_credits_applied', { credits: 4 });
+    } finally {
+      narration.mockRestore();
+    }
   }, 15000);
 });
