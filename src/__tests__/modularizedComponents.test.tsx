@@ -323,7 +323,7 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     expect(screen.queryByText('أرق لتطوير البرمجيات')).not.toBeInTheDocument();
   });
 
-  it('hides the persistent balance card and shows the SmartActionPrompt when credits = 0', () => {
+  it('hides the persistent balance card and shows the SmartActionPrompt below the still-mounted plate card when credits = 0', () => {
     // Depleted garage: credits = 0, prepaid_credits billing model
     const depletedGarage = { ...mockGarage, billingModel: 'prepaid_credits' as const, credits: 0 };
 
@@ -344,7 +344,11 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
 
     // The persistent balance card (with "آخر رصيد" badge) is gone
     expect(screen.queryByTestId('low-credit-indicator')).not.toBeInTheDocument();
-    // The depleted-state SmartActionPrompt owns the main area instead
+    // OFFLINE STEP 1 (owner design): the plate input STAYS on screen so staff
+    // can still type an inside plate and issue its exit receipt.
+    expect(screen.getByRole('textbox', { name: 'رقم لوحة السيارة' })).toBeInTheDocument();
+    // The depleted-state recharge prompt renders BELOW the registration card
+    // instead of replacing it.
     expect(screen.getByText('رصيدك خلص')).toBeInTheDocument();
   });
 });
