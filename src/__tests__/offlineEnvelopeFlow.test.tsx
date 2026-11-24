@@ -479,4 +479,77 @@ describe('offline envelope drawer flow', () => {
     // The red chip clears — these were resolved duplicates, not refusals.
     expect(envelopeQueue.rejectedCount(GARAGE_ID)).toBe(0);
   }, 20000);
+
+  // ── OFFLINE STEP 3: the tap times reach the bank ─────────────────────────
+  it('flush sends the true entry tap time with the check-in payload', async () => {
+    const tappedAtFloor = Date.now();
+    const { result } = renderOperations(createGarage(), false);
+
+    let operation!: Promise<string | null>;
+    await act(async () => {
+      operation = result.current.handleCheckIn('hourly', 'س ج ط 1 2 3 4');
+    });
+    await operation;
+
+    vi.mocked(vehicleService.checkInVehicle).mockResolvedValue({
+      success: true,
+      data: { carsInside: 1, dailyCount: 1, credits: 4, lastTransactionDate: '2026-11-24' },
+    } as any);
+
+    await act(async () => {
+      result.current.setOnline(true);
+    });
+    await waitFor(() => expect(vehicleService.checkInVehicle).toHaveBeenCalledTimes(1));
+
+    const [, payload, idempotencyKey] = vi.mocked(vehicleService.checkInVehicle).mock.calls[0];
+    expect(idempotencyKey).toMatch(/^vehicle_checkin_/);
+    // The envelope's entryTimeIso rides on the flush payload — the bank
+    // stamps the vehicle with the real tap, not with the flush clock.
+    const entryIso = (payload as any).entryTimeIso;
+    expect(typeof entryIso).toBe('string');
+    const tappedAt = new Date(entryIso).getTime();
+    expect(tappedAt).toBeGreaterThanOrEqual(tappedAtFloor);
+    expect(tappedAt).toBeLessThanOrEqual(Date.now());
+  }, 15000);
+
+  it('flush sends the true exit tap time with the check-out payload', async () => {
+    const tappedAtFloor = Date.now();
+    const { result } = renderOperations(createGarage(), false);
+
+    await act(async () => {
+      result.current.setSelectedVehicle(makeInsideVehicle());
+    });
+    let done!: Promise<void>;
+    await act(async () => {
+      done = result.current.confirmCheckOut();
+    });
+    await done;
+
+    vi.mocked(vehicleService.checkOutVehicle).mockResolvedValue({
+      success: true,
+      cost: 30,
+      carsInside: 0,
+      totalVehiclesOut: 1,
+      todayRevenue: 30,
+      totalRevenue: 30,
+      todayCount: 0,
+      lastTransactionDate: '2026-11-24',
+    } as any);
+
+    await act(async () => {
+      result.current.setOnline(true);
+    });
+    await waitFor(() => expect(vehicleService.checkOutVehicle).toHaveBeenCalledTimes(1));
+
+    const call = vi.mocked(vehicleService.checkOutVehicle).mock.calls[0];
+    expect(call[1]).toBe('سجط1234');
+    expect(call[5]).toMatch(/^vehicle_checkout_/);
+    // The exit tap time rides as the last argument — the bank bills the
+    // stay from it, not from the flush moment.
+    const exitIso = call[6];
+    expect(typeof exitIso).toBe('string');
+    const tappedAt = new Date(exitIso as string).getTime();
+    expect(tappedAt).toBeGreaterThanOrEqual(tappedAtFloor);
+    expect(tappedAt).toBeLessThanOrEqual(Date.now());
+  }, 15000);
 });

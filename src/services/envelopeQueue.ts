@@ -51,6 +51,12 @@ export interface OfflineEnvelope {
    * envelope instead of committing it.
    */
   phoneCost?: number;
+  /**
+   * OFFLINE STEP 3 (checkout envelopes only): the true exit tap time. The
+   * bank bills the stay from this moment, not from the flush moment — an
+   * envelope can sit in the drawer for hours while the line is down.
+   */
+  exitTimeIso?: string;
   createdAt: number;
   attempts: number;
   status: EnvelopeStatus;

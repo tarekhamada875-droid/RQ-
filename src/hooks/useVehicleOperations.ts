@@ -512,6 +512,9 @@ export function useVehicleOperations({
         plateRaw: vehicleToOut.id,
         vehicleType: vehicleToOut.type === 'overnight' ? 'overnight' : 'hourly',
         entryTimeIso: safeDate(vehicleToOut.entryTime).toISOString(),
+        // OFFLINE STEP 3: the exit tap time travels with the envelope so the
+        // bank bills the true stay (the flush may happen hours later).
+        exitTimeIso: new Date(now).toISOString(),
         staffName: currentStaff ? currentStaff.name : 'مدير الجراج',
         staffId: currentStaff ? currentStaff.id : null,
         isSubscriber: Boolean((vehicleToOut as any)?.isSubscriber),
@@ -826,6 +829,9 @@ export function useVehicleOperations({
             staffId: envelope.staffId,
             staffName: envelope.staffName,
             isSubscriber: envelope.isSubscriber,
+            // OFFLINE STEP 3: the true entry tap time — the bank stamps the
+            // vehicle with it so the exit fee bills the real stay.
+            entryTimeIso: envelope.entryTimeIso,
           }, envelope.id);
           if (!res.success) {
             const code = (res as any).code;
@@ -859,6 +865,9 @@ export function useVehicleOperations({
             envelope.staffName,
             envelope.staffId ?? undefined,
             envelope.id,
+            // OFFLINE STEP 3: the true exit tap time — the bank bills the
+            // stay from it, not from this flush moment.
+            envelope.exitTimeIso,
           );
           if (!res.success) {
             const code = (res as any).code;
