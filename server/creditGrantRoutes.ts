@@ -23,6 +23,7 @@ import { withAdmin, withErrorHandler } from './routes/combinators';
 import { parseMoneyAmount, addMoneyRounded } from './money';
 import { parseFirestorePageRequest, firestorePageStartAfter, buildFirestorePage } from './firestorePagination';
 import { writeMaintainedAdminDelta } from './workerMaintenance';
+import { buildActivityLogEntry } from './activityLogWriter';
 
 export function registerCreditGrantRoutes(app: WorkerApp): void {
 
@@ -335,11 +336,11 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, withAdmin(async (c
           }
         });
       }
-      t.set(adminDb.collection('activity_logs').doc(), { garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_grant', timestamp: new Date(), details: { amount, paymentAmountEgp, reason, ledgerEntryId: entry.value.entryId } });
+      t.set(adminDb.collection('activity_logs').doc(), buildActivityLogEntry({ garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_grant', timestamp: new Date(), details: { amount, paymentAmountEgp, reason, ledgerEntryId: entry.value.entryId } }));
       if (referralLedger && referralAward && referrerRef && referralMarkerRef) {
         t.set(referrerRef, { credits: referralTransition.value.balance }, { merge: true });
         t.set(adminDb.doc(`credit_ledger/${referralLedger.entryId}`), { ...referralLedger, source: 'first_paid_grant_referral', referredGarageId: garageId });
-        t.set(adminDb.collection('activity_logs').doc(), { garageId: referrerGarageId, garageName: referrerSnap.data()?.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_referral_award', timestamp: new Date(), details: { referredGarageId: garageId, amount: 10, ledgerEntryId: referralLedger.entryId } });
+        t.set(adminDb.collection('activity_logs').doc(), buildActivityLogEntry({ garageId: referrerGarageId, garageName: referrerSnap.data()?.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_referral_award', timestamp: new Date(), details: { referredGarageId: garageId, amount: 10, ledgerEntryId: referralLedger.entryId } }));
       }
       if (isFirstQualifyingGrant && referralMarkerRef && !referralMarkerSnap?.exists) {
         t.set(referralMarkerRef, {
@@ -403,7 +404,7 @@ app.post('/api/garages/:id/credit-corrections', requireWorkerAuth, withAdmin(asy
       if (entry.ok === false) throw new Error(entry.error);
       t.set(garageRef, { credits: transition.value.balance }, { merge: true });
       t.set(adminDb.doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: 'admin_correction' });
-      t.set(adminDb.collection('activity_logs').doc(), { garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_correction', timestamp: new Date(), details: { amount, reason, ledgerEntryId: entry.value.entryId } });
+      t.set(adminDb.collection('activity_logs').doc(), buildActivityLogEntry({ garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_correction', timestamp: new Date(), details: { amount, reason, ledgerEntryId: entry.value.entryId } }));
       correction = { garageId, amount, reason, balance: transition.value.balance, entryId: entry.value.entryId };
       storeIdempotencyInTransaction(t, idempotencyKey, correction, '/api/garages/:id/credit-corrections', callerUid, requestFingerprint);
     });

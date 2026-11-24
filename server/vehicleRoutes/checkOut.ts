@@ -19,6 +19,7 @@ import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from '.
 import { authorizeVehicleGarageScope } from '../domain/authorization';
 import { writeMaintainedGarageDelta, writeMaintainedGarageDailyDelta } from '../workerMaintenance';
 import { getCairoDateKey } from '../projections';
+import { buildActivityLogEntry } from '../activityLogWriter';
 import { addMoneyRounded } from '../money';
 import { applyCheckoutReportDelta } from '../reportAggregate';
 
@@ -157,7 +158,7 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
       writeMaintainedGarageDailyDelta(t, garageId, today, { todayRevenue: finalDecisionCost, todayExits: 1 });
 
       const logRef = adminDb.collection('activity_logs').doc();
-      t.set(logRef, {
+      t.set(logRef, buildActivityLogEntry({
         garageId,
         garageName: garageData.name || '',
         staffId: staffId || null,
@@ -170,7 +171,7 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
         isSubscriber: !!vehicleData.isSubscriber,
         timestamp: new Date(),
         amount: finalDecisionCost
-      });
+      }));
       recordDomainEventInTransaction(t, adminDb, {
         garageId,
         aggregateType: 'vehicle',

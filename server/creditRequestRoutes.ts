@@ -9,6 +9,7 @@ import { CREDIT_AMOUNT_MAX_EGP, CREDIT_AMOUNT_MIN_EGP } from './domain/limits';
 import { parseMoneyAmount, addMoneyRounded } from './money';
 import { withAdmin, withErrorHandler } from './routes/combinators';
 import { writeMaintainedAdminDelta } from './workerMaintenance';
+import { buildActivityLogEntry } from './activityLogWriter';
 
 
 /**
@@ -399,7 +400,7 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
       // Write an activity_log entry so the garage-side recharge
       // notification (subscribeToGarageRechargeLogs) picks this up.
       // Mirrors the direct-grant path in /api/garages/:id/credit-grants.
-      t.set(adminDb.collection('activity_logs').doc(), {
+      t.set(adminDb.collection('activity_logs').doc(), buildActivityLogEntry({
         garageId: requestData.garageId,
         garageName: garage.name || requestData.garageName || '',
         staffId: callerUid,
@@ -413,7 +414,7 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
           ledgerEntryId: entry.value.entryId,
           source: 'credit_request_approval'
         }
-      });
+      }));
 
       // Referral writes — same shape as the direct-grant path
       // (creditGrantRoutes.ts): referrer balance, referral ledger entry,
@@ -422,7 +423,7 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
       if (referralLedger && referralAward && referrerRef && referralMarkerRef) {
         t.set(referrerRef, { credits: referralTransition.value.balance }, { merge: true });
         t.set(adminDb.doc(`credit_ledger/${referralLedger.entryId}`), { ...referralLedger, source: 'first_paid_grant_referral', referredGarageId: requestData.garageId });
-        t.set(adminDb.collection('activity_logs').doc(), { garageId: referrerGarageId, garageName: referrerSnap.data()?.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_referral_award', timestamp: now, details: { referredGarageId: requestData.garageId, amount: 10, ledgerEntryId: referralLedger.entryId } });
+        t.set(adminDb.collection('activity_logs').doc(), buildActivityLogEntry({ garageId: referrerGarageId, garageName: referrerSnap.data()?.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_referral_award', timestamp: now, details: { referredGarageId: requestData.garageId, amount: 10, ledgerEntryId: referralLedger.entryId } }));
       }
       if (isFirstQualifyingGrant && referralMarkerRef && !referralMarkerSnap?.exists) {
         t.set(referralMarkerRef, {

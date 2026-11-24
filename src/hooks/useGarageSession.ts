@@ -424,16 +424,7 @@ export function useGarageSession({
           code: err?.code || null,
           msg: String(errMsg).slice(0, 200),
         });
-        if (
-          errMsg === 'SESSION_OCCUPIED' ||
-          errMsg === 'DELEGATE_SESSION_OCCUPIED' ||
-          errMsg === 'ACCESS_DENIED_ACTIVE_SESSION_EXISTS' ||
-          errMsg.includes('مستخدم على جهاز آخر')
-        ) {
-          showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
-          handleLogout(true);
-          return;
-        } else if (errMsg.includes('permission') || errMsg.includes('Permission')) {
+        if (errMsg.includes('permission') || errMsg.includes('Permission')) {
           showLogoutToastOnce('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً');
           handleLogout(true);
           return;
@@ -483,16 +474,12 @@ export function useGarageSession({
         } catch (hbErr: any) {
           if (!isMounted) return;
           console.warn('Heartbeat refresh failed:', hbErr);
-          const hbMsg = hbErr?.message || String(hbErr);
-          if (
-            hbMsg === 'SESSION_OCCUPIED' ||
-            hbMsg === 'DELEGATE_SESSION_OCCUPIED' ||
-            hbMsg === 'ACCESS_DENIED_ACTIVE_SESSION_EXISTS' ||
-            hbMsg.includes('مستخدم على جهاز آخر')
-          ) {
-            showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
-            handleLogout(true);
-          }
+          // REMOVED (2026-11-23): the dead "هذا الحساب نشط حالياً على جهاز آخر"
+          // branch. The Worker never returns SESSION_OCCUPIED /
+          // DELEGATE_SESSION_OCCUPIED / ACCESS_DENIED_ACTIVE_SESSION_EXISTS
+          // (multi-device login is the actual behavior — see
+          // server/auth/sessionMarkers.ts). Other heartbeat errors are already
+          // retried on the next interval; nothing to do here.
         }
       };
 

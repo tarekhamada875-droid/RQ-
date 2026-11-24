@@ -372,6 +372,35 @@ class FirebaseAuthRest {
     });
     if (!response.ok) throw new Error(`FIREBASE_AUTH_DELETE_FAILED:${response.status}`);
   }
+
+  /**
+   * List Firebase Auth users in pages via the Identity Toolkit accounts:batchGet
+   * REST endpoint (PR Day 2, 2026-11-23). Required for the nightly anonymous-
+   * account cleanup cron — there is no Firestore collection backing Firebase
+   * Auth users, so they cannot be queried via adminDb.
+   *
+   * Returns up to `maxResults` users (1000 max per the API) plus a nextPageToken
+   * when more pages exist. Each `users[]` entry is the raw Identity Toolkit
+   * account shape: { localId, email?, phoneNumber?, providerUserInfo[], ...,
+   * lastLoginAt?, createdAt? }.
+   *
+   * Requires the identitytoolkit scope on the service-account token (see
+   * getGoogleAccessToken). Best-effort: callers must catch and never surface
+   * failures from a cron context.
+   */
+  async listUsers(maxResults: number = 1000, pageToken?: string): Promise<{ users: any[]; nextPageToken?: string }> {
+    const token = await getGoogleAccessToken();
+    const url = new URL(`https://identitytoolkit.googleapis.com/v1/projects/${this.projectId}/accounts:batchGet`);
+    url.searchParams.set('maxResults', String(Math.min(1000, Math.max(1, maxResults))));
+    if (pageToken) url.searchParams.set('nextPageToken', pageToken);
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: { authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error(`FIREBASE_AUTH_LIST_FAILED:${response.status}`);
+    const body = await response.json() as { users?: any[]; nextPageToken?: string };
+    return { users: body.users || [], nextPageToken: body.nextPageToken };
+  }
   async verifyIdToken(token: string): Promise<any> {
     const parts = token.split('.');
     if (parts.length !== 3) throw new Error('INVALID_TOKEN');

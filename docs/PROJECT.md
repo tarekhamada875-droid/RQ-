@@ -55,6 +55,25 @@ Staff deletion performs full revocation: all active sessions are revoked, the se
 
 Garage deletion is a multi-step process that also cleans up payment reference markers, credit ledger entries, activity logs, staff records, sessions, and private PINs.
 
+### Data retention (2026-11-23, owner scale-readiness initiative)
+
+The `activity_logs` collection is a ROLLING 30-DAY WINDOW used by the garage dashboard's live "today's transactions" list and the admin daily-report modal. Long-term aggregates (counts, revenue, per-staff breakdowns) live in `garages/{garageId}/daily_stats/{dateId}`, which is permanent and never TTL'd.
+
+Growth math at the owner's stated scale ceiling (700 garages × 1,000 cars/day): ~700K check-out activity_logs writes/day → ~21M docs steady-state in the 30-day window → ~3-5 GB storage. Without TTL, activity_logs would grow forever (~100 GB/year) and historical-day report reads would drift toward expensive full scans.
+
+Every Worker write to `activity_logs` MUST go through `server/activityLogWriter.ts:buildActivityLogEntry()`, which attaches `expireAt: timestamp + 30 days`. The Firestore TTL policy on the `expireAt` field auto-deletes expired entries (typically within 72 hours of the expireAt timestamp, per Firestore's documentation).
+
+One-time operator setup (NOT part of `firebase deploy`): the TTL policy on the `activity_logs.expireAt` field must be configured via the gcloud CLI or Firebase console. The command (run once per database):
+```
+gcloud firestore fields ttls update \
+  --collection-group=activity_logs \
+  --field=expireAt \
+  --enable-ttl
+```
+Verify with `gcloud firestore fields ttls list --collection-group=activity_logs`.
+
+Entries that must NOT expire (audit logs for legal/finance records) should live in a different collection — `activity_logs` is for live + recent operational visibility only. The current `actionType` set (check_out, credit_grant, credit_correction, credit_referral_award, delete_refund, garage_delete, create) all qualify as recent operational visibility; none are legal/finance records (those live in `credit_ledger` and `admin_summary`, neither of which has a TTL).
+
 ## UX boundary
 
 Arabic is the sole supported application language. Keep user-facing interface copy Arabic-only and use RTL layout across active roles, screens, dialogs, and shared feedback. Garage-facing dashboard copy uses Egyptian colloquial Arabic rather than Modern Standard Arabic (2026-11-14); keep new garage-facing strings in dialect. Time is hidden from user-facing screens; server timestamps remain authoritative internally.

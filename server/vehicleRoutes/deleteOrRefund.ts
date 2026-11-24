@@ -16,6 +16,7 @@ import { createOperationId, createVehicleDelta, nextOperationVersion } from '../
 import { materializeCreditLedgerEntry, restoreCredits } from '../domain/prepaidCreditLedger';
 import { writeMaintainedGarageDelta, writeMaintainedGarageDailyDelta } from '../workerMaintenance';
 import { getCairoDateKey } from '../projections';
+import { buildActivityLogEntry } from '../activityLogWriter';
 
 export function registerVehicleDelete(app: WorkerApp): void {
 // Vehicle correction is deletion-only; refunds are no longer supported.
@@ -214,7 +215,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
       writeMaintainedGarageDailyDelta(t, garageId, todayYMD, maintainedDailyDelta);
 
       const logRef = adminDb.collection('activity_logs').doc();
-      t.set(logRef, {
+      t.set(logRef, buildActivityLogEntry({
         garageId,
         garageName: garageData.name || '',
         staffId: staffId || vehicleData.staffId || null,
@@ -227,7 +228,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
           creditAmount: creditRestore.entry.amount,
           creditLedgerEntryId: creditRestore.entry.entryId,
         } : {})
-      });
+      }));
       recordDomainEventInTransaction(t, adminDb, {
         garageId,
         aggregateType: 'vehicle',
