@@ -43,6 +43,14 @@ export interface OfflineEnvelope {
   staffName: string;
   staffId: string | null;
   isSubscriber: boolean;
+  /**
+   * OFFLINE STEP 2b (checkout envelopes only): the receipt preview's phone
+   * cost. The bank re-computes the authoritative fee on flush — this number
+   * exists so the flush can roll the PROVISIONAL revenue counters back out
+   * of the notebook when the bank resolves (duplicate exit) or refuses the
+   * envelope instead of committing it.
+   */
+  phoneCost?: number;
   createdAt: number;
   attempts: number;
   status: EnvelopeStatus;
