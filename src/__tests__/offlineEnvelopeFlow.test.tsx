@@ -7,6 +7,7 @@ import { calculateCost } from '../utils/cost';
 import { envelopeQueue } from '../services/envelopeQueue';
 import { useVehicleOperations } from '../hooks/useVehicleOperations';
 import { debugRecorder } from '../debug/debugRecorder';
+import { getCairoDateKey } from '../domain/garage/businessDay';
 import { ServerTimeProvider } from '../hooks/serverTimeContext';
 
 /**
@@ -24,6 +25,7 @@ import { ServerTimeProvider } from '../hooks/serverTimeContext';
 vi.mock('../services', () => { const _svc = {
     checkInVehicle: vi.fn(),
     checkOutVehicle: vi.fn(),
+    deleteVehicle: vi.fn(),
     getSubscriberByPlateOnce: vi.fn(),
   }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
@@ -811,5 +813,259 @@ describe('offline envelope drawer flow', () => {
     });
     expect(vehicleService.checkInVehicle).toHaveBeenCalledTimes(1);
     expect(envelopeQueue.rejectedCount(GARAGE_ID)).toBe(0);
+  }, 20000);
+});
+
+/**
+ * OFFLINE MISTAKE RULE (owner request 2026-11-24): "exiting a car that just
+ * entered shows 0 to pay — it must not; only delete the car because it is a
+ * mistake (respecting the 3 a day mistakes)" — and the delete must work
+ * OFFLINE exactly like online (offline UX = online UX).
+ */
+describe('offline mistake rule: just-entered delete', () => {
+  beforeEach(() => {
+    localStorage.removeItem('app_offline_envelopes');
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+    localStorage.removeItem('app_offline_envelopes');
+  });
+
+  /** A car that entered 2 minutes ago — inside the 5-minute window. */
+  function makeJustEnteredVehicle(): Vehicle {
+    return {
+      id: 'سجط1234',
+      plateNumber: 'س ج ط 1 2 3 4',
+      plateNumberRaw: 'سجط1234',
+      garageId: GARAGE_ID,
+      type: 'hourly',
+      status: 'inside',
+      entryTime: new Date(Date.now() - 2 * 60_000),
+      enteredByEntityId: GARAGE_ID,
+      enteredByRole: 'garage',
+      creditDebit: { amount: 1 },
+    } as unknown as Vehicle;
+  }
+
+  it('offline check-out refuses a just-entered car — no 0-EGP exit letter', async () => {
+    const garage = createGarage({ carsInside: 1, todayCount: 1 });
+    const { result, showToast } = renderOperations(garage, false);
+    const vehicle = makeJustEnteredVehicle();
+
+    act(() => {
+      result.current.setSelectedVehicle(vehicle);
+      result.current.setShowCheckOutModal(true);
+    });
+    let operation!: Promise<void>;
+    await act(async () => {
+      operation = result.current.confirmCheckOut();
+    });
+    await operation;
+
+    // No exit letter, no notebook change, no Worker call — the operator is
+    // told to wait out the window or delete the entry as a mistake.
+    expect(envelopeQueue.list(GARAGE_ID)).toHaveLength(0);
+    expect(vehicleService.checkOutVehicle).not.toHaveBeenCalled();
+    expect(result.current.garage?.carsInside).toBe(1);
+    expect(result.current.garage?.todayRevenue).toBe(0);
+    expect(result.current.garage?.totalVehiclesOut).toBe(0);
+    expect(showToast).toHaveBeenCalledWith(
+      'العربية لسه داخلية — استنى ٥ دقايق من دخولها أو امسحها لو دخول غلط',
+      'info',
+    );
+  }, 15000);
+
+  it('offline delete tears up a pending check-in the bank never saw (no budget at the bank, slot charged locally)', async () => {
+    const { result, showToast } = renderOperations(createGarage(), false);
+
+    // Check the car in offline first: envelope queued, phone math applied.
+    let operation!: Promise<string | null>;
+    await act(async () => {
+      operation = result.current.handleCheckIn('hourly', 'س ج ط 1 2 3 4');
+    });
+    expect(await operation).toBeNull();
+    expect(result.current.garage?.credits).toBe(4);
+    expect(result.current.garage?.carsInside).toBe(1);
+
+    // Now delete the mistake offline.
+    act(() => {
+      result.current.setSelectedVehicle(makeJustEnteredVehicle());
+      result.current.setShowCheckOutModal(true);
+    });
+    await act(async () => {
+      await result.current.handleDeleteVehicle();
+    });
+
+    // The pending check-in envelope is gone — nothing for the bank to see.
+    expect(envelopeQueue.list(GARAGE_ID)).toHaveLength(0);
+    // The notebook is back where it started…
+    expect(result.current.garage?.credits).toBe(5);
+    expect(result.current.garage?.carsInside).toBe(0);
+    expect(result.current.garage?.todayCount).toBe(0);
+    // …and one slot of the 3/day mistake budget is spent on this phone.
+    expect(result.current.garage?.dailyDeletionCount).toBe(1);
+    expect(typeof result.current.garage?.lastDeletionDate).toBe('string');
+    // No Worker call happened offline.
+    expect(vehicleService.deleteVehicle).not.toHaveBeenCalled();
+    const toastTypes = showToast.mock.calls.map((call) => call[1]);
+    expect(toastTypes).not.toContain('error');
+  }, 15000);
+
+  it('offline delete of a bank-known car queues a delete envelope and applies the optimistic patch', async () => {
+    const garage = createGarage({ carsInside: 1, todayCount: 1, credits: 5 });
+    const { result } = renderOperations(garage, false);
+    const vehicle = makeJustEnteredVehicle();
+
+    act(() => {
+      result.current.setSelectedVehicle(vehicle);
+      result.current.setShowCheckOutModal(true);
+    });
+    await act(async () => {
+      await result.current.handleDeleteVehicle();
+    });
+
+    const envelopes = envelopeQueue.list(GARAGE_ID);
+    expect(envelopes).toHaveLength(1);
+    expect(envelopes[0].kind).toBe('delete');
+    expect(envelopes[0].plateRaw).toBe('سجط1234');
+    expect(envelopes[0].refundAmount).toBe(1);
+    expect(typeof envelopes[0].deleteDayKey).toBe('string');
+    expect(envelopes[0].status).toBe('pending');
+    expect(vehicleService.deleteVehicle).not.toHaveBeenCalled();
+    // Optimistic notebook: the car left, the credit came back, the budget
+    // slot is charged.
+    expect(result.current.garage?.carsInside).toBe(0);
+    expect(result.current.garage?.credits).toBe(6);
+    expect(result.current.garage?.dailyDeletionCount).toBe(1);
+  }, 15000);
+
+  it('offline delete respects the 3/day mistake budget', async () => {
+    const garage = createGarage({
+      carsInside: 1,
+      credits: 5,
+      dailyDeletionCount: 3,
+      lastDeletionDate: getCairoDateKey(),
+    });
+    const { result, showToast } = renderOperations(garage, false);
+
+    act(() => {
+      result.current.setSelectedVehicle(makeJustEnteredVehicle());
+      result.current.setShowCheckOutModal(true);
+    });
+    await act(async () => {
+      await result.current.handleDeleteVehicle();
+    });
+
+    expect(envelopeQueue.list(GARAGE_ID)).toHaveLength(0);
+    expect(result.current.garage?.carsInside).toBe(1);
+    expect(result.current.garage?.credits).toBe(5);
+    expect(showToast).toHaveBeenCalledWith('وصلت للحد الأقصى للحذف اليوم (3 مرات)', 'error');
+  }, 15000);
+
+  it('flush commits the delete letter through the same Worker endpoint and key', async () => {
+    const garage = createGarage({ carsInside: 1, credits: 5 });
+    const { result } = renderOperations(garage, false);
+
+    act(() => {
+      result.current.setSelectedVehicle(makeJustEnteredVehicle());
+      result.current.setShowCheckOutModal(true);
+    });
+    await act(async () => {
+      await result.current.handleDeleteVehicle();
+    });
+    const envelope = envelopeQueue.list(GARAGE_ID)[0];
+
+    vi.mocked(vehicleService.deleteVehicle).mockResolvedValue(undefined as any);
+
+    await act(async () => {
+      result.current.setOnline(true);
+    });
+
+    await waitFor(() => {
+      expect(envelopeQueue.pendingCount(GARAGE_ID)).toBe(0);
+    });
+    expect(vehicleService.deleteVehicle).toHaveBeenCalledTimes(1);
+    // The SAME road a live delete uses, with the envelope's own key.
+    expect(vehicleService.deleteVehicle).toHaveBeenCalledWith(
+      GARAGE_ID,
+      'سجط1234',
+      undefined,
+      'مدير الجراج',
+      undefined,
+      envelope.id,
+    );
+    // The optimistic patch stands (the bank's snapshot re-affirms it).
+    expect(result.current.garage?.carsInside).toBe(0);
+    expect(result.current.garage?.credits).toBe(6);
+    expect(envelopeQueue.rejectedCount(GARAGE_ID)).toBe(0);
+  }, 20000);
+
+  it('flush rolls the notebook back when the bank says the mistake budget is spent', async () => {
+    const garage = createGarage({ carsInside: 1, credits: 5 });
+    const { result, showToast } = renderOperations(garage, false);
+
+    act(() => {
+      result.current.setSelectedVehicle(makeJustEnteredVehicle());
+      result.current.setShowCheckOutModal(true);
+    });
+    await act(async () => {
+      await result.current.handleDeleteVehicle();
+    });
+    expect(result.current.garage?.credits).toBe(6);
+    expect(result.current.garage?.carsInside).toBe(0);
+
+    vi.mocked(vehicleService.deleteVehicle).mockRejectedValue(
+      new Error('reached_daily_deletion_limit'),
+    );
+
+    await act(async () => {
+      result.current.setOnline(true);
+    });
+
+    await waitFor(() => {
+      expect(envelopeQueue.rejectedCount(GARAGE_ID)).toBe(1);
+    });
+    // The car is still inside at the bank — the notebook mirrors that NO.
+    expect(result.current.garage?.carsInside).toBe(1);
+    expect(result.current.garage?.credits).toBe(5);
+    expect(result.current.garage?.dailyDeletionCount).toBe(0);
+    expect(showToast).toHaveBeenCalledWith(
+      'وصلت للحد الأقصى للحذف اليوم (3 مرات) — العربية فضلت داخلية',
+      'error',
+    );
+  }, 20000);
+
+  it('flush resolves a car-not-inside answer calmly — rollback, no red chip', async () => {
+    const garage = createGarage({ carsInside: 1, credits: 5 });
+    const { result, showToast } = renderOperations(garage, false);
+
+    act(() => {
+      result.current.setSelectedVehicle(makeJustEnteredVehicle());
+      result.current.setShowCheckOutModal(true);
+    });
+    await act(async () => {
+      await result.current.handleDeleteVehicle();
+    });
+
+    vi.mocked(vehicleService.deleteVehicle).mockRejectedValue(
+      Object.assign(new Error('السيارة غير موجودة بالداخل'), { code: 'NOT_FOUND' }),
+    );
+
+    await act(async () => {
+      result.current.setOnline(true);
+    });
+
+    await waitFor(() => {
+      expect(envelopeQueue.pendingCount(GARAGE_ID)).toBe(0);
+    });
+    // Resolved duplicate: envelope dropped, notebook back to bank truth.
+    expect(envelopeQueue.list(GARAGE_ID)).toHaveLength(0);
+    expect(result.current.garage?.carsInside).toBe(1);
+    expect(result.current.garage?.credits).toBe(5);
+    expect(result.current.garage?.dailyDeletionCount).toBe(0);
+    const toastTypes = showToast.mock.calls.map((call) => call[1]);
+    expect(toastTypes).not.toContain('error');
   }, 20000);
 });
