@@ -5,9 +5,6 @@ import { Garage, Vehicle } from '../../types';
 import { LicensePlateKeyboard } from './LicensePlateKeyboard';
 import { FitText } from '../ui/FitText';
 import { vehicleService } from '../../services';
-// OFFLINE STEP 2: direct module import — the drawer mirror answers "is this
-// plate on THIS phone?" before any server/cache read.
-import { envelopeQueue } from '../../services/envelopeQueue';
 
 interface RegistrationCardProps {
   isInputFocused: boolean;
@@ -16,7 +13,7 @@ interface RegistrationCardProps {
   garage: Garage;
   handleCheckIn: (type: 'hourly' | 'overnight', plateValue: string) => Promise<string | null>;
   /**
-   * OFFLINE STEP 1 (2026-11-24, owner design): true when the prepaid balance
+   * ZERO-CREDIT RULE (owner design 2026-11-24): true when the prepaid balance
    * hit zero. The card itself STAYS MOUNTED — staff can still type a plate
    * that is inside and issue its exit receipt (the red checkout button below
    * is unaffected). Only the ساعة/مبيت check-in buttons are hidden: with no
@@ -89,32 +86,6 @@ export const RegistrationCard = memo(({
     }
     const generation = ++lookupGenerationRef.current;
     const timer = setTimeout(async () => {
-      // ── OFFLINE STEP 2: the drawer mirror ──────────────────────
-      // (1) A pending check-in envelope means the car exists only on this
-      // phone (its Firestore doc is not written until the flush) — answer
-      // from the envelope so the offline exit flow still works.
-      const pendingCheckIn = envelopeQueue.findPendingCheckIn(garage.id, rawPlate);
-      if (pendingCheckIn) {
-        if (lookupGenerationRef.current !== generation) return;
-        setInsideVehicleForPlate({
-          id: rawPlate, // vehicle doc ID === normalized plate raw
-          plateNumber: pendingCheckIn.plateNumber,
-          plateNumberRaw: rawPlate,
-          entryTime: new Date(pendingCheckIn.entryTimeIso) as any,
-          type: pendingCheckIn.vehicleType,
-          garageId: garage.id,
-          status: 'inside',
-        } as Vehicle);
-        return;
-      }
-      // (2) A pending check-out envelope means the car already left on this
-      // phone — the cached Firestore doc may still say 'inside' until the
-      // flush lands, so suppress the second-exit offer explicitly.
-      if (envelopeQueue.hasPendingCheckout(garage.id, rawPlate)) {
-        if (lookupGenerationRef.current !== generation) return;
-        setInsideVehicleForPlate(null);
-        return;
-      }
       try {
         const doc = await vehicleService.getVehicleDocOnce(garage.id, rawPlate);
         if (lookupGenerationRef.current !== generation) return; // a newer lookup superseded this one
@@ -322,7 +293,7 @@ export const RegistrationCard = memo(({
               </div>
             ) : (isInputFocused || (newPlateNumber && isPlateValidMemo)) ? (
                   <div className="overflow-hidden">
-                    {/* OFFLINE STEP 1: depleted balance hides the paid-entry
+                    {/* ZERO-CREDIT RULE: depleted balance hides the paid-entry
                         buttons entirely — the keyboard below stays available
                         so staff can type an inside plate and reach the red
                         exit button. */}

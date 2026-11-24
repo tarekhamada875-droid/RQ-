@@ -55,10 +55,6 @@ function renderOperations(initialGarage: Garage) {
       garage,
       setGarage,
       currentStaff: null,
-      isOnline: true,
-      // STEP 2c: these tests exercise the ONLINE paths only — the session
-      // gate starts open so the flush effects behave as before.
-      isSessionReady: true,
       showToast,
       closeKeyboard,
     });

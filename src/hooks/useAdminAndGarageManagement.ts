@@ -29,7 +29,6 @@ interface UseAdminAndGarageManagementProps {
   setShowDeleteConfirm: (b: boolean) => void;
   setGarageDeletionProgress: (p: GarageDeletionProgress | null) => void;
   sessionId: string;
-  isOnline: boolean;
   isLoading: boolean;
   closeKeyboard: () => void;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
@@ -51,7 +50,6 @@ export function useAdminAndGarageManagement({
   setShowDeleteConfirm,
   setGarageDeletionProgress,
   sessionId,
-  isOnline,
   isLoading,
   closeKeyboard,
   showToast,
@@ -62,10 +60,6 @@ export function useAdminAndGarageManagement({
 
   // Login via single PIN / Phone credentials
   const handleGarageLogin = useCallback(async (overrideInput?: string) => {
-    if (!isOnline) {
-      showToast('لا يوجد اتصال بالإنترنت. يرجى المحاولة عند عودة النت.', 'error');
-      return;
-    }
     const rawInput = (typeof overrideInput === 'string' && overrideInput.trim().length > 0) ? overrideInput : loginPhone;
     const cleanInput = normalizeDigits(rawInput ? rawInput.trim() : '').replace(/\D/g, '');
     if (!cleanInput) {
@@ -279,13 +273,9 @@ export function useAdminAndGarageManagement({
     } finally {
       setIsLoading(false);
     }
-  }, [isOnline, loginPhone, closeKeyboard, sessionId, showToast, setView, setGarage, setDelegate, setCurrentStaff, setLoginPhone, setUser, setIsLoading]);
+  }, [loginPhone, closeKeyboard, sessionId, showToast, setView, setGarage, setDelegate, setCurrentStaff, setLoginPhone, setUser, setIsLoading]);
 
   const handleDelegateLogin = useCallback(async (pin: string) => {
-    if (!isOnline) {
-      showToast('لا يوجد اتصال بالإنترنت. يرجى المحاولة عند عودة النت.', 'error');
-      return;
-    }
     const cleanPin = normalizeDigits(pin || '').replace(/\D/g, '');
     if (!cleanPin || cleanPin.length < 5) {
       showToast('الرقم السري غير صحيح', 'error');
@@ -368,14 +358,10 @@ export function useAdminAndGarageManagement({
     } finally {
       setIsLoading(false);
     }
-  }, [isOnline, closeKeyboard, sessionId, showToast, setView, setDelegate, setUser, setIsLoading]);
+  }, [closeKeyboard, sessionId, showToast, setView, setDelegate, setUser, setIsLoading]);
 
   // Create new garage
   const createNewGarage = useCallback(async (e: React.FormEvent<HTMLFormElement>): Promise<boolean> => {
-    if (!isOnline) {
-      showToast('لا يوجد اتصال بالإنترنت. يرجى المحاولة عند عودة النت.', 'error');
-      return false;
-    }
     e.preventDefault();
     setIsLoading(true);
     try {
@@ -485,15 +471,11 @@ export function useAdminAndGarageManagement({
     } finally {
       setIsLoading(false);
     }
-  }, [isOnline, delegate, allGarages, showToast, closeKeyboard, setIsLoading, refreshAdminLists]);
+  }, [delegate, allGarages, showToast, closeKeyboard, setIsLoading, refreshAdminLists]);
 
   // Delete garage
   const deleteGarage = useCallback(async (g: Garage | null) => {
     if (isLoading) return;
-    if (!isOnline) {
-      showToast('لا يوجد اتصال بالإنترنت. يرجى المحاولة عند عودة النت.', 'error');
-      return;
-    }
     if (!g) return;
     const garageId = g.id;
     closeKeyboard();
@@ -518,7 +500,7 @@ export function useAdminAndGarageManagement({
       setIsLoading(false);
       setGarageDeletionProgress(null);
     }
-  }, [isLoading, isOnline, closeKeyboard, showToast, setSelectedGarageForDetails, setView, setIsLoading, setShowDeleteConfirm, setGarageDeletionProgress, refreshAdminLists]);
+  }, [isLoading, closeKeyboard, showToast, setSelectedGarageForDetails, setView, setIsLoading, setShowDeleteConfirm, setGarageDeletionProgress, refreshAdminLists]);
 
   const removeDelegate = useCallback(async (id: string) => {
     await delegateService.removeDelegate(id);

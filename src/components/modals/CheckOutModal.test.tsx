@@ -125,7 +125,7 @@ describe('CheckOutModal icon actions', () => {
     expect(screen.queryByRole('button', { name: 'امسح العربية (دخول غلط)' })).toBeNull();
   });
 
-  // ── OFFLINE MISTAKE RULE (owner request 2026-11-24) ─────────────────────
+  // ── MISTAKE RULE (owner request 2026-11-24) ─────────────────────
   // A just-entered car is a MISTAKE: inside the 5-minute window the modal
   // must NEVER offer a 0-EGP exit — not for another entrant, and not when
   // the 3/day delete budget is spent. The price panel is replaced by a calm

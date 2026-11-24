@@ -22,9 +22,7 @@ import { SmartActionPrompt } from "./SmartActionPrompt";
 import { GarageDashboardHeaderAndDrawer } from "./dashboard/GarageDashboardHeaderAndDrawer";
 import { GarageSubscriptionCard } from "./dashboard/GarageSubscriptionCard";
 import { GarageActiveCountCard } from "./dashboard/GarageActiveCountCard";
-import { OfflinePendingChip } from "./dashboard/OfflinePendingChip";
 import { useGarageDashboardLiveData } from "../../hooks/useGarageDashboardLiveData";
-import { useEnvelopeCounts } from "../../hooks/useEnvelopeCounts";
 import { getCairoDateKey } from "../../domain/garage/businessDay";
 import type { Garage, Staff } from "../../types";
 
@@ -161,11 +159,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const systemConfig = useSystemConfig();
   const paymentWalletNumber = systemConfig?.paymentWalletNumber;
 
-  // OFFLINE STEP 2: the drawer's tick light — envelopes waiting to reach
-  // the bank (plus any the bank refused). Zero Firestore observers; reads
-  // the local drawer store via useSyncExternalStore.
-  const { pending: pendingEnvelopes, rejected: rejectedEnvelopes } = useEnvelopeCounts(garage?.id);
-
   return (
     <div
       className="h-screen h-[100dvh] bg-[#faf9f6] dark:bg-transparent font-sans w-full flex flex-col items-center overflow-hidden relative"
@@ -193,13 +186,13 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
           <GarageSubscriptionCard garage={garage} />
         )}
 
-        {/* OFFLINE STEP 1 (2026-11-24, owner design): when the prepaid balance
-            is depleted the registration card STAYS MOUNTED. Staff can still
-            type a plate that is inside and issue its exit receipt; only the
-            hourly/overnight check-in buttons are hidden (see RegistrationCard).
-            The recharge prompt no longer REPLACES the plate input — it renders
-            below the card (hidden while the keyboard is focused, same rule as
-            the balance card above). */}
+        {/* ZERO-CREDIT RULE (owner design 2026-11-24): when the prepaid
+            balance is depleted the registration card STAYS MOUNTED. Staff
+            can still type a plate that is inside and issue its exit
+            receipt; only the hourly/overnight check-in buttons are hidden
+            (see RegistrationCard). The recharge prompt no longer REPLACES
+            the plate input — it renders below the card (hidden while the
+            keyboard is focused, same rule as the balance card above). */}
         <RegistrationCard
           isInputFocused={isInputFocused}
           setIsInputFocused={setIsInputFocused}
@@ -243,10 +236,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
                     : 'جاري تنفيذ العملية...'}
             </span>
           </div>
-        )}
-
-        {!isInputFocused && (
-          <OfflinePendingChip pending={pendingEnvelopes} rejected={rejectedEnvelopes} />
         )}
 
         {!isInputFocused && (

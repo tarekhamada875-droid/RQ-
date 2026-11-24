@@ -163,13 +163,7 @@ export function useGarageSession({
     // clearing in-memory owner state or the authoritative session cleanup.
     try {
       Object.keys(localStorage).forEach(key => {
-        const isAppKey = key.startsWith('app_') && key !== 'app_admin_color' && key !== 'app_theme' && key !== 'app_session_id'
-          // OFFLINE STEP 2: the envelope drawer survives logout. Envelopes are
-          // real garage business — cars physically inside / receipts the bank
-          // has not seen — and must flush on the next login of their garage,
-          // even if the operator logs out first. The flush only sends
-          // envelopes whose garageId matches the logged-in garage.
-          && key !== 'app_offline_envelopes';
+        const isAppKey = key.startsWith('app_') && key !== 'app_admin_color' && key !== 'app_theme' && key !== 'app_session_id';
         // STORAGE (DevTools runtime audit 2026-11-11, follow-up to the
         // successful-logout purge): attempt counters are scoped per
         // (identity, device session) as `logout_attempts:<identity>:session:<id>`.

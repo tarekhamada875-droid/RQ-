@@ -75,16 +75,13 @@ export function useGarageSync({
 
   // ── Initial sync gate (fixes reopen-refresh race) ────────────────────
   // The dashboard can render from persisted localStorage state as soon as
-  // `isSessionReady` flips true, but Firestore listeners have not yet
-  // delivered their first snapshot. Originally the gate waited for a FRESH
-  // (non-cached) snapshot: optimistic UI writes could be clobbered by stale
-  // cached snapshots or by a queued first-snapshot that pre-dates the user's
-  // write. Since then both clobber paths gained their own guards (cached
-  // snapshots always MERGE, fresh snapshots respect the 2s
-  // _confirmedTransactionUntil window), so the gate no longer needs to wait
-  // for the server — see OFFLINE STEP 1 (2026-11-24) in the listener callback
-  // below: it unlocks on the FIRST snapshot of any kind (the phone's notebook
-  // paints the dashboard instantly; the bank corrects in the background), OR
+  // `isSessionReady` flips true, but Firestore listeners have NOT yet
+  // delivered their first fresh (non-cached) snapshot. If the user starts
+  // a check-in/out during that brief window, optimistic UI writes can be
+  // clobbered by stale cached snapshots or by a queued first-snapshot
+  // that pre-dates the user's write. To kill that race entirely, we gate
+  // the dashboard on `isInitialSyncComplete`: it flips true only after
+  // `subscribeToGarage` has delivered at least one non-cached snapshot, OR
   // after a 10-second timeout (so a flaky network cannot permanently lock
   // the user out). Only the garage view is gated — admin/delegate views use
   // different listeners and are not affected by the original race.
@@ -105,7 +102,7 @@ export function useGarageSync({
   // fires, and this listener is torn down by the identity change; a
   // permission-denied listener is console noise, never rendered content.
   const [isInitialSyncComplete, setIsInitialSyncComplete] = useState(false);
-  const garageFirstSnapshotReceivedRef = useRef(false);
+  const garageFreshSnapshotReceivedRef = useRef(false);
   const initialSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const INITIAL_SYNC_TIMEOUT_MS = 10_000;
 
@@ -163,9 +160,9 @@ export function useGarageSync({
     setDelegateDashboardError(false);
 
     // Reset initial-sync gate on owner/view/garage change. The new view needs
-    // its own first snapshot (cached notebook paint or fresh server answer)
-    // from its own listeners before it can be considered ready to render.
-    garageFirstSnapshotReceivedRef.current = false;
+    // its own first-fresh-snapshot from its own listeners before it can be
+    // considered safe to interact with.
+    garageFreshSnapshotReceivedRef.current = false;
     setIsInitialSyncComplete(false);
     if (initialSyncTimeoutRef.current) {
       clearTimeout(initialSyncTimeoutRef.current);
@@ -500,22 +497,9 @@ export function useGarageSync({
           if (!garageSubscriptionCurrent || updatedGarage?.id !== subscribedGarageId) return;
 
           const fromCache = metadata?.fromCache ?? false;
-          // OFFLINE STEP 1 (2026-11-24, owner-approved design "notebook first,
-          // bank second"): unlock the initial-sync gate on the FIRST snapshot
-          // of any kind — cached or fresh. The persistent IndexedDB cache
-          // delivers the garage doc from the phone's own notebook in
-          // milliseconds, so the dashboard paints instantly on reopen instead
-          // of spinning until the server answers (or the 10s backstop fires).
-          // The fresh snapshot keeps arriving right after and corrects the
-          // display in the background; transaction safety is unchanged
-          // because (a) cached snapshots always MERGE (never clobber confirmed
-          // counters — see the cached-snapshot rule below) and (b) fresh
-          // snapshots stay subject to the 2s _confirmedTransactionUntil guard.
-          // The exposure is a briefly stale credits/carsInside display that
-          // self-corrects — the same risk the 10s timeout path already
-          // accepted on slow networks.
-          if (!garageFirstSnapshotReceivedRef.current) {
-            garageFirstSnapshotReceivedRef.current = true;
+          // Track first-fresh-snapshot delivery for the initial-sync gate.
+          if (!fromCache && !garageFreshSnapshotReceivedRef.current) {
+            garageFreshSnapshotReceivedRef.current = true;
             setIsInitialSyncComplete(true);
             if (initialSyncTimeoutRef.current) {
               clearTimeout(initialSyncTimeoutRef.current);

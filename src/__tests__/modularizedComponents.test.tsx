@@ -344,7 +344,7 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
 
     // The persistent balance card (with "آخر رصيد" badge) is gone
     expect(screen.queryByTestId('low-credit-indicator')).not.toBeInTheDocument();
-    // OFFLINE STEP 1 (owner design): the plate input STAYS on screen so staff
+    // ZERO-CREDIT RULE (owner design): the plate input STAYS on screen so staff
     // can still type an inside plate and issue its exit receipt.
     expect(screen.getByRole('textbox', { name: 'رقم لوحة السيارة' })).toBeInTheDocument();
     // The depleted-state recharge prompt renders BELOW the registration card
