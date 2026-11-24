@@ -51,20 +51,24 @@ function createGarage(overrides: Partial<Garage> = {}): Garage {
   } as Garage;
 }
 
-function renderOperations(initialGarage: Garage, initialOnline = false) {
+function renderOperations(initialGarage: Garage, initialOnline = false, initialSessionReady = true) {
   const showToast = vi.fn();
   const hook = renderHook(() => {
     const [garage, setGarage] = useState<Garage | null>(initialGarage);
     const [isOnline, setIsOnline] = useState<boolean>(initialOnline);
+    // STEP 2c harness: default true keeps the pre-existing flush tests
+    // meaningful; the session-gate test below drives it explicitly.
+    const [isSessionReady, setIsSessionReady] = useState<boolean>(initialSessionReady);
     const operations = useVehicleOperations({
       garage,
       setGarage,
       currentStaff: null,
       isOnline,
+      isSessionReady,
       showToast,
       closeKeyboard: vi.fn(),
     });
-    return { garage, isOnline, setOnline: setIsOnline, ...operations };
+    return { garage, isOnline, isSessionReady, setOnline: setIsOnline, setSessionReady: setIsSessionReady, ...operations };
   }, { wrapper: ({ children }) => <ServerTimeProvider>{children}</ServerTimeProvider> });
   return { ...hook, showToast };
 }
@@ -590,7 +594,6 @@ describe('offline envelope drawer flow', () => {
   // — the deployed vehicle routes omit the field), the old code-first order
   // misfiled it as "unknown → retryable", the envelope looped forever, and
   // the four envelopes behind it starved with attempts: 0.
-
   it('a duplicate answered WITHOUT a code field resolves calmly and the drain keeps flowing (owner trace)', async () => {
     const { result, showToast } = renderOperations(createGarage(), false);
 
@@ -766,6 +769,47 @@ describe('offline envelope drawer flow', () => {
       expect.any(String),
       expect.any(String),
     );
+    expect(envelopeQueue.rejectedCount(GARAGE_ID)).toBe(0);
+  }, 20000);
+
+  // STEP 2c (owner trace, seq 44 + 65): the boot flush fired ~200ms before
+  // auth was ready, the bank answered 401 "session expired", and the
+  // forced-logout handler kicked the operator to the PIN screen — twice in
+  // three minutes. The drawer now waits for the session claim.
+  it('the drawer waits for the session to be ready before it flushes', async () => {
+    const { result } = renderOperations(createGarage(), false, false);
+
+    let operation!: Promise<string | null>;
+    await act(async () => {
+      operation = result.current.handleCheckIn('hourly', 'س ج ط 1 2 3 4');
+    });
+    await operation;
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    vi.mocked(vehicleService.checkInVehicle).mockResolvedValue({
+      success: true,
+      data: { carsInside: 1, dailyCount: 1, credits: 4, lastTransactionDate: '2026-11-24' },
+    } as any);
+
+    // The line is up but the session claim has not landed yet — the flush
+    // must NOT fire (no letterless envelope, no 401, no scary red toast).
+    await act(async () => {
+      result.current.setOnline(true);
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+    expect(vehicleService.checkInVehicle).not.toHaveBeenCalled();
+    expect(envelopeQueue.pendingCount(GARAGE_ID)).toBe(1);
+
+    // The session claim lands (coordinator done) — the drawer drains now.
+    await act(async () => {
+      result.current.setSessionReady(true);
+    });
+    await waitFor(() => {
+      expect(envelopeQueue.pendingCount(GARAGE_ID)).toBe(0);
+    });
+    expect(vehicleService.checkInVehicle).toHaveBeenCalledTimes(1);
     expect(envelopeQueue.rejectedCount(GARAGE_ID)).toBe(0);
   }, 20000);
 });

@@ -168,6 +168,9 @@ export function useGarageApp() {
     setGarage,
     currentStaff,
     isOnline,
+    // OFFLINE STEP 2c: the drawer flush waits for the session claim —
+    // flushing before it fires letterless envelopes into a 401 wall.
+    isSessionReady: session.isSessionReady,
     showToast,
     closeKeyboard,
   });
