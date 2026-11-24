@@ -584,4 +584,188 @@ describe('offline envelope drawer flow', () => {
       narration.mockRestore();
     }
   }, 15000);
+
+  // ── Owner debug file rq-debug-2026-11-24-13-16-36.json ──────────────────
+  // The trace: a 409 duplicate arrived with NO machine code (errorCode null
+  // — the deployed vehicle routes omit the field), the old code-first order
+  // misfiled it as "unknown → retryable", the envelope looped forever, and
+  // the four envelopes behind it starved with attempts: 0.
+
+  it('a duplicate answered WITHOUT a code field resolves calmly and the drain keeps flowing (owner trace)', async () => {
+    const { result, showToast } = renderOperations(createGarage(), false);
+
+    // Two offline entries, two different plates.
+    let first!: Promise<string | null>;
+    await act(async () => {
+      first = result.current.handleCheckIn('hourly', 'س ج ط 1 2 3 4');
+    });
+    await first;
+    // The 3s transaction floor releases before the promise resolves, but
+    // isLoading settles one render later — wait for it or the next tap is
+    // silently swallowed by the busy guard.
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    let second!: Promise<string | null>;
+    await act(async () => {
+      second = result.current.handleCheckIn('hourly', 'س ع د 5 6 7 8');
+    });
+    await second;
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(envelopeQueue.list(GARAGE_ID)).toHaveLength(2);
+
+    // The REAL deployed shape: Arabic duplicate text, code field ABSENT.
+    vi.mocked(vehicleService.checkInVehicle).mockImplementation(
+      async (_garageId: string, payload: any) =>
+        payload.plateNumberRaw === 'سجط1234'
+          ? { success: false, error: 'هذه السيارة موجودة بالفعل بالداخل', code: undefined }
+          : { success: true, data: { carsInside: 2, dailyCount: 2, credits: 3, lastTransactionDate: '2026-11-24' } },
+    );
+
+    await act(async () => {
+      result.current.setOnline(true);
+    });
+
+    await waitFor(() => {
+      // BOTH envelopes left the drawer — the stuck one resolved, the
+      // sibling was not starved behind it.
+      expect(envelopeQueue.pendingCount(GARAGE_ID)).toBe(0);
+    });
+    expect(envelopeQueue.rejectedCount(GARAGE_ID)).toBe(0);
+    expect(envelopeQueue.list(GARAGE_ID)).toHaveLength(0);
+    // The duplicate resolved calmly (no red chip), and the sibling's letter
+    // really reached the bank.
+    expect(showToast).toHaveBeenCalledWith(
+      expect.stringContaining('مسجلة جوه بالفعل'),
+      'info',
+    );
+    expect(vehicleService.checkInVehicle).toHaveBeenCalledWith(
+      GARAGE_ID,
+      expect.objectContaining({ plateNumberRaw: 'سعد5678' }),
+      expect.any(String),
+    );
+    // Notebook math: 5 → A debit 4 → B debit 3 → A rollback 4 → bank B 3.
+    expect(result.current.garage?.credits).toBe(3);
+    expect(result.current.garage?.carsInside).toBe(2);
+  }, 20000);
+
+  it('an unclassified answer keeps its envelope pending but does not starve the siblings', async () => {
+    const { result } = renderOperations(createGarage(), false);
+
+    let first!: Promise<string | null>;
+    await act(async () => {
+      first = result.current.handleCheckIn('hourly', 'س ج ط 1 2 3 4');
+    });
+    await first;
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    let second!: Promise<string | null>;
+    await act(async () => {
+      second = result.current.handleCheckIn('hourly', 'س ع د 5 6 7 8');
+    });
+    await second;
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // A business-shaped answer nobody recognizes, with no code: never
+    // gamble the envelope away — but its sibling still gets its own try.
+    vi.mocked(vehicleService.checkInVehicle).mockImplementation(
+      async (_garageId: string, payload: any) =>
+        payload.plateNumberRaw === 'سجط1234'
+          ? { success: false, error: 'جواب غريب من السيرفر', code: undefined }
+          : { success: true, data: { carsInside: 2, dailyCount: 2, credits: 3, lastTransactionDate: '2026-11-24' } },
+    );
+
+    await act(async () => {
+      result.current.setOnline(true);
+    });
+
+    await waitFor(() => {
+      expect(envelopeQueue.pendingCount(GARAGE_ID)).toBe(1);
+    });
+    const stuck = envelopeQueue.list(GARAGE_ID)[0];
+    expect(stuck.plateRaw).toBe('سجط1234');
+    expect(stuck.status).toBe('pending');
+    expect(stuck.attempts).toBeGreaterThanOrEqual(1);
+    // The sibling drained even though the first envelope is stuck.
+    expect(vehicleService.checkInVehicle).toHaveBeenCalledWith(
+      GARAGE_ID,
+      expect.objectContaining({ plateNumberRaw: 'سعد5678' }),
+      expect.any(String),
+    );
+    expect(envelopeQueue.list(GARAGE_ID).some((item) => item.plateRaw === 'سعد5678')).toBe(false);
+  }, 20000);
+
+  it('an exit envelope waits for its own entry letter before going to the bank', async () => {
+    const garage = createGarage({ carsInside: 1, todayCount: 1 });
+    const { result } = renderOperations(garage, false);
+
+    // Queue the entry offline, then the exit for the same plate.
+    let operation!: Promise<string | null>;
+    await act(async () => {
+      operation = result.current.handleCheckIn('hourly', 'س ج ط 1 2 3 4');
+    });
+    await operation;
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    act(() => {
+      result.current.setSelectedVehicle(makeInsideVehicle());
+      result.current.setShowCheckOutModal(true);
+    });
+    let exit!: Promise<void>;
+    await act(async () => {
+      exit = result.current.confirmCheckOut();
+    });
+    await exit;
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(envelopeQueue.list(GARAGE_ID)).toHaveLength(2);
+
+    // First drain: the line answers with a door-locked shape → the drain
+    // stops at the check-in, and the exit must NOT have been attempted.
+    vi.mocked(vehicleService.checkInVehicle).mockResolvedValue({
+      success: false,
+      error: 'تعذر الاتصال بالخادم',
+      code: 'NETWORK_ERROR',
+    } as any);
+    vi.mocked(vehicleService.checkOutVehicle).mockResolvedValue({
+      success: true,
+      cost: 30,
+      carsInside: 0,
+      totalVehiclesOut: 1,
+      todayRevenue: 30,
+      totalRevenue: 130,
+      todayCount: 1,
+      lastTransactionDate: '2026-11-24',
+    } as any);
+
+    await act(async () => {
+      result.current.setOnline(true);
+    });
+    await waitFor(() => {
+      expect(envelopeQueue.list(GARAGE_ID)[0].attempts).toBeGreaterThanOrEqual(1);
+    });
+    expect(vehicleService.checkOutVehicle).not.toHaveBeenCalled();
+
+    // Second drain: the entry lands, then its own exit goes out right after.
+    vi.mocked(vehicleService.checkInVehicle).mockResolvedValue({
+      success: true,
+      data: { carsInside: 1, dailyCount: 2, credits: 4, lastTransactionDate: '2026-11-24' },
+    } as any);
+    await act(async () => {
+      result.current.setOnline(false);
+    });
+    await act(async () => {
+      result.current.setOnline(true);
+    });
+
+    await waitFor(() => {
+      expect(envelopeQueue.pendingCount(GARAGE_ID)).toBe(0);
+    });
+    expect(vehicleService.checkOutVehicle).toHaveBeenCalledTimes(1);
+    expect(vehicleService.checkOutVehicle).toHaveBeenCalledWith(
+      GARAGE_ID,
+      'سجط1234',
+      0,
+      expect.any(String),
+      undefined,
+      expect.any(String),
+      expect.any(String),
+    );
+    expect(envelopeQueue.rejectedCount(GARAGE_ID)).toBe(0);
+  }, 20000);
 });
