@@ -25,7 +25,7 @@
  * UI reads it through useSyncExternalStore via usePendingEnvelopeCount.
  */
 
-export type EnvelopeKind = 'checkin' | 'checkout';
+export type EnvelopeKind = 'checkin' | 'checkout' | 'delete';
 export type EnvelopeStatus = 'pending' | 'rejected';
 
 export interface OfflineEnvelope {
@@ -57,6 +57,19 @@ export interface OfflineEnvelope {
    * envelope can sit in the drawer for hours while the line is down.
    */
   exitTimeIso?: string;
+  /**
+   * Offline delete envelopes only: the credits the optimistic notebook
+   * patch already gave back (the Worker restores the check-in credit when
+   * the deleted vehicle is still inside). The flush rollback uses this to
+   * undo the refund if the bank refuses the delete.
+   */
+  refundAmount?: number;
+  /**
+   * Offline delete envelopes only: the Cairo day key the local mistake
+   * budget was charged to. If the bank refuses the delete, the rollback
+   * gives the budget slot back on exactly the day it was taken.
+   */
+  deleteDayKey?: string;
   createdAt: number;
   attempts: number;
   status: EnvelopeStatus;
@@ -81,7 +94,9 @@ function readAll(): OfflineEnvelope[] {
       Boolean(item) &&
       typeof (item as OfflineEnvelope).id === 'string' &&
       typeof (item as OfflineEnvelope).garageId === 'string' &&
-      ((item as OfflineEnvelope).kind === 'checkin' || (item as OfflineEnvelope).kind === 'checkout'),
+      ((item as OfflineEnvelope).kind === 'checkin' ||
+       (item as OfflineEnvelope).kind === 'checkout' ||
+       (item as OfflineEnvelope).kind === 'delete'),
     );
   } catch {
     // Corrupted or unavailable storage must never crash the app — start

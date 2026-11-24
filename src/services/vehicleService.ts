@@ -139,7 +139,7 @@ export const vehicleService = {
     }
   },
   
-  deleteVehicle: async (garageId: string, vehicleId: string, _passedTodayYMD?: string, staffName?: string, _staffId?: string) => {
+  deleteVehicle: async (garageId: string, vehicleId: string, _passedTodayYMD?: string, staffName?: string, _staffId?: string, idempotencyKey?: string) => {
     try {
       await apiFetch('/api/vehicles/delete', {
         method: 'POST',
@@ -148,7 +148,12 @@ export const vehicleService = {
           vehicleId,
           refundAmount: 0,
           staffName,
-          idempotencyKey: generateIdempotencyKey('vehicle_delete')
+          // Accept a caller-provided idempotency key so the offline drawer
+          // flush can replay the SAME key on every retry — the Worker then
+          // returns the originally committed result instead of double-
+          // counting the daily deletion budget. Live deletes generate a
+          // fresh key per attempt exactly as before.
+          idempotencyKey: idempotencyKey || generateIdempotencyKey('vehicle_delete')
         }
       });
       return true;
