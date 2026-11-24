@@ -265,8 +265,12 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
     return c.json({ success: true, data: resultData });
   } catch (err: any) {
     console.error('[Worker] Check-in error:', err);
-    const { statusCode, message } = mapDomainErrorToStatus(err);
-    return c.json({ success: false, error: message }, statusCode as any);
+    // The machine code MUST ride on the body: phones classify the bank's
+    // answer by it (envelope flush answer classes). Owner debug file
+    // 2026-11-24 13:16 — a 409 duplicate without `code` arrived as
+    // errorCode:null and the phone misfiled it as retryable.
+    const { statusCode, code, message } = mapDomainErrorToStatus(err);
+    return c.json({ success: false, error: message, code }, statusCode as any);
   }
 });
 }

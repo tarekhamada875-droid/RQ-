@@ -41,6 +41,12 @@ const FLUSH_RETRYABLE_CODES = new Set([
   'RATE_LIMIT_EXCEEDED', 'INVALID_RESPONSE',
 ]);
 
+// One drain at a time: the reconnect effect and the 30-second heal timer can
+// both fire while a slow request is still in flight. Idempotency keys make a
+// double send harmless, but two interleaved drains double the traffic and can
+// stack toasts. A module flag (not a ref) also covers remounts of the hook.
+let drainInFlight = false;
+
 interface UseVehicleOperationsProps {
   garage: Garage | null;
   setGarage: React.Dispatch<React.SetStateAction<Garage | null>>;
@@ -799,6 +805,9 @@ export function useVehicleOperations({
   //      the classification bug behind the owner's red chips.
   const flushEnvelopes = useCallback(async () => {
     if (!garage?.id) return;
+    if (drainInFlight) return;
+    drainInFlight = true;
+    try {
     // The server's conflict family shares one generic code ('CONFLICT'), so
     // resolved-duplicates are recognized by their Arabic answer text (see
     // server/routes/helpers.ts mapDomainErrorToStatus).
@@ -807,12 +816,15 @@ export function useVehicleOperations({
         text.includes('موجودة بالفعل بالداخل') ||
         text.includes('تم تسجيل خروج هذه السيارة بالفعل') ||
         text.includes('السيارة غير موجودة بالداخل'));
-    const isRetryableFlushFailure = (code: unknown) => {
-      if (typeof code === 'string' && FLUSH_RETRYABLE_CODES.has(code)) return true;
-      // Unknown/missing classification: never gamble a money letter on an
-      // unclassified answer — keep it in the drawer for the next trigger.
-      return typeof code !== 'string' || code.length === 0;
-    };
+    // Known "door/line was locked" codes: they are answers about the BANK or
+    // the LINE, not about this envelope — the drain stops (see below).
+    const isKnownRetryableCode = (code: unknown): code is string =>
+      typeof code === 'string' && FLUSH_RETRYABLE_CODES.has(code);
+    // Unknown/missing classification: never gamble a money letter on an
+    // unclassified answer — keep THIS envelope pending, but let its siblings
+    // through: one stuck envelope must not block the whole drawer.
+    const isUnknownAnswerCode = (code: unknown) =>
+      typeof code !== 'string' || code.length === 0;
 
     // OFFLINE STEP 2b heal: envelopes parked 'rejected' by the previous build
     // for what are actually resolved-duplicate answers are not refusals —
@@ -850,17 +862,37 @@ export function useVehicleOperations({
           if (!res.success) {
             const code = (res as any).code;
             const errorText = res.error || 'flush failed';
-            if (isRetryableFlushFailure(code)) {
-              envelopeQueue.markFailed(envelope.id, errorText, false);
-              debugRecorder.envelopeEvent('flush_retry', { envId: envelope.id, code: code ?? null, text: String(errorText).slice(0, 160) });
-              return; // door locked for a moment — wait for the next trigger
-            }
+            // CLASS ORDER MATTERS (owner debug file 2026-11-24 13:16): the
+            // bank's own answer text outranks the machine code. The deployed
+            // vehicle routes omit the code field on 409 duplicates
+            // (server/vehicleRoutes/checkIn.ts destructures only statusCode
+            // + message), so code arrives null — and the old code-first
+            // order misfiled the duplicate as "unknown → retryable". The
+            // envelope then looped forever and every envelope behind it
+            // starved in the drawer with attempts: 0.
             if (isResolvedDuplicateAnswer(errorText)) {
               // The bank already had the car inside — no debit happened.
               rollbackCheckInPatch();
               envelopeQueue.remove(envelope.id);
               debugRecorder.envelopeEvent('flush_duplicate_resolved', { envId: envelope.id, text: String(errorText).slice(0, 160) });
               showToast('العربية كانت مسجلة جوه بالفعل — البنك منع التكرار ومفيش خصم', 'info');
+              continue;
+            }
+            if (isKnownRetryableCode(code)) {
+              // The bank's door or the line itself is down — not an answer
+              // about this envelope. Stop the drain: hammering the siblings
+              // into a dead line just stacks 15-second timeouts (and, for
+              // auth shapes, fires one session-expired event per envelope).
+              // The online flip and the heal timer re-fire the drain.
+              envelopeQueue.markFailed(envelope.id, errorText, false);
+              debugRecorder.envelopeEvent('flush_retry', { envId: envelope.id, code, text: String(errorText).slice(0, 160) });
+              return;
+            }
+            if (isUnknownAnswerCode(code)) {
+              // Unclassified answer: don't gamble this envelope, but DON'T
+              // block the siblings — each one gets its own classification.
+              envelopeQueue.markFailed(envelope.id, errorText, false);
+              debugRecorder.envelopeEvent('flush_retry', { envId: envelope.id, code: code ?? null, text: String(errorText).slice(0, 160) });
               continue;
             }
             // True refusal: the bank said no to the money.
@@ -872,6 +904,18 @@ export function useVehicleOperations({
           }
           applyCheckInConfirmation((res as any).data);
         } else {
+          // FIFO dependency (owner debug file 2026-11-24 13:16): an exit
+          // letter must not reach the bank while its own entry letter is
+          // still in the drawer — the bank would answer "car not inside",
+          // and the provisional receipt numbers would churn for nothing.
+          // Skip it this round; it goes out right after its check-in lands.
+          if (envelopeQueue.findPendingCheckIn(envelope.garageId, envelope.plateRaw)) {
+            debugRecorder.envelopeEvent('flush_skipped_until_checkin', {
+              envId: envelope.id,
+              plateKey: plateKey(envelope.plateRaw),
+            });
+            continue;
+          }
           const res = await vehicleService.checkOutVehicle(
             envelope.garageId,
             envelope.plateRaw,
@@ -886,11 +930,7 @@ export function useVehicleOperations({
           if (!res.success) {
             const code = (res as any).code;
             const errorText = res.error || 'flush failed';
-            if (isRetryableFlushFailure(code)) {
-              envelopeQueue.markFailed(envelope.id, errorText, false);
-              debugRecorder.envelopeEvent('flush_retry', { envId: envelope.id, code: code ?? null, text: String(errorText).slice(0, 160) });
-              return;
-            }
+            // Same class order as the check-in branch above (text first).
             if (isResolvedDuplicateAnswer(errorText)) {
               // The car already left (or never entered) at the bank — no
               // fee happened. Put the provisional receipt numbers back.
@@ -898,6 +938,17 @@ export function useVehicleOperations({
               envelopeQueue.remove(envelope.id);
               debugRecorder.envelopeEvent('flush_duplicate_resolved', { envId: envelope.id, text: String(errorText).slice(0, 160) });
               showToast('فاتورة الخروج دي كانت متسجلة من قبل — البنك عدلها ومفيش فلوس اتخصمت', 'info');
+              continue;
+            }
+            if (isKnownRetryableCode(code)) {
+              // Door/line shaped — stop the drain (see the check-in branch).
+              envelopeQueue.markFailed(envelope.id, errorText, false);
+              debugRecorder.envelopeEvent('flush_retry', { envId: envelope.id, code, text: String(errorText).slice(0, 160) });
+              return;
+            }
+            if (isUnknownAnswerCode(code)) {
+              envelopeQueue.markFailed(envelope.id, errorText, false);
+              debugRecorder.envelopeEvent('flush_retry', { envId: envelope.id, code: code ?? null, text: String(errorText).slice(0, 160) });
               continue;
             }
             rollbackCheckOutPatch(envelope.phoneCost ?? 0);
@@ -911,8 +962,9 @@ export function useVehicleOperations({
         envelopeQueue.remove(envelope.id);
         debugRecorder.envelopeEvent('flush_committed', { envId: envelope.id });
       } catch (error) {
-        // Unexpected shape (parse error, missing field) — treat as
-        // retryable and stop the drain so FIFO order stays intact.
+        // Unexpected shape (parse error, missing field) — treat as an
+        // unclassified answer: keep this envelope pending but let the
+        // siblings through (same rule as isUnknownAnswerCode above).
         envelopeQueue.markFailed(
           envelope.id,
           error instanceof Error ? error.message : String(error),
@@ -923,8 +975,11 @@ export function useVehicleOperations({
           code: 'UNEXPECTED_SHAPE',
           text: String(error instanceof Error ? error.message : error).slice(0, 160),
         });
-        return;
+        continue;
       }
+    }
+    } finally {
+      drainInFlight = false;
     }
   }, [garage?.id, showToast, applyCheckInConfirmation, applyCheckOutConfirmation, rollbackCheckInPatch, rollbackCheckOutPatch]);
 
