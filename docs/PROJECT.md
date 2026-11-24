@@ -63,14 +63,18 @@ Growth math at the owner's stated scale ceiling (700 garages × 1,000 cars/day):
 
 Every Worker write to `activity_logs` MUST go through `server/activityLogWriter.ts:buildActivityLogEntry()`, which attaches `expireAt: timestamp + 30 days`. The Firestore TTL policy on the `expireAt` field auto-deletes expired entries (typically within 72 hours of the expireAt timestamp, per Firestore's documentation).
 
-One-time operator setup (NOT part of `firebase deploy`): the TTL policy on the `activity_logs.expireAt` field must be configured via the gcloud CLI or Firebase console. The command (run once per database):
+**STATUS (2026-11-24): PARKED — switch NOT flipped.** The owner declined to enable billing (no card on file; TTL deletes are billing-gated per Firestore's pricing docs), so the `expireAt` field is written but nothing deletes old logs yet. At current scale this is harmless — revisit the moment the project enables billing (Blaze). The two one-time commands below were verified end-to-end in Cloud Shell against the real database on 2026-11-24 (the first attempt failed NOT_FOUND because the app's Firestore is a NAMED database, not `(default)`; the second failed PERMISSION_DENIED on billing).
+
+One-time operator setup (NOT part of `firebase deploy`; TTL is managed via gcloud/Google Cloud console — there is no Firebase-console TTL UI). Project: `gen-lang-client-0091669619`; database: `ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759` (both pinned in `wrangler.deploy.toml`). The command (run once, ~10 min to activate):
 ```
-gcloud firestore fields ttls update \
+gcloud firestore fields ttls update expireAt \
   --collection-group=activity_logs \
-  --field=expireAt \
+  --project=gen-lang-client-0091669619 \
+  --database=ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759 \
   --enable-ttl
 ```
-Verify with `gcloud firestore fields ttls list --collection-group=activity_logs`.
+Verify (expect `expireAt` with state ACTIVE; `0 items` before the switch):
+`gcloud firestore fields ttls list --collection-group=activity_logs --project=gen-lang-client-0091669619 --database=ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759`
 
 Entries that must NOT expire (audit logs for legal/finance records) should live in a different collection — `activity_logs` is for live + recent operational visibility only. The current `actionType` set (check_out, credit_grant, credit_correction, credit_referral_award, delete_refund, garage_delete, create) all qualify as recent operational visibility; none are legal/finance records (those live in `credit_ledger` and `admin_summary`, neither of which has a TTL).
 
