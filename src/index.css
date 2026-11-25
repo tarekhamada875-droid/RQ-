@@ -128,13 +128,8 @@
     @apply h-full w-full flex flex-col overflow-hidden;
   }
 
-  /* Reset some specific elements that might need forced red for delete/close as per user request */
-  .btn-delete, .btn-close {
-    background-color: #dc2626 !important; /* bg-red-600 */
-    color: white !important;
-  }
-
   /* (audit 2026-11-21) removed dead .laptop-view rules — the class was used nowhere */
+  /* (audit 2026-11-25) removed dead .btn-delete / .btn-close rules — no component renders these classes */
 }
 
 @layer utilities {

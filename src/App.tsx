@@ -45,7 +45,6 @@ export default function App() {
   const [localAdminColor] = useLocalStorageState<string>('app_admin_color', '#10b981');
   const adminColor = systemConfig?.adminColor || localAdminColor || '#10b981';
   const activeColor = (view && (view.startsWith('admin_') || view === 'admin_dashboard')) ? adminColor : (garage?.shimmerColor || '#10b981');
-  const resolvedColor = activeColor;
 
   useEffect(() => {
     if (!isLoading && isAuthReady) {
@@ -108,7 +107,7 @@ export default function App() {
   }
 
   const isLoggedIn = Boolean(view && view !== 'login');
-  return <div className={`w-full h-full bg-[#faf9f6] dark:bg-transparent ${isLoggedIn ? 'theme-logged-in' : ''}`} style={{ '--theme-accent-color': resolvedColor } as React.CSSProperties}>
+  return <div className={`w-full h-full bg-[#faf9f6] dark:bg-transparent ${isLoggedIn ? 'theme-logged-in' : ''}`} style={{ '--theme-accent-color': activeColor } as React.CSSProperties}>
     <SessionProvider value={session}>
     <NavigationUiProvider value={navigationUi}>
     <GarageDataProvider value={garageData}>
