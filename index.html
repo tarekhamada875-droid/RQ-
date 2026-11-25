@@ -320,88 +320,6 @@
       }
       
       /* Only show in landscape orientation on handheld/touch devices - Disabled to let React App.tsx handle it with live dashboard rates */
-
-      /* ============================================================
-         LOADING-UX (2026-11-25, owner initiative "A+B+C"): pre-JS brand
-         splash. Previously #root held the offline card, so EVERY cold start
-         (including perfectly-online ones) showed the dark "مفيش اتصال
-         بالإنترنت" card for the whole bundle-download window — seconds of a
-         false accusation on slow 4G. Now the brand plate motif (mirrors
-         main.tsx's BootSplash for a seamless HTML→React handoff) shows by
-         default; the offline card takes over only when the browser reports
-         no connection (script after #root below).
-         ============================================================ */
-      .boot-splash {
-        position: fixed;
-        inset: 0;
-        background-color: #faf9f6;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      }
-      html.dark .boot-splash {
-        background-color: #020617;
-      }
-      .boot-plate {
-        width: min(320px, 82vw);
-        background: #ffffff;
-        border: 3px solid #0f172a;
-        border-radius: 1rem;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        direction: ltr;
-      }
-      html.dark .boot-plate {
-        background: #0f172a;
-        border-color: #334155;
-      }
-      .boot-plate-bar {
-        height: 30px;
-        background: #0057b7;
-        border-bottom: 2px solid rgba(15, 23, 42, 0.2);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 12px;
-        flex-shrink: 0;
-      }
-      .boot-rivet {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-      }
-      .boot-plate-body {
-        height: 84px;
-        background: #fcfcfc;
-      }
-      html.dark .boot-plate-body {
-        background: #0f172a;
-      }
-      .boot-brand {
-        margin-top: 2rem;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        color: #94a3b8;
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        user-select: none;
-      }
-      .boot-line {
-        height: 1px;
-        width: 32px;
-        background: #e2e8f0;
-      }
-      html.dark .boot-line {
-        background: #1e293b;
-      }
     </style>
   </head>
   <body>
@@ -434,26 +352,7 @@
       </div>
     </div>
     <div id="root">
-      <!-- Brand splash: the default pre-JS paint (mirrors BootSplash in
-           main.tsx). Replaced by React on mount. -->
-      <div id="boot-splash" class="boot-splash" dir="rtl">
-        <div class="boot-plate">
-          <div class="boot-plate-bar">
-            <span class="boot-rivet"></span>
-            <span class="boot-rivet"></span>
-          </div>
-          <div class="boot-plate-body"></div>
-        </div>
-        <div class="boot-brand">
-          <span class="boot-line"></span>
-          <span>أرق لتطوير البرمجيات</span>
-          <span class="boot-line"></span>
-        </div>
-      </div>
-
-      <!-- Offline card: now shown ONLY when the browser reports no
-           connection (script below). Hidden by default. -->
-      <div id="boot-offline" style="position:fixed;inset:0;background-color:#020617;display:none;align-items:center;justify-content:center;padding:1.5rem;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;direction:rtl;text-align:center;color:#fff;z-index:9999;">
+      <div style="position:fixed;inset:0;background-color:#020617;display:flex;align-items:center;justify-content:center;padding:1.5rem;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;direction:rtl;text-align:center;color:#fff;z-index:9999;">
         <div style="background-color:#0f172a;border:2px solid #1e293b;border-radius:1.5rem;padding:2rem;max-width:24rem;width:100%;display:flex;flex-direction:column;align-items:center;gap:1.5rem;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
           <div style="width:5rem;height:5rem;background-color:rgba(239,68,68,0.1);color:#f87171;border-radius:1rem;display:flex;align-items:center;justify-content:center;border:1px solid rgba(239,68,68,0.2);">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"/><path d="M2 2l20 20"/><path d="M8.5 8.5A6 6 0 0 1 12 8c1.66 0 3.16.68 4.24 1.76"/><path d="M5 5a10 10 0 0 1 14 0"/><path d="M1.42 1.42l21.16 21.16"/></svg>
@@ -471,24 +370,6 @@
         </div>
       </div>
     </div>
-    <script>
-      // LOADING-UX (2026-11-25): the brand splash is the default pre-JS
-      // paint; swap to the offline card ONLY when the browser reports no
-      // connection. The old markup showed the offline card on EVERY boot,
-      // online or not. navigator.onLine is a heuristic (router-without-
-      // internet reports true) — but the app's own offline detection takes
-      // over after React mounts, so a wrong guess here self-corrects.
-      (function () {
-        try {
-          if (navigator.onLine === false) {
-            var s = document.getElementById('boot-splash');
-            var o = document.getElementById('boot-offline');
-            if (s) s.style.display = 'none';
-            if (o) o.style.display = 'flex';
-          }
-        } catch (e) { /* keep the splash */ }
-      })();
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

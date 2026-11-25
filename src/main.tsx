@@ -1,7 +1,6 @@
 import {StrictMode, lazy, Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
 import { ErrorBoundary } from './components/layout/ErrorBoundary.tsx';
-import { BrandSplash } from './components/layout/BrandSplash.tsx';
 import { ThemeProvider } from './utils/ThemeContext.tsx';
 import { BackHandlerProvider } from './hooks/backHandler.tsx';
 import { ToastProvider } from './hooks/toast.tsx';
@@ -34,15 +33,16 @@ debugRecorder.init();
 // is fully evaluated before App code runs. No ordering can be violated.
 const LazyApp = lazy(() => import('./App.tsx'));
 
-// NO-SKELETONS (owner decision, 2026-11-25): ALL skeleton screens are
-// removed from the app. The only full-page waiting screen is the brand
-// splash — the same splash index.html paints as static HTML, so the
-// HTML paint → React handoff is seamless and the wait reads as
-// "the app is opening", never as a broken-looking ghost.
-// The splash lives in BrandSplash.tsx (self-contained, zero app imports so
-// this entry chunk stays small and the React.lazy boundary stays intact).
-// The App gate keeps it on screen for dashboard destinations; login
-// destinations swap to the REAL LoginView immediately.
+// Self-contained boot splash: no app imports, mirrors App's own
+// auth-loading UI exactly so the handoff is visually seamless.
+function BootSplash() {
+  return (
+    <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl">
+      <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
+      <p className="text-slate-600 dark:text-slate-300 font-bold text-sm">جاري تحميل البيانات...</p>
+    </div>
+  );
+}
 
 // Auto-recover from stale chunks on new deployments
 window.addEventListener('vite:preloadError', (event) => {
@@ -71,7 +71,7 @@ createRoot(document.getElementById('root')!).render(
           <ToastProvider>
             <GarageInputProvider>
               <ServerTimeProvider>
-                <Suspense fallback={<BrandSplash />}>
+                <Suspense fallback={<BootSplash />}>
                   <LazyApp />
                 </Suspense>
               </ServerTimeProvider>

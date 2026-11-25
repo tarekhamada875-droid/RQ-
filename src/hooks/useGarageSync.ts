@@ -80,27 +80,14 @@ export function useGarageSync({
   // a check-in/out during that brief window, optimistic UI writes can be
   // clobbered by stale cached snapshots or by a queued first-snapshot
   // that pre-dates the user's write. To kill that race entirely, we gate
-  // the dashboard on `isInitialSyncComplete`: it flips true after
-  // `subscribeToGarage` has delivered its FIRST snapshot (cached OR
-  // fresh — see the 2026-11-23 change at the callback), OR after a
-  // 10-second timeout (so a flaky network cannot permanently lock the
-  // user out). Only the garage view is gated — admin/delegate views use
+  // the dashboard on `isInitialSyncComplete`: it flips true only after
+  // `subscribeToGarage` has delivered at least one non-cached snapshot, OR
+  // after a 10-second timeout (so a flaky network cannot permanently lock
+  // the user out). Only the garage view is gated — admin/delegate views use
   // different listeners and are not affected by the original race.
   //
   // PR2 (2026-11-23): the active-vehicles listener was retired (reads
   // savings) — the gate now waits on the garage listener alone.
-  //
-  // LOGIN-SPEED (2026-11-23, owner initiative): the gate previously
-  // required the first *fresh* (non-cached) snapshot, which on Egyptian
-  // 4G added 500-1500ms to every login after the cached snapshot
-  // arrived. Now the gate clears on the FIRST snapshot of any kind.
-  // The Worker's transactional check-in/out routes remain authoritative
-  // (they read Firestore directly, not the cached UI), and the
-  // existing `_confirmedTransactionUntil` guard at the callback
-  // protects just-confirmed transaction state from being clobbered.
-  // Worst case: ~1-2s of slightly stale rates/credits/carsInside
-  // before the fresh snapshot updates them — acceptable for the
-  // ~1s+ saved on every login.
   //
   // RESUME PERF (stale-tab reopen audit 2026-11-17): the garage-view
   // listener now attaches as soon as the identity is known (restored
@@ -173,9 +160,8 @@ export function useGarageSync({
     setDelegateDashboardError(false);
 
     // Reset initial-sync gate on owner/view/garage change. The new view needs
-    // its own first snapshot from its own listeners before it can be
-    // considered safe to interact with. (Cached OR fresh — see the
-    // first-snapshot comment at the subscribeToGarage callback.)
+    // its own first-fresh-snapshot from its own listeners before it can be
+    // considered safe to interact with.
     garageFreshSnapshotReceivedRef.current = false;
     setIsInitialSyncComplete(false);
     if (initialSyncTimeoutRef.current) {
@@ -511,25 +497,8 @@ export function useGarageSync({
           if (!garageSubscriptionCurrent || updatedGarage?.id !== subscribedGarageId) return;
 
           const fromCache = metadata?.fromCache ?? false;
-          // Initial-sync gate (2026-11-23, owner login-speed initiative):
-          // dismiss the loading screen on the FIRST snapshot Firestore
-          // delivers — cached OR fresh. Previously the gate waited for the
-          // first *fresh* (non-cached) snapshot, which on Egyptian 4G takes
-          // 500-1500ms after the cached snapshot arrives. That extra wait
-          // was the single biggest chunk of the "جاري التحميل" time the
-          // owner reported on his Honor 400.
-          //
-          // Safety: cached snapshots are typically <30s old, so the worst
-          // case is the user sees slightly stale rates/credits/carsInside
-          // for ~1-2s before the fresh snapshot updates them. The Worker's
-          // transactional check-in/out routes are still authoritative and
-          // use the actual current Firestore state — they do not trust
-          // the cached UI. The existing `_confirmedTransactionUntil` guard
-          // below (line ~510) protects just-confirmed transaction state
-          // from being clobbered by a stale cached snapshot. The 10s
-          // safety timeout remains as the ultimate fallback for total
-          // network failure.
-          if (!garageFreshSnapshotReceivedRef.current) {
+          // Track first-fresh-snapshot delivery for the initial-sync gate.
+          if (!fromCache && !garageFreshSnapshotReceivedRef.current) {
             garageFreshSnapshotReceivedRef.current = true;
             setIsInitialSyncComplete(true);
             if (initialSyncTimeoutRef.current) {

@@ -3,7 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import { SubscribersView } from "./SubscribersView";
 import { CreditGrantHistoryView } from "./CreditGrantHistoryView";
 import { lazyWithRetry } from "../../utils/lazyWithRetry";
-import { DelayedFallback, ModalSuspenseBackdrop } from "../layout/LoadingFallbacks";
+import { DelayedFallback, ModalSuspenseBackdrop, PageSkeleton } from "../layout/LoadingFallbacks";
 import type { ActivityLog, Garage, Staff } from "../../types";
 import type { SharedSubscriberPage } from "../../hooks/useGarageDashboardLiveData";
 
@@ -82,10 +82,7 @@ export const GarageDashboardOverlays = ({
         <CreditGrantHistoryView garage={garage} onClose={onCloseCreditGrantHistory} showToast={showToast} onToggleMenu={onToggleMenu} sharedLogs={creditGrantLogs} sharedIsLoading={isCreditGrantLogsLoading} />
       )}
       {isReportsOpen && !currentStaff && (
-        // NO-SKELETONS (owner 2026-11-25): no loading preview — the chunk is
-        // precached after the first visit, so this boundary is invisible in
-        // practice. A blank beat on a cold first visit beats a fake preview.
-        <Suspense fallback={null}>
+        <Suspense fallback={<DelayedFallback><PageSkeleton /></DelayedFallback>}>
           <GarageReportsLazy
             garage={garage}
             staffList={staffList}

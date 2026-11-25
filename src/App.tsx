@@ -20,10 +20,7 @@ import { NavigationUiProvider } from './hooks/navigationUiContext';
 import { GarageDataProvider } from './hooks/garageDataContext';
 import { AdminMutationsProvider } from './hooks/adminMutationsContext';
 import { shouldWaitForSessionReady } from './utils/authViewGuard';
-import { resolveBootShape } from './utils/bootShape';
-import { DelayedFallback } from './components/layout/LoadingFallbacks';
-import { BrandSplash } from './components/layout/BrandSplash';
-import { LoginView } from './components/auth/LoginView';
+import { DelayedFallback, PageSkeleton } from './components/layout/LoadingFallbacks';
 import { AppRoutes } from './components/app/AppRoutes';
 import { AppOverlays } from './components/app/AppOverlays';
 import { useTheme } from './utils/ThemeContext';
@@ -98,39 +95,15 @@ export default function App() {
   if (isLandscapeMobile) return <LandscapeMobileView garage={view === 'garage' ? garage : null} />;
   if (showOfflineScreen) return <OfflineView />;
   // Initial-sync gate (fixes the reopen-refresh race): for the garage view
-  // only, keep the loading screen up until Firestore has delivered its
-  // FIRST snapshot (cached OR fresh — see useGarageSync 2026-11-23), OR
-  // the 10s safety timeout fires. This prevents the user from starting
-  // a check-in/out during the brief window where stale cached snapshots
-  // could clobber optimistic UI writes. Admin/delegate views are not
-  // gated — they use different listeners and were never affected by the
-  // race.
-  //
-  // NO-SKELETONS (owner decision, 2026-11-25): every skeleton screen is
-  // removed from the app. The gate now shows only two things:
-  //   (A) headed to a login view → the REAL login screen. It is fully
-  //       static (plate + keypad need no data), so a cold start shows the
-  //       actual screen immediately.
-  //   (B) headed to a dashboard → the BRAND SPLASH (the same splash
-  //       index.html and main.tsx painted), so the whole boot reads as one
-  //       continuous "app opening" moment that ends when the real screen
-  //       swaps in. No ghost blocks, no fake preview of an unloaded screen.
-  //   (C) the very first gate still renders IMMEDIATELY so the handoff from
-  //       main.tsx's splash stays seamless; re-gates after real content keep
-  //       the 250ms no-flash delay. Fast re-gates (<250ms) show nothing.
+  // only, keep the loading screen up until both Firestore listeners have
+  // delivered their first fresh (non-cached) snapshot, OR the 10s safety
+  // timeout in useGarageSync fires. This prevents the user from starting a
+  // check-in/out during the brief window where stale cached snapshots could
+  // clobber optimistic UI writes. Admin/delegate views are not gated — they
+  // use different listeners and were never affected by the race.
   if (isGateActive) {
     logDiagnostic(!isAuthReady ? 'APP_WAITING_FOR_AUTH_READY' : (waitingForInitialSyncEarly ? 'APP_WAITING_FOR_INITIAL_SYNC' : 'APP_WAITING_FOR_SESSION_READY'), { isAuthReady, isSessionReady, view, isInitialSyncComplete: garageData.isInitialSyncComplete });
-    const gateScreen = resolveBootShape(view) === 'login' ? (
-      <LoginView
-        loginPhone={navigationUi.loginPhone}
-        setLoginPhone={navigationUi.setLoginPhone}
-        handleGarageLogin={adminManagement.handleGarageLogin}
-        isLoading={isLoading || !isAuthReady}
-        closeKeyboard={navigationUi.closeKeyboard}
-      />
-    ) : (
-      <BrandSplash />
-    );
+    const gateScreen = <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm">جاري التحميل...</p></div>;
     return hasRenderedContentRef.current ? <DelayedFallback>{gateScreen}</DelayedFallback> : gateScreen;
   }
 
@@ -144,7 +117,7 @@ export default function App() {
     <ErrorBoundary>
       <NetworkStatusBanner />
       <AppOverlays />
-      <Suspense fallback={<DelayedFallback><BrandSplash /></DelayedFallback>}>
+      <Suspense fallback={<DelayedFallback><PageSkeleton /></DelayedFallback>}>
         <AppRoutes />
       </Suspense>
     </ErrorBoundary>
