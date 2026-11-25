@@ -234,44 +234,6 @@ export const vehicleService = {
     return unsubscribe;
   },
 
-  getTodayTransactionsOnce: async (garageId: string): Promise<any[]> => {
-    const today = getCairoDateKey(new Date());
-    const startTime = getCairoDayStartTimestamp();
-    const firestoreTimestamp = Timestamp.fromDate(startTime);
-
-    try {
-      const q = query(
-        collection(db, 'activity_logs'),
-        where('garageId', '==', garageId),
-        where('actionType', '==', TODAY_REPORT_ACTION),
-        where('timestamp', '>=', firestoreTimestamp),
-        orderBy('timestamp', 'desc'),
-        limit(TODAY_ACTIVITY_LOG_LIMIT)
-      );
-      return mapTodayTransactions(await getDocs(q), today);
-    } catch (primaryError) {
-      if (!isMissingActivityLogIndexError(primaryError)) {
-        recordActivityLogQueryFailure('one-shot', primaryError);
-        throw makeActivityLogUnavailableError(primaryError);
-      }
-      recordActivityLogIndexFallback('one-shot', primaryError);
-      // Match the live fallback with a bounded newest-first compatibility query.
-      const fallbackQ = query(
-        collection(db, 'activity_logs'),
-        where('garageId', '==', garageId),
-        where('actionType', '==', TODAY_REPORT_ACTION),
-        orderBy('timestamp', 'desc'),
-        limit(TODAY_ACTIVITY_LOG_LIMIT)
-      );
-      try {
-        return mapTodayTransactions(await getDocs(fallbackQ), today);
-      } catch (fallbackError) {
-        recordActivityLogQueryFailure('one-shot', fallbackError);
-        throw makeActivityLogUnavailableError(fallbackError);
-      }
-    }
-  },
-
   /**
    * Fetch total revenue for the last 30 days from the precomputed
    * `daily_stats` collection. Each day has a `revenue` field written

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   normalizeDigits,
   formatArabicDigits,
@@ -14,7 +14,6 @@ import {
 import { calculateCost } from './cost';
 import { generateSafePin } from './pins';
 import { isLightColor } from './colors';
-import { throttleSnapshot } from './storage';
 
 describe('Normalization & String Utilities Edge Cases', () => {
   it('handles mixed eastern and western digits accurately', () => {
@@ -227,24 +226,4 @@ describe('Security & Helper Utils', () => {
   it('correctly assesses light/dark contrast and shimmer themes', () => {
     expect(isLightColor('#FFFFFF')).toBe(true);
     expect(isLightColor('#000000')).toBe(false);  });
-});
-
-describe('Snapshot throttle lifecycle', () => {
-  it('cancels a pending trailing snapshot', () => {
-    vi.useFakeTimers();
-    try {
-      const callback = vi.fn();
-      const throttled = throttleSnapshot(callback, 100);
-
-      throttled('garage-a');
-      throttled('garage-b');
-      throttled.cancel();
-      vi.advanceTimersByTime(100);
-
-      expect(callback).toHaveBeenCalledOnce();
-      expect(callback).toHaveBeenCalledWith('garage-a');
-    } finally {
-      vi.useRealTimers();
-    }
-  });
 });

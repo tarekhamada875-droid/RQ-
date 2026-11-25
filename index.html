@@ -90,7 +90,6 @@
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
           navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function(reg) {
-            console.log('PWA ServiceWorker registered with scope:', reg.scope);
             // PWA shell freshness (owner debug rq-debug-2026-11-18-05-04-25):
             // the garage device reopens through a browser tab discard, and the
             // first reopen after a deploy was still running the PREVIOUS
@@ -230,118 +229,9 @@
         max-width: 400px;
         margin: 2rem auto;
       }
-
-      /* Landscape configuration warning styles */
-      .landscape-warning-overlay {
-        display: none;
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: #f8fafc;
-        z-index: 10000;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        padding: 2rem;
-        text-align: center;
-        direction: rtl;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      }
-      .dark .landscape-warning-overlay {
-        background: #000000;
-      }
-      .landscape-card {
-        background: white;
-        border: 1px solid #cbd5e1;
-        padding: 2.5rem 2rem;
-        border-radius: 2rem;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
-        max-width: 450px;
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-      }
-      .dark .landscape-card {
-        background: #1e1e1f;
-        border-color: #2e2f30;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-      }
-      .phone-icon-wrapper {
-        position: relative;
-        width: 80px;
-        height: 80px;
-        margin-bottom: 2rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .phone-icon {
-        width: 44px;
-        height: 44px;
-        color: #10b981;
-        animation: rotatePhone 2.5s infinite;
-      }
-      .rotate-arrow {
-        position: absolute;
-        width: 72px;
-        height: 72px;
-        color: #34d399;
-        opacity: 0.8;
-        transform: rotate(45deg);
-        animation: spinArrow 2.5s infinite;
-      }
-      .landscape-title {
-        font-weight: 900;
-        font-size: 1.25rem;
-        margin-bottom: 0.75rem;
-        color: #0f172a;
-      }
-      .dark .landscape-title {
-        color: #fafafb;
-      }
-      .landscape-desc {
-        color: #64748b;
-        font-size: 0.95rem;
-        line-height: 1.7;
-        font-weight: bold;
-        margin: 0;
-      }
-      .dark .landscape-desc {
-        color: #9e9fa2;
-      }
-      @keyframes rotatePhone {
-        0%, 100% { transform: rotate(0deg); }
-        50% { transform: rotate(90deg); }
-      }
-      @keyframes spinArrow {
-        0%, 100% { transform: rotate(45deg) scale(0.9); opacity: 0.5; }
-        50% { transform: rotate(225deg) scale(1.1); opacity: 1; }
-      }
-      
-      /* Only show in landscape orientation on handheld/touch devices - Disabled to let React App.tsx handle it with live dashboard rates */
     </style>
   </head>
   <body>
-    <!-- Landscape Orientation Blocker for Touch Devices -->
-    <div class="landscape-warning-overlay">
-      <div class="landscape-card">
-        <div class="phone-icon-wrapper">
-          <svg class="phone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-            <path d="M12 18h.01"></path>
-          </svg>
-          <svg class="rotate-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
-          </svg>
-        </div>
-        <h2 class="landscape-title">يرجى تدوير الهاتف للوضع الرأسي</h2>
-        <p class="landscape-desc">
-          برنامج RQ مصمم بالكامل للعمل بالوضع العمودي لضمان تجربة تحكم سريعة وعملية.
-        </p>
-      </div>
-    </div>
-
     <div class="browser-unsupported-message">
       <div class="unsupported-card">
         <h2 style="color: #ef4444; font-weight: 900; margin-bottom: 1rem;">المتصفح قديم جداً</h2>

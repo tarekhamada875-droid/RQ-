@@ -103,11 +103,6 @@ describe('daily activity ordering, fallback, and visible cap', () => {
     expect(liveResults[0][0].id).toBe('activity-0000');
     expect(liveResults[0][49].id).toBe('activity-0049');
     unsubscribe();
-
-    const oneTimeResults = await vehicleService.getTodayTransactionsOnce('garage-activity-limit-test');
-    expect(oneTimeResults).toHaveLength(50);
-    expect(oneTimeResults[0].id).toBe('activity-0000');
-    expect(oneTimeResults[49].id).toBe('activity-0049');
   });
 
   it('keeps activity history restricted to the current Cairo calendar day', () => {
@@ -176,27 +171,6 @@ describe('daily activity ordering, fallback, and visible cap', () => {
     unsubscribe();
   });
 
-  it('uses a bounded newest-first fallback for a one-time missing-index query', async () => {
-    firestoreMocks.primaryError = missingIndexError();
-    const consoleWarning = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    const logs = await vehicleService.getTodayTransactionsOnce('garage-activity-limit-test');
-
-    expect(firestoreMocks.getDocs).toHaveBeenCalledTimes(2);
-    const fallbackParts = queryPartsFrom(firestoreMocks.getDocs.mock.calls[1]);
-    expect(hasLimit(fallbackParts)).toBe(true);
-    expect(hasCheckoutFilter(fallbackParts)).toBe(true);
-    expect(fallbackParts.some((part: any) => part?.kind === 'orderBy' && part.field === 'timestamp' && part.direction === 'desc')).toBe(true);
-    expect(logs).toHaveLength(50);
-    expect(logs[0].id).toBe('activity-0000');
-    expect(logs[49].id).toBe('activity-0049');
-    expect(consoleWarning).toHaveBeenCalledWith('[vehicleService] activity_logs_index_fallback', {
-      event: 'activity_logs_index_fallback',
-      source: 'one-shot',
-      code: 'failed-precondition'
-    });
-  });
-
   it('reports an explicit unavailable error if the live compatibility query also fails', () => {
     firestoreMocks.primaryError = missingIndexError();
     firestoreMocks.fallbackError = Object.assign(new Error('permission denied'), { code: 'permission-denied' });
@@ -227,14 +201,5 @@ describe('daily activity ordering, fallback, and visible cap', () => {
     expect(deliveries[0].logs).toEqual([]);
     expect(deliveries[0].error?.code).toBe('ACTIVITY_LOGS_UNAVAILABLE');
     unsubscribe();
-  });
-
-  it('rejects one-time queries explicitly when a non-index failure occurs', async () => {
-    firestoreMocks.primaryError = Object.assign(new Error('permission denied'), { code: 'permission-denied' });
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    await expect(vehicleService.getTodayTransactionsOnce('garage-activity-limit-test'))
-      .rejects.toMatchObject({ code: 'ACTIVITY_LOGS_UNAVAILABLE' });
-    expect(firestoreMocks.getDocs).toHaveBeenCalledTimes(1);
   });
 });

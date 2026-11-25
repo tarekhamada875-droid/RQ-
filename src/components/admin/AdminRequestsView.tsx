@@ -344,5 +344,3 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
     </div>
   );
 };
-
-export default AdminRequestsView;

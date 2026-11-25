@@ -15,8 +15,7 @@ const serviceMocks = vi.hoisted(() => ({
   subscribeToActiveVehicles: vi.fn(),
   subscribeToTodayTransactions: vi.fn(),
   subscribeToGarage: vi.fn(),
-  subscribeToPendingRechargeRequests: vi.fn(),
-  throttleCancels: [] as ReturnType<typeof vi.fn>[]
+  subscribeToPendingRechargeRequests: vi.fn()
 }));
 
 vi.mock('../services', () => ({
@@ -27,15 +26,6 @@ vi.mock('../services', () => ({
   delegateService: serviceMocks,
   adminService: serviceMocks,
   authService: serviceMocks,
-}));
-
-vi.mock('../utils/storage', () => ({
-  throttleSnapshot: (callback: (...args: any[]) => void) => {
-    const throttled = callback as typeof callback & { cancel: ReturnType<typeof vi.fn> };
-    throttled.cancel = vi.fn();
-    serviceMocks.throttleCancels.push(throttled.cancel);
-    return throttled;
-  }
 }));
 
 const createBaseProps = () => ({
@@ -84,7 +74,6 @@ beforeEach(() => {
   serviceMocks.subscribeToTodayTransactions.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToGarage.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToPendingRechargeRequests.mockReset().mockReturnValue(() => {});
-  serviceMocks.throttleCancels.length = 0;
 });
 
 afterEach(() => {
