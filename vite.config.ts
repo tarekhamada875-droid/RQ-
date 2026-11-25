@@ -63,6 +63,17 @@ export default defineConfig(() => {
           //   for a 385-byte file. With precaching, it comes from the SW
           //   cache instantly (0ms after first boot).
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json}'],
+          // F-11 (cleanliness audit 2026-11-26, owner pick: option B): the
+          // Amiri pair (~120 KB) serves two rarely-seen views only. Precaching
+          // forced every device to download and store both files on every
+          // deploy whether or not those views ever opened. Excluded here, the
+          // browser fetches them lazily — a standard @font-face request fires
+          // only when rendered text actually uses the family — and the
+          // /fonts/* 7-day _headers cache covers repeat visits. Inter/Outfit
+          // stay precached: they paint the whole UI and first paint needs
+          // them. If Amiri is ever updated, bump its filename (see
+          // public/_headers) so devices refetch it.
+          globIgnores: ['**/fonts/amiri-*.woff2'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
