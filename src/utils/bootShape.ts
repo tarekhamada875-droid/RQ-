@@ -4,11 +4,10 @@
  */
 
 /**
- * LOADING-UX (2026-11-25, owner initiative "A+B+C"): destination resolver for
- * every waiting screen in the boot chain (static HTML splash → BootSplash →
- * App gate → Suspense fallback). Goal: the user never sees a generic ghost —
- * every wait shows EITHER the real next screen (login) OR a skeleton that
- * mirrors the exact dashboard family they are returning to.
+ * NO-SKELETONS (owner decision, 2026-11-25): destination resolver for the
+ * App gate. Goal: the user never sees a fake preview — every wait shows
+ * EITHER the real next screen (login) OR the brand splash (see
+ * BrandSplash.tsx) until the real dashboard swaps in.
  *
  * The app persists the last view in localStorage (`app_view`, see
  * useGarageApp) plus the last signed-in identities (`app_garage`,
@@ -23,9 +22,14 @@
  *   view=admin_* (not admin_login) + stored staff → the admin workspace
  *   anything else (login / admin_login / delegate_login / unknown) → login
  *
- * Pure and dependency-free ON PURPOSE: main.tsx's BootSplash imports this
- * file, and BootSplash must stay self-contained (no app-module imports) to
- * keep the app-shell lazy boundary intact (see main.tsx PERF comment).
+ * The three dashboard shapes are kept distinct so future callers can still
+ * tell the destination family apart; the gate currently renders the same
+ * brand splash for all of them.
+ *
+ * Pure and dependency-free ON PURPOSE: the App gate imports this file, and
+ * BrandSplash (rendered by main.tsx from the entry chunk) must stay
+ * self-contained (no app-module imports) to keep the app-shell lazy
+ * boundary intact (see main.tsx PERF comment).
  */
 
 export type BootShape = 'login' | 'garage' | 'admin' | 'delegate';

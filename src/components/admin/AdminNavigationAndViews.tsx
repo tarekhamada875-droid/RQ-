@@ -1,7 +1,6 @@
 import React, { Suspense } from 'react';
 import { Garage, Delegate } from '../../types';
 import { useAdmin } from '../../hooks/adminContext';
-import { DelayedFallback } from '../layout/LoadingFallbacks';
 import {
   Car,
   Users,
@@ -30,19 +29,10 @@ const AdminCreditRateSettingsView = React.lazy(() => import('./AdminCreditRateSe
 const AdminDailyGarageReportsView = React.lazy(() => import('./AdminDailyGarageReportsView').then(m => ({ default: m.AdminDailyGarageReportsView })));
 const AdminIncomeView = React.lazy(() => import('./AdminIncomeView').then(m => ({ default: m.AdminIncomeView })));
 
-// UX-C: loading fallback shown while a lazy tab chunk is fetching. Static
-// ghost rows matching the tab card layout (no pulse — UI-LIGHT-SPEED). The
-// DelayedFallback wrapper means warm-cache tab switches (<250ms) show no
-// loading UI at all.
-const TabLoadingFallback = () => (
-  <DelayedFallback>
-    <div className="space-y-4 py-2" aria-hidden="true">
-      <div className="h-36 rounded-2xl bg-slate-200/70 dark:bg-slate-800/50" />
-      <div className="h-36 rounded-2xl bg-slate-200/70 dark:bg-slate-800/50" />
-      <div className="h-36 rounded-2xl bg-slate-200/70 dark:bg-slate-800/50" />
-    </div>
-  </DelayedFallback>
-);
+// NO-SKELETONS (owner decision, 2026-11-25): the ghost-row tab loading
+// fallback is removed. Lazy tab chunks are precached by the service worker
+// after the first visit, so this boundary is invisible in practice; a cold
+// first visit shows a blank beat instead of a fake preview.
 
 interface AdminNavigationAndViewsProps {
   activeTab: string;
@@ -156,7 +146,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
         </div>
       )}
 
-      <Suspense fallback={<TabLoadingFallback />}>
+      <Suspense fallback={null}>
       {activeTab === 'people' || activeTab === 'delegates' ? (
         <AdminPeopleView
           delegates={delegates}
