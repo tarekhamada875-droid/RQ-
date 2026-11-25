@@ -89,4 +89,29 @@ describe('role skeletons', () => {
       cleanup();
     }
   });
+
+  it('garage skeleton mirrors the real GarageActiveCountCard: FlipNumber placeholders + amber strip + car icon', () => {
+    // SKELETON-FIDELITY (2026-11-25): the previous skeleton had a gray circular
+    // gauge here, which previewed the wrong component. The real bottom card is
+    // a FlipNumber (dark-navy rounded digit cards) sitting on an amber strip
+    // with a Car icon. This test pins the corrected shape so it can't regress.
+    const { container } = render(<GarageDashboardSkeleton />);
+    const html = container.innerHTML;
+    // Two dark-navy flip-card placeholders (mirrors FlipDigit size="lg")
+    const flipCardCount = (html.match(/w-20 h-32 rounded-2xl md:w-32 md:h-48/g) || []).length;
+    expect(flipCardCount).toBeGreaterThanOrEqual(2);
+    // Amber bottom strip with the Car icon (mirrors GarageActiveCountCard)
+    expect(html).toContain('#f59e0b');
+    expect(html.toLowerCase()).toContain('<svg'); // lucide Car renders as <svg>
+    // No mint-green pills anymore (default RegistrationCard state has no buttons)
+    expect(html).not.toContain('bg-emerald-500/15');
+    expect(html).not.toContain('bg-emerald-500/10');
+    // The three outer cards (subscription, registration, active-count) blend
+    // into the cream canvas — bg-[#faf9f6] must appear on each of them, plus
+    // the container and the header (>= 5 occurrences). The plate frame body
+    // inside the registration card legitimately uses bg-white (mirrors the
+    // real RegistrationCard), so we don't ban bg-white wholesale.
+    const creamCardCount = (html.match(/bg-\[#faf9f6\]/g) || []).length;
+    expect(creamCardCount).toBeGreaterThanOrEqual(5);
+  });
 });
