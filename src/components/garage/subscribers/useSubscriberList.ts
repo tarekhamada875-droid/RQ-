@@ -26,8 +26,9 @@ export function useSubscriberList(
   const [searchQuery, setSearchQuery] = useState('');
   const [isAuthResolved, setIsAuthResolved] = useState(!!auth.currentUser);
   // True until the first Firestore snapshot (or shared subscriber page) lands.
-  // Used by SubscribersView to render a skeleton instead of a blank list area
-  // during first-page hydration.
+  // Used by SubscribersView to keep the list area blank (NO-SKELETONS, owner
+  // decision 2026-11-25) instead of showing the false "no subscribers"
+  // empty-state during first-page hydration.
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const hasReceivedSubscriberSnapshotRef = useRef(false);

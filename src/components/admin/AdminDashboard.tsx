@@ -6,7 +6,7 @@
 import React, { memo, Suspense, useEffect, useRef } from 'react';
 import { adminService } from '../../services';
 import { AdminProvider } from '../../hooks/adminContext';
-import { DelayedFallback, ModalSuspenseBackdrop, PageSkeleton } from '../layout/LoadingFallbacks';
+import { DelayedFallback, ModalSuspenseBackdrop } from '../layout/LoadingFallbacks';
 import { useSession } from '../../hooks/sessionContext';
 import { Garage, Delegate } from '../../types';
 import { isLightColor } from '../../utils/colors';
@@ -257,10 +257,12 @@ export const AdminDashboard = memo(({
       )}
 
       {/* Config Sync fullscreen page (owner request 2026-11-21) — mirrors
-          GarageDashboardOverlays' reports mount: conditional lazy mount with
-          a page skeleton while the chunk warms. */}
+          GarageDashboardOverlays' reports mount: conditional lazy mount.
+          NO-SKELETONS (owner 2026-11-25): no loading preview here — the
+          chunk is precached after the first visit, so this boundary is
+          invisible in practice. */}
       {isConfigSyncOpen && (
-        <Suspense fallback={<DelayedFallback><PageSkeleton /></DelayedFallback>}>
+        <Suspense fallback={null}>
           <AdminConfigSyncLazy onBack={() => setIsConfigSyncOpen(false)} />
         </Suspense>
       )}
