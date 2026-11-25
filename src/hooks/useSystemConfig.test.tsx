@@ -14,7 +14,7 @@ const serviceMock = vi.hoisted(() => {
 
 vi.mock('../services', () => { const _svc = {
     subscribeToSystemConfig: serviceMock.subscribeToSystemConfig,
-  }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
+  }; return { garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
 beforeEach(() => {
   serviceMock.callbacks.length = 0;

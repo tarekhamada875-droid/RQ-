@@ -37,7 +37,7 @@ vi.mock('../../../services', () => {
       return () => {};
     }),
   };
-  return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc };
+  return { garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc };
 });
 
 vi.mock('../../../firebase', () => ({

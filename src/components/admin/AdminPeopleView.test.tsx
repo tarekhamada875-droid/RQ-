@@ -7,7 +7,7 @@ import { ApiError } from '../../api/apiClient';
 vi.mock('../../services', () => { const _svc = {
     isPinTaken: vi.fn(),
     addDelegate: vi.fn(),
-  }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
+  }; return { garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
 const themeMock = vi.hoisted(() => ({ adminLang: 'ar' }));
 

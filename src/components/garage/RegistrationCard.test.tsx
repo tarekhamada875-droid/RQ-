@@ -16,7 +16,7 @@ vi.mock('../../services', () => {
   const _svc = {
     getVehicleDocOnce: serviceMocks.getVehicleDocOnce,
   };
-  return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc };
+  return { garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc };
 });
 
 const INSIDE_VEHICLE: Vehicle = {

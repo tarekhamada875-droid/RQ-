@@ -23,7 +23,6 @@ const serviceMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../services', () => ({
-  firestoreService: serviceMocks,
   garageService: serviceMocks,
   garageDeletionService: serviceMocks,
   vehicleService: serviceMocks,

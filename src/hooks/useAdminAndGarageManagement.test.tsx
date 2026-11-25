@@ -28,7 +28,7 @@ vi.mock('../services', () => { const _svc = {
   authenticateUserCredentials: mocks.authenticateUserCredentials,
   addDelegate: vi.fn().mockResolvedValue({ id: 'delegate-1' }),
   removeDelegate: vi.fn().mockResolvedValue(undefined)
-}; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
+}; return { garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 vi.mock('../services/garageDeletionService', () => ({
   deleteGarageWithRecovery: vi.fn(),
   garageDeletionFailureMessage: vi.fn()
