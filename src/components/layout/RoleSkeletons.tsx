@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { Car } from 'lucide-react';
 import { useNavigationUi } from '../../hooks/navigationUiContext';
 import { resolveBootShape } from '../../utils/bootShape';
 import { LoginView } from '../auth/LoginView';
@@ -37,13 +38,28 @@ import { PageSkeleton } from './LoadingFallbacks';
 //   - DelegateDashboardSkeleton← DelegateDashboardView header + cards
 
 export function GarageDashboardSkeleton() {
+  // SKELETON-FIDELITY (2026-11-25, owner report): the previous skeleton had
+  // three structural mismatches with the real GarageDashboardView that made
+  // the cold-start preview read as "a different app":
+  //   1. Cards were bg-white — the real cards are bg-[#faf9f6] (cream) so
+  //      they blend into the canvas. White cards flashed as foreign blocks.
+  //   2. Two mint-green pills sat under the plate frame — the real
+  //      RegistrationCard shows NO buttons in its default state (no plate
+  //      typed, not focused). The pills previewed a layout that never appears.
+  //   3. The bottom card had a gray circular gauge — the real
+  //      GarageActiveCountCard is a FlipNumber (dark-navy rounded digit
+  //      cards with a center hairline) sitting on top of an amber/orange
+  //      strip with a Car icon. The gauge previewed the wrong component.
+  // This rewrite mirrors the real layout 1:1 — same cream cards, same plate
+  // frame (with metallic rivets), same FlipNumber placeholders, same amber
+  // strip. Static only (UI-LIGHT-SPEED).
   return (
     <div
       className="h-screen h-[100dvh] bg-[#faf9f6] dark:bg-transparent font-sans w-full flex flex-col items-center overflow-hidden relative"
       dir="rtl"
       aria-hidden="true"
     >
-      {/* Header: dark name pill + dark menu square (mirrors the real header) */}
+      {/* Header: garage-name pill (right in RTL) + hamburger square (left in RTL) */}
       <header className="bg-[#faf9f6] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3 z-40 w-full shrink-0">
         <div className="max-w-4xl mx-auto flex justify-between items-center w-full">
           <div className="h-11 w-36 bg-slate-900 dark:bg-slate-800 rounded-2xl" />
@@ -51,32 +67,47 @@ export function GarageDashboardSkeleton() {
         </div>
       </header>
 
-      <main className="max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto p-4 w-full flex-1 flex flex-col gap-4">
-        {/* Subscription / prepaid-credit card */}
-        <div className="h-28 md:h-32 rounded-[1.75rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 w-full" />
+      <main className="max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto p-4 w-full flex-1 flex flex-col gap-4 md:gap-6">
+        {/* Subscription / prepaid-credit card — cream bg, placeholder for the big balance number */}
+        <div className="rounded-[1.75rem] border border-slate-200 dark:border-slate-800 bg-[#faf9f6] dark:bg-slate-900 w-full flex items-center justify-center py-4 md:py-8">
+          <div className="h-10 md:h-16 w-20 md:w-32 rounded-lg bg-slate-200/80 dark:bg-slate-800/60" />
+        </div>
 
-        {/* Registration card: the Egyptian plate input + check-in actions */}
-        <div className="rounded-[2rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 md:p-8 w-full flex flex-col gap-4">
+        {/* Registration card: Egyptian plate input frame ONLY (default state shows no buttons) */}
+        <div className="bg-[#faf9f6] dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 p-4 md:p-8 w-full">
           <div
-            className="h-28 sm:h-36 rounded-xl border-2 md:border-[3px] border-slate-900 dark:border-slate-700 overflow-hidden flex flex-col bg-white dark:bg-slate-900/90"
+            className="h-28 sm:h-36 md:h-52 rounded-xl border-2 md:border-[3px] border-slate-900 dark:border-slate-700 overflow-hidden flex flex-col bg-white dark:bg-slate-900/90"
             dir="ltr"
           >
-            <div className="h-8 sm:h-11 bg-[#0057b7] border-b-2 border-slate-900/20 flex items-center justify-between px-3 sm:px-6 shrink-0">
-              <span className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full bg-white/40 border border-white/30" />
-              <span className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full bg-white/40 border border-white/30" />
+            {/* Blue Egyptian-plate header strip with two metallic rivets */}
+            <div className="h-8 sm:h-11 md:h-14 bg-[#0057b7] border-b-2 border-slate-900/20 flex items-center justify-between px-3 sm:px-6 shrink-0">
+              <span className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full bg-gradient-to-tr from-slate-400 to-slate-100 border border-slate-600/40" />
+              <span className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full bg-gradient-to-tr from-slate-400 to-slate-100 border border-slate-600/40" />
             </div>
-            <div className="flex-1 bg-[#fcfcfc] dark:bg-slate-900/90" />
-          </div>
-          <div className="flex gap-3">
-            <div className="flex-1 py-5 rounded-2xl bg-emerald-500/15 dark:bg-emerald-500/10" />
-            <div className="flex-1 py-5 rounded-2xl bg-emerald-500/15 dark:bg-emerald-500/10" />
+            {/* White plate body — empty (no plate typed) */}
+            <div className="flex-1 bg-white dark:bg-slate-900/90" />
           </div>
         </div>
 
-        {/* Cars-inside count card with its circular gauge */}
-        <div className="rounded-[2rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 pt-4 pb-6 w-full flex flex-col items-center gap-3">
-          <div className="h-6 w-44 rounded-full bg-slate-200/80 dark:bg-slate-800/60" />
-          <div className="w-16 h-16 rounded-full border-4 border-slate-200 dark:border-slate-800" />
+        {/* Cars-inside count card: FlipNumber placeholders + amber strip with car icon */}
+        <div className="bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] overflow-hidden flex flex-col items-center pt-4 md:pt-10 w-full">
+          {/* Two flip-card placeholders (dark-navy rounded cards with center hairline) */}
+          <div className="mb-4 md:mb-10 w-full flex justify-center">
+            <div className="flex gap-1.5 sm:gap-2 p-2" dir="ltr">
+              <div className="relative w-20 h-32 rounded-2xl md:w-32 md:h-48 md:rounded-xl bg-slate-900 dark:bg-white overflow-hidden border border-slate-800 dark:border-slate-100 flex items-center justify-center">
+                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] bg-black/40 dark:bg-slate-300 opacity-40" />
+              </div>
+              <div className="relative w-20 h-32 rounded-2xl md:w-32 md:h-48 md:rounded-xl bg-slate-900 dark:bg-white overflow-hidden border border-slate-800 dark:border-slate-100 flex items-center justify-center">
+                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] bg-black/40 dark:bg-slate-300 opacity-40" />
+              </div>
+            </div>
+          </div>
+          {/* Amber/orange bottom strip with car-icon circle (mirrors GarageActiveCountCard) */}
+          <div className="w-full h-6 md:h-7 bg-[#f59e0b] relative overflow-hidden flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#f59e0b] border-2 border-[#f59e0b80] flex items-center justify-center shadow-md">
+              <Car className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
+            </div>
+          </div>
         </div>
       </main>
     </div>
