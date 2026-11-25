@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { getApiUrl } from '../api/apiClient';
+import { getApiUrl } from '../api/apiUrl';
 
 describe('apiClient getApiUrl resolution', () => {
   const originalLocation = window.location;

@@ -1,24 +1,11 @@
 import { Check, CheckCircle2, ChevronDown, Clock, Loader2, Plus, Settings, Trash2, Users } from 'lucide-react';
 import { adminService, authService } from '../../services';
-import { formatDisplayPin } from '../../utils/pins';
+import { applyStaffPinUpdate, formatDisplayPin, isValidStaffPin } from '../../utils/pins';
 import { normalizeDigits } from '../../utils/plates';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 import { useToast } from '../../hooks/toast';
 import type { Staff } from '../../types';
 import { FastInput } from '../ui/FastInput';
-
-export const isValidStaffPin = (pin: string): boolean => /^\d{5}$/.test(pin);
-
-/**
- * Returns a NEW staff list with the matched staff's `pin` replaced.
- * Pure: does NOT mutate the input array or any of its element objects.
- * Exported so the immutability contract can be pinned by a regression test.
- */
-export const applyStaffPinUpdate = (
-  staffList: Staff[],
-  staffId: string,
-  newPin: string,
-): Staff[] => staffList.map(st => st.id === staffId ? { ...st, pin: newPin } : st);
 
 interface RateCheck {
   allowed: boolean;

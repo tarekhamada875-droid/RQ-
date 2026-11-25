@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { cleanup, render, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { acquireBodyScrollLock, useBodyScrollLock } from './useBodyScrollLock';
+import { useBodyScrollLock } from './useBodyScrollLock';
 
 const BodyLockOwner = () => {
   useBodyScrollLock();
@@ -89,19 +89,17 @@ describe('useBodyScrollLock', () => {
     const lock = renderHook(() => useBodyScrollLock());
     const replacementBody = document.createElement('body');
     replacementBody.style.overflow = 'scroll';
-    let releaseReplacementLock = () => {};
-
     try {
       document.documentElement.replaceChild(replacementBody, originalBody);
-      releaseReplacementLock = acquireBodyScrollLock();
+      // A lock owner that mounted after the body swap captured the NEW body.
+      const replacementOwner = renderHook(() => useBodyScrollLock());
       expect(replacementBody.style.overflow).toBe('hidden');
       expect(() => lock.unmount()).not.toThrow();
       expect(document.body).toBe(replacementBody);
       expect(replacementBody.style.overflow).toBe('hidden');
-      releaseReplacementLock();
+      replacementOwner.unmount();
       expect(replacementBody.style.overflow).toBe('scroll');
     } finally {
-      releaseReplacementLock();
       if (document.body === replacementBody) {
         document.documentElement.replaceChild(originalBody, replacementBody);
       } else if (!originalBody.isConnected) {

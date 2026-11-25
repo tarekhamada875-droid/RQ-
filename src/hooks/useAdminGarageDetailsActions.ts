@@ -4,19 +4,8 @@ import { normalizeDigits } from '../utils/plates';
 import { canChangeGarageRates } from '../utils/businessRules';
 import { useAsyncAction } from './useAsyncAction';
 import { generateSafePin, isHashedPin } from '../utils/pins';
-import { getDomainErrorMessage } from '../utils/domainErrors';
+import { getGaragePinUpdateErrorMessage, PIN_UPDATE_ERROR_MESSAGES } from '../utils/domainErrors';
 import type { Garage, Staff } from '../types';
-
-const PIN_UPDATE_ERROR_MESSAGES: Record<string, string> = {
-  PIN_ALREADY_TAKEN: 'الرمز مستخدم بالفعل',
-  'الرمز مستخدم بالفعل': 'الرمز مستخدم بالفعل',
-  PIN_PREVIOUSLY_USED: 'هذا الرمز مستخدم سابقًا ولا يمكن إعادة استخدامه. يرجى اختيار رمز آخر.',
-  'الرمز مستخدم سابقًا': 'هذا الرمز مستخدم سابقًا ولا يمكن إعادة استخدامه. يرجى اختيار رمز آخر.',
-};
-
-export function getGaragePinUpdateErrorMessage(error: unknown): string {
-  return getDomainErrorMessage(error, PIN_UPDATE_ERROR_MESSAGES, 'تعذر تحديث رمز دخول الجراج. يرجى المحاولة مرة أخرى.');
-}
 
 interface UseAdminGarageDetailsActionsArgs {
   garage: Garage;

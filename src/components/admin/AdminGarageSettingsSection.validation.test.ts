@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isValidStaffPin, applyStaffPinUpdate } from './AdminGarageSettingsSection';
+import { isValidStaffPin, applyStaffPinUpdate } from '../../utils/pins';
 import type { Staff } from '../../types';
 
 describe('isValidStaffPin', () => {
