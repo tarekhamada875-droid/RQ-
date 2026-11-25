@@ -49,6 +49,16 @@ describe('font delivery contract (self-hosted, 2026-11-20)', () => {
     expect(existsSync(join(fontsDir, 'outfit-latin.woff2'))).toBe(true);
   });
 
+  it('does not force the rare Amiri fonts into the service-worker precache (audit F-11, owner pick option B)', () => {
+    // The Amiri pair (~120 KB) serves two rarely-seen views. It must stay
+    // out of the SW precache so ordinary devices never download it; the
+    // browser fetches it lazily via @font-face when those views render.
+    const viteConfig = readFileSync(join(process.cwd(), 'vite.config.ts'), 'utf8');
+    expect(viteConfig).toContain("globIgnores: ['**/fonts/amiri-*.woff2']");
+    // Inter/Outfit paint the whole UI — they must remain precached.
+    expect(viteConfig).toContain("globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json}']");
+  });
+
   it('declares @font-face for Amiri 700 (arabic + latin subsets)', () => {
     // Amiri 700 with the Arabic subset (primary use) AND the Latin subset
     // (for Latin chars appearing in an Amiri context). The unicode-range
