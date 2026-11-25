@@ -20,3 +20,21 @@ export function getDomainErrorMessage(
   if (/[\u0600-\u06FF]/.test(message)) return message;
   return fallback;
 }
+
+
+/**
+ * Garage PIN update failures (moved from useAdminGarageDetailsActions.ts,
+ * audit F-14): the code→Arabic mapping and its wrapper live beside the shared
+ * domain-error mapper they are built on; the hook and the error-mapping test
+ * both import them from here.
+ */
+export const PIN_UPDATE_ERROR_MESSAGES: Record<string, string> = {
+  PIN_ALREADY_TAKEN: 'الرمز مستخدم بالفعل',
+  'الرمز مستخدم بالفعل': 'الرمز مستخدم بالفعل',
+  PIN_PREVIOUSLY_USED: 'هذا الرمز مستخدم سابقًا ولا يمكن إعادة استخدامه. يرجى اختيار رمز آخر.',
+  'الرمز مستخدم سابقًا': 'هذا الرمز مستخدم سابقًا ولا يمكن إعادة استخدامه. يرجى اختيار رمز آخر.',
+};
+
+export function getGaragePinUpdateErrorMessage(error: unknown): string {
+  return getDomainErrorMessage(error, PIN_UPDATE_ERROR_MESSAGES, 'تعذر تحديث رمز دخول الجراج. يرجى المحاولة مرة أخرى.');
+}

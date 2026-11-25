@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../firebase', () => ({ auth: { currentUser: null } }));
 
-import { ApiError, apiFetch, __resetInFlightGetsForTests, getApiUrl } from './apiClient';
+import { ApiError, apiFetch, __resetInFlightGetsForTests } from './apiClient';
+import { getApiUrl } from './apiUrl';
 import { auth } from '../firebase';
 
 function response(body: unknown, status = 200, contentType = 'application/json'): Response {

@@ -14,7 +14,7 @@
  * isInitialMinute was true (delete allowed) yet the cost panel was
  * also rendered. Centralizing here removes that class of bug.
  */
-export const ENTRY_ERROR_WINDOW_MS = 300_000;
+const ENTRY_ERROR_WINDOW_MS = 300_000;
 
 export const isWithinEntryErrorWindow = (diffMs: number): boolean =>
   diffMs < ENTRY_ERROR_WINDOW_MS;

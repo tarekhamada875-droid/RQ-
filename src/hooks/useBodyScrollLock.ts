@@ -7,7 +7,9 @@ interface BodyLockSession {
 
 const bodyLockSessions = new WeakMap<HTMLElement, BodyLockSession>();
 
-export const acquireBodyScrollLock = (): (() => void) => {
+// Module-private: the hook is the only production consumer. Tests pin the
+// token/restore semantics through the hook itself.
+const acquireBodyScrollLock = (): (() => void) => {
   if (typeof document === 'undefined' || !document.body) return () => {};
 
   const body = document.body;

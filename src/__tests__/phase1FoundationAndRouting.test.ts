@@ -2,12 +2,12 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 
+import { generateIdempotencyKey } from '../types/apiContracts';
 import {
   IDEMPOTENCY_HEADER_NAME,
   IDEMPOTENCY_HEADER_NAME_ALT,
-  extractIdempotencyKey,
-  generateIdempotencyKey
-} from '../types/apiContracts';
+  extractIdempotencyKey
+} from '../testHelpers/idempotencyContract';
 import { validateIdempotencyKey } from '../../server/validation';
 
 describe('Phase 1 — Foundation & Routing Test Suite', () => {

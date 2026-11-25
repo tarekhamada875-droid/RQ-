@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getGaragePinUpdateErrorMessage } from '../../hooks/useAdminGarageDetailsActions';
+import { getGaragePinUpdateErrorMessage } from '../../utils/domainErrors';
 
 describe('getGaragePinUpdateErrorMessage', () => {
   it('translates the duplicate PIN error to Arabic', () => {

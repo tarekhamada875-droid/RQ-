@@ -34,7 +34,7 @@ const roundMoney2 = (value: number): number => Math.round(value * 100) / 100;
 const arabicNumber = (value: number): string => roundMoney2(value).toLocaleString('ar-EG');
 
 /** Excel-friendly timestamp: Latin digits, Cairo timezone, sortable-ish. */
-export const formatCsvTimestamp = (timestamp: unknown): string => {
+const formatCsvTimestamp = (timestamp: unknown): string => {
   const date = safeDate(timestamp);
   if (Number.isNaN(date.getTime())) return '';
   return new Intl.DateTimeFormat('ar-EG-u-nu-latn', {
@@ -102,7 +102,7 @@ const statementTimestamp = (timestamp: unknown): string => {
   }).format(date);
 };
 
-export interface IncomeStatementInput {
+interface IncomeStatementInput {
   rows: AdminIncomeRow[];
   /** The O(1) notebook total from /api/admin/income/summary. */
   lifetimeTotalEgp: number;
@@ -193,7 +193,7 @@ export const buildIncomeStatementHtml = ({ rows, lifetimeTotalEgp, generatedAt, 
 </html>`;
 };
 
-export interface IncomePage {
+interface IncomePage {
   rows: AdminIncomeRow[];
   hasMore: boolean;
   nextCursor: string | null;

@@ -24,7 +24,7 @@ export interface GarageReportStats {
 // Exported so tests can pin the warning threshold without hardcoding 200 twice.
 export const REPORTS_ACTIVITY_LOG_LIMIT = 200;
 
-export type ReportsNoticeState = 'fresh_summary' | 'live_may_be_truncated' | 'live_ok';
+type ReportsNoticeState = 'fresh_summary' | 'live_may_be_truncated' | 'live_ok';
 
 /**
  * Decide which notice to show at the top of the reports page.

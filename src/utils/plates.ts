@@ -105,7 +105,7 @@ export const getRawPlate = (val: string): string => {
   return letters + numbers;
 };
 
-export interface PlateParts {
+interface PlateParts {
   letters: string;
   numbers: string;
 }

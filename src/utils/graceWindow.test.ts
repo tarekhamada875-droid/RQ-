@@ -1,15 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  ENTRY_ERROR_WINDOW_MS,
-  isWithinEntryErrorWindow,
-} from './graceWindow';
-
-describe('ENTRY_ERROR_WINDOW_MS constant', () => {
-  it('is exactly 300_000 milliseconds (5 minutes)', () => {
-    expect(ENTRY_ERROR_WINDOW_MS).toBe(300_000);
-    expect(ENTRY_ERROR_WINDOW_MS).toBe(5 * 60 * 1000);
-  });
-});
+import { isWithinEntryErrorWindow } from './graceWindow';
 
 describe('isWithinEntryErrorWindow — boundary semantics', () => {
   it('returns true for diffMs = 0 (just-entered vehicle)', () => {
