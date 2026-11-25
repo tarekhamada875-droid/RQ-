@@ -15,7 +15,7 @@ vi.mock('../../services', () => { const _svc = {
     getAdminGaragesPage: vi.fn(),
     updateGarage: vi.fn(),
     deleteGarage: vi.fn(),
-  }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
+  }; return { garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 vi.mock('../../services/garageDeletionService', () => ({
   deleteGarageWithRecovery: deleteGarageWithRecoveryMock,
   garageDeletionFailureMessage: garageDeletionFailureMessageMock

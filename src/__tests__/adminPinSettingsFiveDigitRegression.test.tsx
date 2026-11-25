@@ -9,7 +9,7 @@ const { apiFetch, isPinTaken, updateAdminPin } = vi.hoisted(() => ({
 }));
 
 vi.mock('../api/apiClient', () => ({ apiFetch }));
-vi.mock('../services', () => { const _svc = { isPinTaken, updateAdminPin }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
+vi.mock('../services', () => { const _svc = { isPinTaken, updateAdminPin }; return { garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
 // PERF (audit 2026-11-08): FastInput uses a native 'input' event listener,
 // not React's onChange. fireEvent.change fires a React synthetic 'change'

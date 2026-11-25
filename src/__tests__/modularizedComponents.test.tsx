@@ -39,7 +39,7 @@ vi.mock('../utils/sounds', () => ({
   },
 }));
 
-// Mock firestoreService
+// Mock named services
 vi.mock('../services', () => { const _svc = {
     updateGarage: vi.fn().mockResolvedValue(true),
     getGarageById: vi.fn().mockResolvedValue(null),
@@ -53,7 +53,7 @@ vi.mock('../services', () => { const _svc = {
       cb({ adminColor: '#10b981' });
       return () => {};
     }),
-  }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
+  }; return { garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
 // Mock firebase auth
 vi.mock('../firebase', () => ({

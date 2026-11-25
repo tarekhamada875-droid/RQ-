@@ -10,7 +10,7 @@ vi.mock('../services', () => { const _svc = {
     checkInVehicle: vi.fn(),
     checkOutVehicle: vi.fn(),
     getSubscriberByPlateOnce: vi.fn(),
-  }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
+  }; return { garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
 vi.mock('../utils/sounds', () => ({
   soundManager: { play: vi.fn() },
