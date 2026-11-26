@@ -1,57 +1,42 @@
 import React, { memo } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { EgyptianPlate } from '../ui/EgyptianPlate';
-import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
-import { useModalA11y } from '../../hooks/useModalA11y';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 interface SubscriberWarningModalProps {
   plateNumber: string;
   onConfirm: () => void;
 }
 
+/**
+ * Monthly-subscriber warning (audit F-19, Phase 4c). Now a single-button
+ * ConfirmDialog: backdrop tap, Escape and the button all acknowledge via
+ * `onConfirm` (unchanged), and the plate preview rides in the dialog's
+ * children slot.
+ */
 export const SubscriberWarningModal: React.FC<SubscriberWarningModalProps> = memo(({
   plateNumber,
   onConfirm
-}) => {
-  useBodyScrollLock();
-
-  // Dismissal path matches the backdrop tap (both acknowledge the warning).
-  const modalA11y = useModalA11y(onConfirm);
-
-  return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div 
-        onClick={onConfirm}
-        className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80"
-      />
-      <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2rem] p-6 sm:p-8 text-center border border-slate-200/80 dark:border-slate-800 " dir="rtl" {...modalA11y.containerProps}>
-        <div className="w-14 h-14 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-500/20 shrink-0">
-          <AlertCircle className="w-7 h-7 text-emerald-500 dark:text-emerald-400" />
-        </div>
-        
-        <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">تنبيه: مشترك شهري</h3>
-        
-        <p className="text-slate-500 dark:text-slate-400 font-bold mb-5 text-sm leading-relaxed">
-          رقم اللوحة بتاع مشترك شهري شغال وفعّال دلوقتي.
-          <br/>
-          <span className="text-emerald-600 dark:text-emerald-400 font-black">مش هيتسجل</span> في قائمة العربيات اللي جوّه.
-        </p>
-
-        {/* Plate Mockup in Warning Modal */}
-        <div className="flex items-center justify-center mb-6 text-center scale-100 origin-center shrink-0">
-          <EgyptianPlate 
-            plateNumber={plateNumber} 
-            size="md" 
-          />
-        </div>
-        
-        <button 
-          onClick={onConfirm}
-          className="w-full py-3.5 bg-slate-900 dark:bg-emerald-600 text-white rounded-2xl font-black text-base outline-none cursor-pointer shadow-lg shadow-emerald-600/20 flex items-center justify-center"
-        >
-          تمام
-        </button>
-      </div>
+}) => (
+  <ConfirmDialog
+    isOpen
+    tone="success"
+    title="تنبيه: مشترك شهري"
+    message={
+      <>
+        رقم اللوحة بتاع مشترك شهري شغال وفعّال دلوقتي.
+        <br />
+        <span className="text-emerald-600 dark:text-emerald-400 font-black">مش هيتسجل</span> في قائمة العربيات اللي جوّه.
+      </>
+    }
+    icon={<AlertCircle className="w-10 h-10 text-emerald-500 dark:text-emerald-400" />}
+    confirmText="تمام"
+    onConfirm={onConfirm}
+    zIndex="z-[110]"
+  >
+    {/* Plate mockup — the dialog's reason to exist */}
+    <div className="flex items-center justify-center mb-2 text-center shrink-0">
+      <EgyptianPlate plateNumber={plateNumber} size="md" />
     </div>
-  );
-});
+  </ConfirmDialog>
+));

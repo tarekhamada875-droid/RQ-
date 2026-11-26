@@ -5,8 +5,7 @@ import { Spinner } from '../ui/Spinner';
 import { APP_TEXT } from '../../constants';
 import { Garage } from '../../types';
 import { formatPlateNumber } from '../../utils/plates';
-import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
-import { useModalA11y } from '../../hooks/useModalA11y';
+import { ModalShell } from '../ui/ModalShell';
 
 interface CheckInModalProps {
   // PR-U: newPlateNumber removed — the modal now takes plateValue as a prop
@@ -29,7 +28,6 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
   onCancel
 }) => {
   const [isLargeScreen, setIsLargeScreen] = React.useState(false);
-  useBodyScrollLock();
 
   React.useEffect(() => {
     const media = window.matchMedia('(min-width: 640px)');
@@ -39,19 +37,14 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
     return () => media.removeEventListener('change', listener);
   }, []);
 
-  const modalA11y = useModalA11y(onCancel);
-
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div 
-        onClick={() => !isLoading && onCancel()}
-        className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80"
-      />
-      <div
-        className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl rounded-t-3xl sm:rounded-3xl p-6 sm:p-10 text-center max-h-[90vh] max-h-[90dvh] overflow-y-auto custom-scrollbar-slate stable-scrollbar border border-slate-200/80 dark:border-slate-800 "
-        dir="rtl"
-        {...modalA11y.containerProps}
-      >
+    <ModalShell
+      onClose={onCancel}
+      closeOnBackdrop={!isLoading}
+      zIndex="z-[60]"
+      variant="sheet-flush"
+      panelClassName="bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl rounded-t-3xl sm:rounded-3xl p-6 sm:p-10 text-center max-h-[90vh] max-h-[90dvh] overflow-y-auto custom-scrollbar-slate stable-scrollbar border border-slate-200/80 dark:border-slate-800"
+    >
         {isLoading ? (
           <div className="py-16 text-center">
             <div className="flex justify-center mb-6">
@@ -112,7 +105,7 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
               )}
             </div>
 
-            <button 
+            <button
               onClick={onCancel}
               className="w-full mt-6 h-14 sm:h-16 text-red-500 dark:text-red-400 font-black text-sm sm:text-base bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-100 dark:border-red-900/30 outline-none cursor-pointer flex items-center justify-center shadow-sm"
             >
@@ -120,7 +113,6 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
             </button>
           </>
         )}
-      </div>
-    </div>
+    </ModalShell>
   );
 });

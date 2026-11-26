@@ -9,10 +9,9 @@ import { formatArabicDigits } from '../../utils/plates';
 import { isWithinEntryErrorWindow } from '../../utils/graceWindow';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
 import { useServerTimeNow } from '../../hooks/serverTimeContext';
-import { useModalA11y } from '../../hooks/useModalA11y';
 import { useAsyncAction } from '../../hooks/useAsyncAction';
+import { ModalShell } from '../ui/ModalShell';
 import { Vehicle, Garage, Staff } from '../../types';
-import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 interface CheckOutModalProps {
   selectedVehicle: Vehicle;
@@ -85,7 +84,6 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
     }, 10000);
   };
 
-  useBodyScrollLock();
   React.useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -101,21 +99,15 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
     return isInitialMinute ? 580 : 520;
   }, [confirmingSide, isInitialMinute, isLargeScreen]);
 
-  const modalA11y = useModalA11y(onCancel);
-
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div 
-        onClick={() => !isLoading && onCancel()}
-        className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80"
-      />
-      
-      <div 
-        className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-sm sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl rounded-t-[3.5rem] sm:rounded-[3.5rem] md:rounded-[4rem] p-6 sm:p-8 md:p-10 lg:p-12 pt-12 text-center border-t sm:border border-x border-slate-200 dark:border-slate-800 flex flex-col max-h-[92dvh] overflow-y-auto "
-        style={{ height: modalHeight }}
-        dir="rtl"
-        {...modalA11y.containerProps}
-      >
+    <ModalShell
+      onClose={onCancel}
+      closeOnBackdrop={!isLoading}
+      zIndex="z-[60]"
+      variant="sheet-flush"
+      panelClassName="bg-[#faf9f6] dark:bg-slate-900 w-full max-w-sm sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl rounded-t-[3.5rem] sm:rounded-[3.5rem] md:rounded-[4rem] p-6 sm:p-8 md:p-10 lg:p-12 pt-12 text-center border-t sm:border border-x border-slate-200 dark:border-slate-800 flex flex-col max-h-[92dvh] overflow-y-auto"
+      panelStyle={{ height: modalHeight }}
+    >
         {/* Handle Bar Area */}
         <button 
           onClick={() => !isLoading && !isConfirming && onCancel()}
@@ -367,7 +359,6 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                 </>
             </div>
           )}
-      </div>
-    </div>
+    </ModalShell>
   );
 });

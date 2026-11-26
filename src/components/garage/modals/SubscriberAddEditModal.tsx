@@ -5,7 +5,7 @@ import { LicensePlateKeyboard } from '../LicensePlateKeyboard';
 import { formatPlateNumber, getCleanPlate } from '../../../utils/plates';
 import type { Subscriber } from '../../../types';
 import { FastInput } from '../../ui/FastInput';
-import { useModalA11y } from '../../../hooks/useModalA11y';
+import { ModalShell } from '../../ui/ModalShell';
 
 /**
  * SubscriberAddEditModal
@@ -76,14 +76,19 @@ export const SubscriberAddEditModal = memo(function SubscriberAddEditModal({
   handleSubmit,
   formatDisplayDate,
 }: SubscriberAddEditModalProps) {
-  // Stays mounted while hidden — re-arm Escape/trap/focus on every open.
-  const modalA11y = useModalA11y(onClose, undefined, isOpen);
+  // The component stays mounted while hidden (parent renders it always);
+  // `active={isOpen}` below keeps the a11y armed only while visible.
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/60" onClick={onClose} />
-      <div className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md rounded-[2rem] sm:rounded-xl max-h-[90dvh] overflow-y-auto custom-scrollbar-slate" {...modalA11y.containerProps}>
+    <ModalShell
+      onClose={onClose}
+      active={isOpen}
+      zIndex="z-[110]"
+      variant="sheet-padded"
+      backdropClassName="bg-slate-900/40 dark:bg-black/60"
+      panelClassName="bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md rounded-[2rem] sm:rounded-xl max-h-[90dvh] overflow-y-auto custom-scrollbar-slate"
+    >
 
         {/* Modal Header */}
         <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
@@ -282,8 +287,7 @@ export const SubscriberAddEditModal = memo(function SubscriberAddEditModal({
           </button>
 
         </form>
-      </div>
-    </div>
+    </ModalShell>
   );
 });
 

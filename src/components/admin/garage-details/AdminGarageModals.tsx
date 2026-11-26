@@ -5,7 +5,6 @@
 
 import { memo, useCallback } from 'react';
 import {
-  Trash2,
   Loader2,
   Key,
   RefreshCw
@@ -13,7 +12,8 @@ import {
 import { normalizeDigits } from '../../../utils/plates';
 import { Garage, Staff } from '../../../types';
 import { FastInput } from '../../ui/FastInput';
-import { useModalA11y } from '../../../hooks/useModalA11y';
+import { ModalShell } from '../../ui/ModalShell';
+import { ConfirmDialog } from '../../ui/ConfirmDialog';
 
 interface AdminGarageModalsProps {
   garage: Garage;
@@ -62,220 +62,182 @@ export const AdminGarageModals = memo(({
   isUpdatingGaragePin,
   onSaveGaragePin
 }: AdminGarageModalsProps) => {
-  // All three dialogs stay mounted and toggle visibility — each one gets
-  // its own a11y controller, armed only while that dialog is open.
+  // Close handlers stay stable across renders so ModalShell re-arms its
+  // Escape/focus handling with the same callback each open.
   const closeAddStaff = useCallback(() => setShowAddStaffModal(false), [setShowAddStaffModal]);
   const closeStaffDelete = useCallback(() => setStaffToDelete(null), [setStaffToDelete]);
   const closeEditPin = useCallback(() => setShowEditGaragePinModal(false), [setShowEditGaragePinModal]);
-  const addStaffA11y = useModalA11y(closeAddStaff, undefined, showAddStaffModal);
-  const staffDeleteA11y = useModalA11y(closeStaffDelete, undefined, Boolean(staffToDelete));
-  const editPinA11y = useModalA11y(closeEditPin, undefined, showEditGaragePinModal);
 
   return (
     <>
       {/* Add Staff Modal */}
       {showAddStaffModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-800 p-6" {...addStaffA11y.containerProps}>
-            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">{'إضافة موظف جديد'}</h3>
-            <p className="text-xs text-slate-400 font-bold mb-5">{'أدخل اسم الموظف وسيتم استخدام الرمز الظاهر لتسجيل الدخول.'}</p>
+        <ModalShell onClose={closeAddStaff} zIndex="z-50" panelClassName="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-800 p-6">
+          <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">{'إضافة موظف جديد'}</h3>
+          <p className="text-xs text-slate-400 font-bold mb-5">{'أدخل اسم الموظف وسيتم استخدام الرمز الظاهر لتسجيل الدخول.'}</p>
 
-            <form onSubmit={onAddStaffSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-black text-slate-700 dark:text-slate-300">{'اسم الموظف'}</label>
-                <FastInput
-                  placeholder={'مثال: أحمد محمد'}
-                  defaultValue={staffForm.name}
-                  autoFocus
-                  onCommit={(v) => setStaffForm(prev => ({ ...prev, name: v.replace(/[0-9]/g, '') }))}
-                  onLiveValue={(v) => setStaffForm(prev => ({ ...prev, name: v.replace(/[0-9]/g, '') }))}
-                  mask={(v) => v.replace(/[0-9]/g, '')}
-                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-emerald-500 text-center"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-black text-slate-700 dark:text-slate-300">{'الرمز السري'}</label>
-                <div className="w-full p-4 bg-slate-900 rounded-xl text-center border border-slate-800">
-                  <span className="text-3xl font-black text-emerald-400 tracking-[0.25em] font-mono">{staffForm.pin}</span>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="submit"
-                  disabled={isLoading || !staffForm.name}
-                  className="flex-1 py-3.5 bg-emerald-600 text-white rounded-xl font-black text-sm disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                      <span>{'جاري الإضافة...'}</span>
-                    </>
-                  ) : (
-                    <span>{'تأكيد الإضافة'}</span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  disabled={isLoading}
-                  onClick={() => setShowAddStaffModal(false)}
-                  className="px-5 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-black text-sm disabled:opacity-50 cursor-pointer"
-                >
-                  {'إلغاء'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Staff Delete Confirmation Modal */}
-      {staffToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 text-center" {...staffDeleteA11y.containerProps}>
-            <div className="w-14 h-14 bg-rose-50 dark:bg-rose-900/20 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="w-7 h-7" />
+          <form onSubmit={onAddStaffSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-black text-slate-700 dark:text-slate-300">{'اسم الموظف'}</label>
+              <FastInput
+                placeholder={'مثال: أحمد محمد'}
+                defaultValue={staffForm.name}
+                autoFocus
+                onCommit={(v) => setStaffForm(prev => ({ ...prev, name: v.replace(/[0-9]/g, '') }))}
+                onLiveValue={(v) => setStaffForm(prev => ({ ...prev, name: v.replace(/[0-9]/g, '') }))}
+                mask={(v) => v.replace(/[0-9]/g, '')}
+                className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-emerald-500 text-center"
+              />
             </div>
-            <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mb-2">{'حذف الموظف؟'}</h3>
-            <p className="text-xs text-slate-400 font-bold mb-6">
-              {'هل أنت متأكد من حذف الموظف'} <span className="text-slate-900 dark:text-white font-black">"{staffToDelete.name}"</span>؟
-            </p>
 
-            <div className="flex gap-3">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-black text-slate-700 dark:text-slate-300">{'الرمز السري'}</label>
+              <div className="w-full p-4 bg-slate-900 rounded-xl text-center border border-slate-800">
+                <span className="text-3xl font-black text-emerald-400 tracking-[0.25em] font-mono">{staffForm.pin}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
               <button
-                onClick={() => onDeleteStaff(staffToDelete.id)}
-                disabled={isLoading}
-                className="flex-1 h-14 bg-rose-600 text-white rounded-2xl font-black text-sm disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer "
+                type="submit"
+                disabled={isLoading || !staffForm.name}
+                className="flex-1 py-3.5 bg-emerald-600 text-white rounded-xl font-black text-sm disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                    <span>{'جاري الحذف...'}</span>
+                    <span>{'جاري الإضافة...'}</span>
                   </>
                 ) : (
-                  <span>{'تأكيد الحذف'}</span>
+                  <span>{'تأكيد الإضافة'}</span>
                 )}
               </button>
               <button
+                type="button"
                 disabled={isLoading}
-                onClick={() => setStaffToDelete(null)}
-                className="flex-1 h-14 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-sm disabled:opacity-50 cursor-pointer flex items-center justify-center"
+                onClick={() => setShowAddStaffModal(false)}
+                className="px-5 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-black text-sm disabled:opacity-50 cursor-pointer"
               >
                 {'إلغاء'}
               </button>
             </div>
-          </div>
-        </div>
+          </form>
+        </ModalShell>
+      )}
+
+      {/* Staff Delete Confirmation Modal */}
+      {staffToDelete && (
+        <ConfirmDialog
+          isOpen
+          tone="danger"
+          title="حذف الموظف؟"
+          message={
+            <>
+              {'هل أنت متأكد من حذف الموظف'} <span className="text-slate-900 dark:text-white font-black">"{staffToDelete.name}"</span>؟
+            </>
+          }
+          confirmText="تأكيد الحذف"
+          onConfirm={() => onDeleteStaff(staffToDelete.id)}
+          onCancel={closeStaffDelete}
+          busy={isLoading}
+          busyLabel="جاري الحذف..."
+          zIndex="z-50"
+        />
       )}
 
       {/* Edit Owner PIN Modal */}
       {showEditGaragePinModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowEditGaragePinModal(false);
-            }
-          }}
-        >
-          <div
-            className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 text-right"
-            onClick={(e) => e.stopPropagation()}
-            dir="rtl"
-            {...editPinA11y.containerProps}
-          >
-            <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-100 dark:border-emerald-900/60">
-              <Key className="w-6 h-6 stroke-[2.5]" />
-            </div>
+        <ModalShell onClose={closeEditPin} zIndex="z-50" panelClassName="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 text-right">
+          <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-100 dark:border-emerald-900/60">
+            <Key className="w-6 h-6 stroke-[2.5]" />
+          </div>
 
-            <h3 className="text-lg font-black text-slate-900 dark:text-white text-center mb-1">
-              {'تعديل رمز المالك'}
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 text-center font-bold mb-6">
-              {garage.name}
-            </p>
+          <h3 className="text-lg font-black text-slate-900 dark:text-white text-center mb-1">
+            {'تعديل رمز المالك'}
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 text-center font-bold mb-6">
+            {garage.name}
+          </p>
 
-            <form onSubmit={onSaveGaragePin}>
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-2">
-                    {'رمز الدخول الجديد (5 أرقام):'}
-                  </label>
-                  <FastInput
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]{5}"
-                    minLength={5}
-                    maxLength={5}
-                    defaultValue={garagePinInput}
-                    onCommit={(v) => {
-                      setGaragePinInput(normalizeDigits(v).replace(/\D/g, '').slice(0, 5));
-                      setPinError('');
-                    }}
-                    onLiveValue={(v) => {
-                      setGaragePinInput(normalizeDigits(v).replace(/\D/g, '').slice(0, 5));
-                      setPinError('');
-                    }}
-                    mask={(v) => normalizeDigits(v).replace(/\D/g, '').slice(0, 5)}
-                    placeholder="••••"
-                    autoFocus
-                    className="w-full text-center text-xl font-mono font-black tracking-widest py-3 px-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 focus:border-emerald-500 dark:focus:border-emerald-500 rounded-2xl text-slate-900 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                  />
-                  {pinError && (
-                    <p className="text-xs font-bold text-rose-500 text-center mt-2 ">
-                      {pinError}
-                    </p>
-                  )}
-                </div>
-
-                {/* Generator row (owner request 2026-11-19): the modal is
-                    connected to the PIN generator — one tap replaces the
-                    field with a fresh safe suggestion. Typing stays possible;
-                    active + previously-used PINs are refused at save. */}
-                <div className="flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={onRegeneratePin}
-                    disabled={isUpdatingGaragePin}
-                    className="flex items-center gap-1.5 text-[11px] font-black text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 px-3 py-1.5 rounded-xl cursor-pointer disabled:opacity-50 shrink-0"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>{'توليد رمز آخر'}</span>
-                  </button>
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 leading-relaxed">
-                    {'الرمز المولّد غير مستخدم. يمكنك أيضًا كتابة رمز من اختيارك — سيُرفض تلقائيًا إن كان مستخدمًا من قبل.'}
+          <form onSubmit={onSaveGaragePin}>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-2">
+                  {'رمز الدخول الجديد (5 أرقام):'}
+                </label>
+                <FastInput
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]{5}"
+                  minLength={5}
+                  maxLength={5}
+                  defaultValue={garagePinInput}
+                  onCommit={(v) => {
+                    setGaragePinInput(normalizeDigits(v).replace(/\D/g, '').slice(0, 5));
+                    setPinError('');
+                  }}
+                  onLiveValue={(v) => {
+                    setGaragePinInput(normalizeDigits(v).replace(/\D/g, '').slice(0, 5));
+                    setPinError('');
+                  }}
+                  mask={(v) => normalizeDigits(v).replace(/\D/g, '').slice(0, 5)}
+                  placeholder="••••"
+                  autoFocus
+                  className="w-full text-center text-xl font-mono font-black tracking-widest py-3 px-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 focus:border-emerald-500 dark:focus:border-emerald-500 rounded-2xl text-slate-900 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                />
+                {pinError && (
+                  <p className="text-xs font-bold text-rose-500 text-center mt-2 ">
+                    {pinError}
                   </p>
-                </div>
+                )}
               </div>
 
-              <div className="flex gap-3">
-                <button
-                  type="submit"
-                  disabled={isUpdatingGaragePin || !/^\d{5}$/.test(garagePinInput)}
-                  className="flex-1 h-12 bg-emerald-600 text-white rounded-2xl font-black text-xs sm:text-sm disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer "
-                >
-                  {isUpdatingGaragePin ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                      <span>{'جاري الحفظ...'}</span>
-                    </>
-                  ) : (
-                    <span>{'حفظ الرمز'}</span>
-                  )}
-                </button>
+              {/* Generator row (owner request 2026-11-19): the modal is
+                  connected to the PIN generator — one tap replaces the
+                  field with a fresh safe suggestion. Typing stays possible;
+                  active + previously-used PINs are refused at save. */}
+              <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
+                  onClick={onRegeneratePin}
                   disabled={isUpdatingGaragePin}
-                  onClick={() => setShowEditGaragePinModal(false)}
-                  className="flex-1 h-12 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-xs sm:text-sm disabled:opacity-50 cursor-pointer flex items-center justify-center"
+                  className="flex items-center gap-1.5 text-[11px] font-black text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 px-3 py-1.5 rounded-xl cursor-pointer disabled:opacity-50 shrink-0"
                 >
-                  {'إلغاء'}
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>{'توليد رمز آخر'}</span>
                 </button>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 leading-relaxed">
+                  {'الرمز المولّد غير مستخدم. يمكنك أيضًا كتابة رمز من اختيارك — سيُرفض تلقائيًا إن كان مستخدمًا من قبل.'}
+                </p>
               </div>
-            </form>
-          </div>
-        </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={isUpdatingGaragePin || !/^\d{5}$/.test(garagePinInput)}
+                className="flex-1 h-12 bg-emerald-600 text-white rounded-2xl font-black text-xs sm:text-sm disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer "
+              >
+                {isUpdatingGaragePin ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                    <span>{'جاري الحفظ...'}</span>
+                  </>
+                ) : (
+                  <span>{'حفظ الرمز'}</span>
+                )}
+              </button>
+              <button
+                type="button"
+                disabled={isUpdatingGaragePin}
+                onClick={() => setShowEditGaragePinModal(false)}
+                className="flex-1 h-12 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-xs sm:text-sm disabled:opacity-50 cursor-pointer flex items-center justify-center"
+              >
+                {'إلغاء'}
+              </button>
+            </div>
+          </form>
+        </ModalShell>
       )}
     </>
   );

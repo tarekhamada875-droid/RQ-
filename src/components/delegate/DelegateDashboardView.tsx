@@ -33,6 +33,7 @@ import { useDelegateDashboard } from '../../hooks/delegateDashboardContext';
 import { useToast } from '../../hooks/toast';
 import { useAsyncAction } from '../../hooks/useAsyncAction';
 import { FastInput } from '../ui/FastInput';
+import { ModalShell } from '../ui/ModalShell';
 
 interface DelegateDashboardViewProps {
   delegate: Delegate;
@@ -457,13 +458,12 @@ export const DelegateDashboardView = memo(({
 
       {/* Credit Request Modal */}
       {showCreditRequestModal && creditRequestGarage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 overflow-y-auto" onClick={() => setShowCreditRequestModal(false)}>
-          <div
-            className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 sm:p-8 relative my-auto border border-slate-200 dark:border-slate-800"
-            onClick={e => e.stopPropagation()}
-            onMouseDown={e => e.stopPropagation()}
-            onTouchStart={e => e.stopPropagation()}
-          >
+        <ModalShell
+          onClose={() => setShowCreditRequestModal(false)}
+          zIndex="z-50"
+          overlayClassName="overflow-y-auto"
+          panelClassName="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 sm:p-8 relative my-auto border border-slate-200 dark:border-slate-800"
+        >
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-amber-500/15 border border-amber-500/30 text-amber-500 dark:text-amber-400 rounded-xl flex items-center justify-center">
@@ -518,8 +518,7 @@ export const DelegateDashboardView = memo(({
                 )}
               </button>
             </form>
-          </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   );

@@ -11,7 +11,7 @@ import { IconButton } from '../ui/IconButton';
 import { FastInput, type FastInputHandle } from '../ui/FastInput';
 import { generateSafePin } from '../../utils/pins';
 import { normalizeDigits } from '../../utils/plates';
-import { useModalA11y } from '../../hooks/useModalA11y';
+import { ModalShell } from '../ui/ModalShell';
 
 interface AdminAddGarageModalProps {
   isOpen: boolean;
@@ -81,24 +81,19 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
   }, [isOpen]);
 
   // Stays mounted while hidden — re-arm Escape/trap/focus on every open.
-  const modalA11y = useModalA11y(onClose, undefined, isOpen);
-
   if (!isOpen) return null;
 
   const sanitizeNumeric = (val: string) => normalizeDigits(val).replace(/\D/g, '');
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-900/75 dark:bg-slate-950/85 overflow-y-auto"
-      onClick={onClose}
+    <ModalShell
+      onClose={onClose}
+      active={isOpen}
+      zIndex="z-[100]"
+      overlayClassName="overflow-y-auto"
+      backdropClassName="bg-slate-900/75 dark:bg-slate-950/85"
+      panelClassName="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl relative z-10 my-auto overflow-hidden border border-slate-200/80 dark:border-slate-800"
     >
-      <div
-        className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl relative z-10 my-auto overflow-hidden border border-slate-200/80 dark:border-slate-800 "
-        onClick={e => e.stopPropagation()}
-        onMouseDown={e => e.stopPropagation()}
-        onTouchStart={e => e.stopPropagation()}
-        {...modalA11y.containerProps}
-      >
         {/* Header — lighter, cleaner */}
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 z-20 ">
           <div className="flex items-center gap-2.5">
@@ -319,7 +314,6 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
             </button>
           </form>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

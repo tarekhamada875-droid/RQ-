@@ -1,7 +1,7 @@
 import React from 'react';
 import { Loader2, PlusCircle, X } from 'lucide-react';
 import { Garage } from '../../types';
-import { useModalA11y } from '../../hooks/useModalA11y';
+import { ModalShell } from '../ui/ModalShell';
 
 /**
  * DelegateDashboardOverlays
@@ -36,20 +36,17 @@ export const DelegateDashboardOverlays = ({
   isLoading,
 }: DelegateDashboardOverlaysProps) => {
   const closeAddGarage = React.useCallback(() => setShowAddGarage(false), [setShowAddGarage]);
-  const addGarageA11y = useModalA11y(closeAddGarage, undefined, showAddGarage);
 
   return (
     <>
         {/* Add Garage Modal */}
         {showAddGarage && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 overflow-y-auto" onClick={() => setShowAddGarage(false)}>
-            <div
-              className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 sm:p-8 relative my-auto border border-slate-200 dark:border-slate-800 transition-colors"
-              onClick={e => e.stopPropagation()}
-              onMouseDown={e => e.stopPropagation()}
-              onTouchStart={e => e.stopPropagation()}
-              {...addGarageA11y.containerProps}
-            >
+          <ModalShell
+            onClose={closeAddGarage}
+            zIndex="z-50"
+            overlayClassName="overflow-y-auto"
+            panelClassName="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 sm:p-8 relative my-auto border border-slate-200 dark:border-slate-800 transition-colors"
+          >
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-amber-500/15 border border-amber-500/30 text-amber-500 dark:text-amber-400 rounded-xl flex items-center justify-center">
@@ -131,8 +128,7 @@ export const DelegateDashboardOverlays = ({
                   )}
                 </button>
               </form>
-            </div>
-          </div>
+          </ModalShell>
         )}
 
     </>
