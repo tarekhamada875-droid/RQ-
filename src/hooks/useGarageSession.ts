@@ -260,6 +260,19 @@ export function useGarageSession({
     }
   }, [showToast]);
 
+  // Audit F-4 (Phase 3b, 2026-11-26): for garage-owner sessions, the session
+  // guard no longer attaches its own onSnapshot to garages/{id} — the data-feed
+  // listener in useGarageSync is the single listener and also handles account
+  // deletion/disabling detection. This callback is invoked by the feed when it
+  // receives a fresh (non-cached) snapshot where the garage doc no longer
+  // exists. It performs the exact same toast + force-logout the guard used to
+  // do, just routed through the feed's single onSnapshot instead of a
+  // redundant second one.
+  const handleAccountRevoked = useCallback(() => {
+    showToast('عذراً، تم حذف أو تعطيل هذا الحساب من قبل مدير النظام.', 'error');
+    void handleLogout(true);
+  }, [showToast, handleLogout]);
+
   // API Session Expiration Listener
   useEffect(() => {
     const handleApiSessionExpired = (e: any) => {
@@ -503,7 +516,21 @@ export function useGarageSession({
         document.addEventListener('visibilitychange', visibilityHandler);
       }
 
-      if (docCollection && activeEntityId) {
+      if (docCollection && activeEntityId && docCollection !== 'garages') {
+        // Audit F-4 (Phase 3b, 2026-11-26): the session guard no longer
+        // attaches an onSnapshot to garages/{id} for garage-owner sessions.
+        // The data-feed listener in useGarageSync (subscribeToGarage) is the
+        // single Firestore listener for that doc and also handles account-
+        // deletion detection via the onAccountRevoked callback. The guard
+        // still attaches for staff (staff/{id}), delegate
+        // (delegates/{id}) and admin (admin_settings/auth_pin) sessions —
+        // those watch different docs with no feed overlap.
+        //
+        // The PR-D piggyback ref (latestEntitySnapshotRef) is still captured
+        // here for delegate sessions — that's the only session type where
+        // getLatestEntitySnapshot is actually read (by the delegate dashboard
+        // poll in useGarageSync). For staff/admin sessions the ref is captured
+        // but never read, same as before.
         const entityDocRef = doc(db, docCollection, activeEntityId);
         let isEvicting = false;
 
@@ -609,6 +636,7 @@ export function useGarageSession({
     isLoggingOut,
     handleLogout,
     handleInitiateLogout,
+    handleAccountRevoked,
     getLatestEntitySnapshot,
   }), [
     user,
@@ -621,6 +649,7 @@ export function useGarageSession({
     isLoggingOut,
     handleLogout,
     handleInitiateLogout,
+    handleAccountRevoked,
     getLatestEntitySnapshot,
   ]);
 }
