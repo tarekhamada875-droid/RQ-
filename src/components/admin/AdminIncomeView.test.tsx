@@ -52,6 +52,8 @@ const row = (overrides: Record<string, unknown>) => ({
   ...overrides,
 });
 
+import { formatNumberEn } from '../../utils/money';
+
 describe('AdminIncomeView — admin income page (الدخل)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -62,11 +64,15 @@ describe('AdminIncomeView — admin income page (الدخل)', () => {
     buildIncomeStatementHtml.mockReturnValue('<html />');
   });
 
-  it('shows the lifetime total in Arabic numerals', async () => {
+  it('shows the lifetime total in the shared canonical number format (F-18)', async () => {
     render(<AdminIncomeView onBack={vi.fn()} />);
 
     expect(await screen.findByText('إجمالي الدخل')).toBeInTheDocument();
-    const expected = (1234).toLocaleString('ar-EG');
+    // Audit F-18: the income view previously used ar-EG while every other
+    // admin money screen used en-US — the same amount rendered ١٬٢٣٤ here and
+    // 1,234 elsewhere. The shared formatNumberEn is the canonical format;
+    // this assertion imports it so the test can never drift from it again.
+    const expected = formatNumberEn(1234);
     await waitFor(() => {
       expect(screen.getByText(expected)).toBeInTheDocument();
     });
@@ -88,7 +94,7 @@ describe('AdminIncomeView — admin income page (الدخل)', () => {
     expect(screen.getByText('جراج المستقبل')).toBeInTheDocument();
     expect(screen.getByText('طلب مندوب')).toBeInTheDocument();
     expect(screen.getByText('إضافة يدوية')).toBeInTheDocument();
-    const expectedEgp = (1000).toLocaleString('ar-EG');
+    const expectedEgp = formatNumberEn(1000);
     expect(screen.getByText(new RegExp(`\\+${expectedEgp}`))).toBeInTheDocument();
     expect(screen.getByText('سجل الدخل')).toBeInTheDocument();
   });

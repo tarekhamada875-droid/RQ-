@@ -17,6 +17,7 @@ import {
 import { getDomainErrorMessage } from '../../utils/domainErrors';
 import { useGlobalCreditRate } from '../../hooks/useGlobalCreditRate';
 import { useAsyncAction } from '../../hooks/useAsyncAction';
+import { formatNumberEn } from '../../utils/money';
 
 interface Props {
   garage: Garage;
@@ -182,7 +183,7 @@ export const AdminGarageCreditRateSection: React.FC<Props> = ({ garage }) => {
                     ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
                     : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
                 }`}>
-                  {previewCredits.toLocaleString('ar-EG')} رصيد
+                  {formatNumberEn(previewCredits)} رصيد
                 </span>
               </button>
             );

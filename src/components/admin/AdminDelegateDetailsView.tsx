@@ -10,6 +10,7 @@ import { Delegate } from '../../types';
 import { delegateService } from '../../services';
 import { useTheme } from '../../utils/ThemeContext';
 import { useAsyncAction } from '../../hooks/useAsyncAction';
+import { formatNumberEn } from '../../utils/money';
 import { AdminDelegateProfileCard } from './delegate-details/AdminDelegateProfileCard';
 
 interface AdminDelegateDetailsViewProps {
@@ -111,7 +112,7 @@ export const AdminDelegateDetailsView = memo(({
                 </p>
                 <div className="flex items-baseline justify-center gap-1 font-mono leading-none">
                   <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
-                    {lifetimeCommission.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                    {formatNumberEn(lifetimeCommission, { maximumFractionDigits: 0 })}
                   </span>
                   <span className="text-sm font-black text-amber-600 dark:text-amber-400">ج.م</span>
                 </div>
@@ -122,7 +123,7 @@ export const AdminDelegateDetailsView = memo(({
                 </p>
                 <div className="flex items-baseline justify-center gap-1 font-mono leading-none">
                   <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-                    {unsettledCommission.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                    {formatNumberEn(unsettledCommission, { maximumFractionDigits: 0 })}
                   </span>
                   <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">ج.م</span>
                 </div>
@@ -192,7 +193,7 @@ export const AdminDelegateDetailsView = memo(({
             </div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white text-center mb-2">تصفية الحساب</h3>
             <p className="text-sm font-bold text-slate-500 dark:text-slate-400 text-center mb-6 leading-relaxed">
-              هل أنت متأكد من صرف {unsettledCommission.toLocaleString('en-US')} ج.م للمندوب "{delegate.name}"؟ سيتم تسجيل التسوية.
+              هل أنت متأكد من صرف {formatNumberEn(unsettledCommission)} ج.م للمندوب "{delegate.name}"؟ سيتم تسجيل التسوية.
             </p>
             <div className="flex gap-3">
               <button
