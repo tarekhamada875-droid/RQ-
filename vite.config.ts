@@ -127,13 +127,28 @@ export default defineConfig(() => {
       },
     },
     build: {
-      target: 'es2015',
+      // F-20 (cleanliness audit 2026-11-26): es2015 → es2020. esbuild lowers
+      // async/await to generator+helper code for anything below es2017, so
+      // the old target paid a transformation tax on EVERY async function in
+      // the app (and this app is async end to end: listeners, auth, submit
+      // handlers). The audience is a 2026 PWA on Android Chrome / iOS
+      // Safari (the CSS already requires dvh units and safe-area env()),
+      // and firebase v12 itself ships ES2017 — nothing in the dependency
+      // chain supports ES2015-era browsers anyway, so the downleveling
+      // bought zero compatibility and cost bytes in every chunk.
+      target: 'es2020',
       cssTarget: 'chrome60',
       outDir: 'dist',
       emptyOutDir: true,
       sourcemap: false,
       minify: 'esbuild',
-      chunkSizeWarningLimit: 2000,
+      // F-20: 2000 → 600. The old limit sat above every real chunk, so a
+      // bundle regression (a fat dependency sneaking into the boot graph,
+      // a module losing its tree-shaking) surfaced nowhere. The largest
+      // legitimate chunk (firebase-firestore, ~400 KB) stays under 600;
+      // anything past that is now a loud warning in CI logs instead of
+      // silent rot.
+      chunkSizeWarningLimit: 600,
       // Performance: don't inject CSS as a render-blocking <link> in <head>.
       // Instead, load it via a non-blocking pattern. The critical CSS
       // (background colors, dark mode) is already inlined in <style> in
@@ -156,11 +171,27 @@ export default defineConfig(() => {
               // needed for data (larger, ~500KB). The app loads auth
               // first (fast login screen), then firestore loads after.
               if (id.includes('firebase/auth') || id.includes('@firebase/auth')) return 'firebase-auth';
+              // F-20: re2js (~157 KB — firestore's internal regex engine,
+              // pulled in by @firebase/firestore) used to fall through to
+              // a generic catch-all chunk, i.e. its own always-fetched boot
+              // file nobody could name. It is firestore's private
+              // dependency and ships whenever firestore does — group it
+              // with its only consumer so the boot graph stays honest.
+              if (id.includes('re2js')) return 'firebase-firestore';
               if (id.includes('firebase/firestore') || id.includes('@firebase/firestore')) return 'firebase-firestore';
               if (id.includes('firebase/app') || id.includes('@firebase/app') || id.includes('@firebase/util') || id.includes('firebase/app-check')) return 'firebase-core';
               if (id.includes('firebase')) return 'firebase-other';
               if (id.includes('react') || id.includes('lucide-react')) return 'vendor';
-              return 'deps';
+              // F-20: the old `return 'deps'` catch-all is gone. It forced
+              // EVERY transitive node_module into one static chunk that the
+              // entry imports — meaning a future async-only library would
+              // silently become a boot-graph cost (re2js was exactly that,
+              // hiding there at 157 KB). Framework groupings above are the
+              // only intentional ones; anything else falls to Rollup's
+              // default splitting, which puts boot-only modules in the
+              // entry chain and lazy-only modules in their async chunks
+              // automatically.
+              return undefined;
             }
           }
         }
