@@ -18,6 +18,7 @@ import { useToast } from '../../hooks/toast';
 import type { ActivityLog, Garage } from '../../types';
 import { useModalA11y } from '../../hooks/useModalA11y';
 import { useAsyncAction } from '../../hooks/useAsyncAction';
+import { isMissingActivityLogIndexError } from '../../services/activityLogShared';
 
 interface GarageDailyReportModalProps {
   garage: Garage;
@@ -343,6 +344,13 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
         ));
         return snap.docs.map(d => ({ id: d.id, ...d.data() } as ActivityLog));
       } catch (primaryErr) {
+        // Audit F-9 (Phase 3, 2026-11-26): only fall back to the garageId-only
+        // compatibility query when the failure is actually a missing composite
+        // index. The previous code fell back on ANY error, which silently
+        // degraded on unrelated failures (permission-denied, network) and hid
+        // real problems behind a client-side date filter. The shared classifier
+        // now decides; a non-index error re-throws so the caller surfaces it.
+        if (!isMissingActivityLogIndexError(primaryErr)) throw primaryErr;
         // Composite index fallback: query by garageId only, filter by date client-side.
         console.warn('[GarageDailyReportModal] activity_logs index fallback:', primaryErr);
         const fallbackSnap = await getDocs(query(

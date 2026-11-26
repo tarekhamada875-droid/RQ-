@@ -7,8 +7,12 @@ import { apiFetch } from '../api/apiClient';
 import { safeDate } from '../utils/dates';
 import { getCairoDateKey, getCairoDayBounds } from '../../server/projections';
 import { generateIdempotencyKey } from '../types/apiContracts';
+import {
+  TODAY_ACTIVITY_LOG_LIMIT,
+  isMissingActivityLogIndexError,
+  makeActivityLogUnavailableError,
+} from './activityLogShared';
 
-const TODAY_ACTIVITY_LOG_LIMIT = 50;
 const TODAY_REPORT_ACTION = 'check_out';
 
 type TodayActivityLogSource = 'live' | 'one-shot';
@@ -23,21 +27,6 @@ const mapTodayTransactions = (snapshot: any, today: string): any[] => snapshot.d
     return byTimestamp || String(a.id).localeCompare(String(b.id));
   })
   .slice(0, TODAY_ACTIVITY_LOG_LIMIT);
-
-function isMissingActivityLogIndexError(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false;
-  const candidate = error as { code?: unknown; message?: unknown };
-  const code = typeof candidate.code === 'string' ? candidate.code.toLowerCase() : '';
-  const message = typeof candidate.message === 'string' ? candidate.message : '';
-  return (code === 'failed-precondition' && /index/i.test(message)) ||
-    /(?:requires|missing)\s+(?:a\s+|the\s+)?(?:composite\s+)?index/i.test(message);
-}
-
-function makeActivityLogUnavailableError(cause: unknown): Error & { code: string } {
-  return Object.assign(new Error('ACTIVITY_LOGS_UNAVAILABLE', { cause }), {
-    code: 'ACTIVITY_LOGS_UNAVAILABLE'
-  });
-}
 
 function recordActivityLogIndexFallback(source: TodayActivityLogSource, error: unknown): void {
   const code = error && typeof error === 'object' && 'code' in error

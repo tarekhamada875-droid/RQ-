@@ -3,6 +3,7 @@ import { collection, query, where, onSnapshot, getDocs, orderBy, limit } from 'f
 import { safeDate } from '../utils/dates';
 import { listenerTracker } from '../utils/listenerTracker';
 import type { ActivityLog } from '../types';
+import { isMissingActivityLogIndexError } from './activityLogShared';
 
 export const adminActivityService = {
   subscribeToCreditGrantLogs: (garageId: string, callback: (logs: ActivityLog[]) => void, limitCount = 50, onError?: (err: any) => void) => {
@@ -49,6 +50,17 @@ export const adminActivityService = {
         callback(data.slice(0, resultLimit));
       }, (err) => {
         if (isClosed || fallbackUnsub) return;
+        // Audit F-9 (Phase 3, 2026-11-26): only fall back to the compatibility
+        // query when the failure is actually a missing composite index. The
+        // previous code fell back on ANY error, silently degrading on
+        // unrelated failures (permission-denied, network, etc.) and masking
+        // real problems from the operator. The shared classifier now decides.
+        if (!isMissingActivityLogIndexError(err)) {
+          handleFirestoreError(err, OperationType.LIST, 'activity_logs');
+          if (onError) onError(err);
+          else callback([]);
+          return;
+        }
         console.warn('Targeted recharge query fallback needed:', err);
         const fallbackQ = query(
           collection(db, 'activity_logs'),

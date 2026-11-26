@@ -9,6 +9,7 @@
  */
 
 import type { ActivityLog, Garage, Vehicle, Staff } from '../../../types';
+import { TODAY_ACTIVITY_LOG_LIMIT } from '../../../services/activityLogShared';
 
 export type GarageReportRecord = Partial<Vehicle> & Partial<ActivityLog> & { id: string };
 
@@ -20,9 +21,17 @@ export interface GarageReportStats {
   staffPerformance: Array<{ name: string; count: number; revenue: number }>;
 }
 
-// Activity-log fallback cap (mirrors vehicleService.TODAY_ACTIVITY_LOG_LIMIT).
-// Exported so tests can pin the warning threshold without hardcoding 200 twice.
-export const REPORTS_ACTIVITY_LOG_LIMIT = 200;
+// Audit F-6 (Phase 3, 2026-11-26): the reports truncation warning now reads
+// the SAME cap as the live today-transactions feed (vehicleService). Before
+// this fix, the reports warning used a separate 200 constant while the feed
+// capped at 50 — so a garage with 60 checkouts today saw a report that
+// silently omitted rows 51–60 with NO warning (the warning's `>= 200` check
+// could never fire because the feed only ever delivered 50). The shared
+// constant is the single source of truth; a parity test pins it.
+//
+// Re-exported under the reports-local name so existing imports keep working,
+// but the value is the feed's real cap.
+export const REPORTS_ACTIVITY_LOG_LIMIT = TODAY_ACTIVITY_LOG_LIMIT;
 
 type ReportsNoticeState = 'fresh_summary' | 'live_may_be_truncated' | 'live_ok';
 
@@ -31,7 +40,7 @@ type ReportsNoticeState = 'fresh_summary' | 'live_may_be_truncated' | 'live_ok';
  *
  * - 'fresh_summary'           — authoritative server summary is available.
  * - 'live_may_be_truncated'   — fallback activity log is in use AND we are at
- *                               risk of having hit the 200-record cap. This is
+ *                               risk of having hit the feed's cap. This is
  *                               the only state that warrants alarming the user.
  * - 'live_ok'                 — fallback activity log is in use but we have
  *                               all of today's records (fewer than the cap).

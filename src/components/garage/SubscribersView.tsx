@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo, useRef } from 'react';
 import { Users, Plus, Search, ChevronRight, ChevronDown } from 'lucide-react';
 import { Garage, Subscriber } from '../../types';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
-import { safeDate } from '../../utils/dates';
+import { parseDateKey } from '../../utils/dates';
 import { SubscriberModals } from './SubscriberModals';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import type { SharedSubscriberPage } from '../../hooks/useGarageDashboardLiveData';
@@ -11,18 +11,9 @@ import { useSubscriberList } from './subscribers/useSubscriberList';
 import { useSubscriberForm } from './subscribers/useSubscriberForm';
 import { FastInput } from '../ui/FastInput';
 
-const parseDateKey = (dateKey: string | any): Date => {
-  if (!dateKey) return new Date();
-  if (typeof dateKey === 'string' && dateKey.length === 10 && dateKey[4] === '-' && dateKey[7] === '-') {
-    const y = parseInt(dateKey.substring(0, 4), 10);
-    const m = parseInt(dateKey.substring(5, 7), 10);
-    const d = parseInt(dateKey.substring(8, 10), 10);
-    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
-      return new Date(y, m - 1, d);
-    }
-  }
-  return safeDate(dateKey);
-};
+// Audit F-7 (Phase 3, 2026-11-26): the local parseDateKey copy was deleted —
+// the shared export from utils/dates.ts is now the single definition. Same
+// behavior (safeDate fallback on invalid input), one home.
 
 export type SubscriberStatus = {
   label: string;
