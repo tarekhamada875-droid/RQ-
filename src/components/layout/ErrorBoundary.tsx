@@ -1,5 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
+import { FullScreenStatus } from './FullScreenStatus';
+import { reloadIfStaleChunk, isStaleChunkError } from '../../utils/staleChunkReload';
 
 interface Props {
   children: ReactNode;
@@ -18,35 +20,14 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   public static getDerivedStateFromError(error: Error): State {
-    const isChunkError =
-      error?.message?.includes('dynamically imported module') ||
-      error?.message?.includes('Failed to fetch') ||
-      error?.message?.includes('Loading chunk') ||
-      error?.message?.includes('Importing a module script failed');
-
-    return { hasError: true, error, isReloading: isChunkError };
+    return { hasError: true, error, isReloading: isStaleChunkError(error) };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
 
-    const isChunkError =
-      error?.message?.includes('dynamically imported module') ||
-      error?.message?.includes('Failed to fetch') ||
-      error?.message?.includes('Loading chunk') ||
-      error?.message?.includes('Importing a module script failed');
-
-    if (isChunkError) {
-      try {
-        const lastReload = Number(sessionStorage.getItem('last_chunk_reload') || '0');
-        const now = Date.now();
-        if (now - lastReload > 15000) {
-          sessionStorage.setItem('last_chunk_reload', String(now));
-          window.location.reload();
-        }
-      } catch (storageError) {
-        console.warn('تعذر قراءة حالة تحديث الصفحة.', storageError);
-      }
+    if (isStaleChunkError(error)) {
+      reloadIfStaleChunk();
     }
   }
 
@@ -63,40 +44,29 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       if (this.state.isReloading) {
         return (
-          <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-center" dir="rtl">
-            <div className="max-w-sm w-full bg-slate-800 rounded-xl p-8 border border-slate-700">
-              <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <RefreshCw className="w-8 h-8 text-amber-400 animate-spin" />
-              </div>
-              <h2 className="text-xl font-bold text-white mb-2 font-sans">جاري تحديث النظام تلقائياً...</h2>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                تم توفير إصدار جديد، يتم الآن تنشيط الصفحة لتطبيق التحديثات فوراً.
-              </p>
-            </div>
-          </div>
+          <FullScreenStatus
+            tone="reloading"
+            label="جاري تحديث النظام تلقائياً..."
+            subtext="تم توفير إصدار جديد، يتم الآن تنشيط الصفحة لتطبيق التحديثات فوراً."
+          />
         );
       }
 
       return (
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-center" dir="rtl">
-          <div className="max-w-sm w-full bg-slate-800 rounded-xl p-8 border border-slate-700">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <AlertTriangle className="w-8 h-8 text-red-500" />
-            </div>
-            <h2 className="text-xl font-bold text-white mb-2 font-sans">عفواً، حدث خطأ مفاجئ</h2>
-            <p className="text-slate-400 text-sm mb-8 leading-relaxed">
-              يبدو أن هناك مشكلة بسيطة في تحميل البيانات. اضغط على الزر أدناه لتنشيط الصفحة والعودة للعمل.
-            </p>
+        <FullScreenStatus
+          tone="error"
+          label="عفواً، حدث خطأ مفاجئ"
+          subtext="يبدو أن هناك مشكلة بسيطة في تحميل البيانات. اضغط على الزر أدناه لتنشيط الصفحة والعودة للعمل."
+          action={
             <button
               onClick={this.handleReset}
-              className="w-full py-4 bg-white text-slate-900 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 "
+              className="w-full py-4 bg-white text-slate-900 rounded-2xl font-bold text-sm flex items-center justify-center gap-2"
             >
               <RefreshCw className="w-4 h-4" />
               تنشيط الصفحة الآن
             </button>
-
-          </div>
-        </div>
+          }
+        />
       );
     }
 

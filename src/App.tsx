@@ -21,6 +21,7 @@ import { GarageDataProvider } from './hooks/garageDataContext';
 import { AdminMutationsProvider } from './hooks/adminMutationsContext';
 import { shouldWaitForSessionReady } from './utils/authViewGuard';
 import { DelayedFallback, PageSkeleton } from './components/layout/LoadingFallbacks';
+import { FullScreenStatus } from './components/layout/FullScreenStatus';
 import { AppRoutes } from './components/app/AppRoutes';
 import { AppOverlays } from './components/app/AppOverlays';
 import { useTheme } from './utils/ThemeContext';
@@ -88,7 +89,10 @@ export default function App() {
     setSelectedDelegateForDetails,
   });
 
-  if (isLoggingOut) return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm">جاري الخروج...</p></div>;
+  // Audit F-17 (Phase 4a, 2026-11-26): the logout and gate screens now use
+  // the shared FullScreenStatus component. The inline copies were byte-identical
+  // to main.tsx's BootSplash — one component replaces all three.
+  if (isLoggingOut) return <FullScreenStatus label="جاري الخروج..." />;
   if (isLandscapeMobile) return <LandscapeMobileView garage={view === 'garage' ? garage : null} />;
   if (showOfflineScreen) return <OfflineView />;
   // Initial-sync gate (fixes the reopen-refresh race): for the garage view
@@ -100,7 +104,7 @@ export default function App() {
   // use different listeners and were never affected by the race.
   if (isGateActive) {
     logDiagnostic(!isAuthReady ? 'APP_WAITING_FOR_AUTH_READY' : (waitingForInitialSyncEarly ? 'APP_WAITING_FOR_INITIAL_SYNC' : 'APP_WAITING_FOR_SESSION_READY'), { isAuthReady, isSessionReady, view, isInitialSyncComplete: garageData.isInitialSyncComplete });
-    const gateScreen = <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm">جاري التحميل...</p></div>;
+    const gateScreen = <FullScreenStatus label="جاري التحميل..." />;
     return hasRenderedContentRef.current ? <DelayedFallback>{gateScreen}</DelayedFallback> : gateScreen;
   }
 

@@ -1,11 +1,13 @@
 import {StrictMode, lazy, Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
 import { ErrorBoundary } from './components/layout/ErrorBoundary.tsx';
+import { FullScreenStatus } from './components/layout/FullScreenStatus.tsx';
 import { ThemeProvider } from './utils/ThemeContext.tsx';
 import { BackHandlerProvider } from './hooks/backHandler.tsx';
 import { ToastProvider } from './hooks/toast.tsx';
 import { GarageInputProvider } from './hooks/garageInput.tsx';
 import { ServerTimeProvider } from './hooks/serverTimeContext.tsx';
+import { reloadIfStaleChunk } from './utils/staleChunkReload.ts';
 import { debugRecorder } from './debug/debugRecorder.ts';
 import { DebugHud } from './debug/DebugHud.tsx';
 import './index.css';
@@ -33,26 +35,19 @@ debugRecorder.init();
 // is fully evaluated before App code runs. No ordering can be violated.
 const LazyApp = lazy(() => import('./App.tsx'));
 
-// Self-contained boot splash: no app imports, mirrors App's own
-// auth-loading UI exactly so the handoff is visually seamless.
+// Audit F-17 (Phase 4a, 2026-11-26): the boot splash now uses the shared
+// FullScreenStatus component. The inline copy was byte-identical to App.tsx's
+// logout and gate screens — one component replaces all three. The
+// `vite:preloadError` listener now calls the shared `reloadIfStaleChunk`
+// utility (was a duplicate of ErrorBoundary's 15s throttle logic).
 function BootSplash() {
-  return (
-    <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl">
-      <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
-      <p className="text-slate-600 dark:text-slate-300 font-bold text-sm">جاري تحميل البيانات...</p>
-    </div>
-  );
+  return <FullScreenStatus label="جاري تحميل البيانات..." />;
 }
 
 // Auto-recover from stale chunks on new deployments
 window.addEventListener('vite:preloadError', (event) => {
   console.warn('Vite preload error detected, reloading page to fetch latest version...', event);
-  const lastReload = Number(sessionStorage.getItem('last_chunk_reload') || '0');
-  const now = Date.now();
-  if (now - lastReload > 15000) {
-    sessionStorage.setItem('last_chunk_reload', String(now));
-    window.location.reload();
-  }
+  reloadIfStaleChunk();
 });
 
 createRoot(document.getElementById('root')!).render(
