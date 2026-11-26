@@ -19,6 +19,12 @@ interface UseGarageSyncProps {
   // useGarageSession's session-guard onSnapshot, or null if no fresh snapshot
   // is available. Used to skip the duplicate delegate doc read on the Worker.
   getLatestEntitySnapshot?: () => { data: Record<string, unknown> | null; receivedAt: number } | null;
+  // Audit F-4 (Phase 3b, 2026-11-26): for garage-owner sessions, the feed is
+  // the single Firestore listener on garages/{id}. When it receives a fresh
+  // (non-cached) snapshot where the doc no longer exists, it calls this
+  // callback to trigger the same account-revoked toast + force-logout the
+  // session guard used to perform on its own (now-removed) second onSnapshot.
+  onAccountRevoked?: () => void;
 }
 
 export function useGarageSync({
@@ -41,6 +47,7 @@ export function useGarageSync({
   // listener's error toast, which was removed when the listener became
   // on-demand. The reports view handles its own error toasts now.
   getLatestEntitySnapshot,
+  onAccountRevoked,
 }: UseGarageSyncProps) {
   const [allGarages, setAllGarages] = useState<Garage[]>([]);
   const [delegates, setDelegates] = useState<any[]>([]);
@@ -105,6 +112,12 @@ export function useGarageSync({
   const garageFreshSnapshotReceivedRef = useRef(false);
   const initialSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const INITIAL_SYNC_TIMEOUT_MS = 10_000;
+
+  // Audit F-4 (Phase 3b, 2026-11-26): re-entrance guard for account-revoked
+  // eviction. Once the feed fires onAccountRevoked (fresh snapshot, doc gone),
+  // subsequent snapshots must not re-trigger the toast/logout. Reset when the
+  // subscription target changes (garageId/view) via the effect below.
+  const accountRevokedRef = useRef(false);
 
   // Keep transient garage data tied to the active role/entity (identity),
   // not the shared garage ID and NOT the session-ready phase. The phase
@@ -508,15 +521,38 @@ export function useGarageSync({
       return;
     }
 
+    // Audit F-4 (Phase 3b, 2026-11-26): reset the account-revoked guard for
+    // each new subscription target. A fresh subscription to a different garage
+    // (or the same garage after re-login) must be able to fire onAccountRevoked
+    // again if that doc disappears.
+    accountRevokedRef.current = false;
+
     let garageSubscriptionCurrent = true;
     const subscribedGarageId = garage?.id;
     const unsubCurrentGarage = subscribedGarageId
       ? garageService.subscribeToGarage(subscribedGarageId, (updatedGarage, metadata) => {
           // A callback already queued by the old listener must not replace the
           // active garage after a switch or logout.
-          if (!garageSubscriptionCurrent || updatedGarage?.id !== subscribedGarageId) return;
+          if (!garageSubscriptionCurrent || (updatedGarage && updatedGarage.id !== subscribedGarageId)) return;
 
           const fromCache = metadata?.fromCache ?? false;
+
+          // Audit F-4 (Phase 3b, 2026-11-26): account-deletion detection.
+          // The session guard used to detect this on a separate onSnapshot;
+          // now the feed is the single listener for garage-owner sessions and
+          // also handles this. Only act on FRESH (non-cached) non-existence —
+          // cached non-existence can be stale (the doc exists on the server
+          // but the local cache hasn't synced it). Mirrors the guard's original
+          // fromCache rule. Once fired, the re-entrance guard prevents repeat
+          // toasts/logout from subsequent snapshots during teardown.
+          if (!updatedGarage) {
+            if (!fromCache && !accountRevokedRef.current && onAccountRevoked) {
+              accountRevokedRef.current = true;
+              onAccountRevoked();
+            }
+            return;
+          }
+
           // Track first-fresh-snapshot delivery for the initial-sync gate.
           if (!fromCache && !garageFreshSnapshotReceivedRef.current) {
             garageFreshSnapshotReceivedRef.current = true;
@@ -592,7 +628,7 @@ export function useGarageSync({
       garageSubscriptionCurrent = false;
       unsubCurrentGarage();
     };
-  }, [isAuthReady, view, garage?.id, setGarage]);
+  }, [isAuthReady, view, garage?.id, setGarage, onAccountRevoked]);
 
   // Load Admin specific garage details once
   useEffect(() => {

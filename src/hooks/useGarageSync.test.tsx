@@ -580,6 +580,68 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     unmount();
   });
 
+  it('Audit F-4: fires onAccountRevoked when the garage doc disappears (fresh snapshot), not on cached non-existence', () => {
+    // The session guard used to detect account deletion on a separate
+    // onSnapshot. F-4 consolidated: the feed is the single listener and
+    // also handles this via onAccountRevoked. Only FRESH (non-cached)
+    // non-existence triggers the callback — cached non-existence can be
+    // stale (the doc exists on the server but the cache hasn't synced).
+    let feedCallback: ((garage: any, metadata?: { fromCache: boolean }) => void) | null = null;
+    serviceMocks.subscribeToGarage.mockImplementation((_garageId: string, callback: (garage: any, metadata?: { fromCache: boolean }) => void) => {
+      feedCallback = callback;
+      return vi.fn();
+    });
+    const onAccountRevoked = vi.fn();
+    const baseProps = createBaseProps();
+    const { unmount } = renderHook(() => useGarageSync({
+      ...baseProps,
+      isSessionReady: true,
+      view: 'garage',
+      garage: { id: 'garage-1' } as any,
+      onAccountRevoked,
+    }));
+
+    // Cached non-existence: must NOT fire (can be stale).
+    act(() => feedCallback?.(null, { fromCache: true }));
+    expect(onAccountRevoked).not.toHaveBeenCalled();
+
+    // Fresh non-existence: fires once.
+    act(() => feedCallback?.(null, { fromCache: false }));
+    expect(onAccountRevoked).toHaveBeenCalledOnce();
+
+    // Subsequent snapshots: must NOT re-fire (re-entrance guard).
+    act(() => feedCallback?.(null, { fromCache: false }));
+    expect(onAccountRevoked).toHaveBeenCalledOnce();
+
+    // Normal data delivery after revocation: also ignored (guard still active).
+    act(() => feedCallback?.({ id: 'garage-1', name: 'resurrected' }, { fromCache: false }));
+    expect(onAccountRevoked).toHaveBeenCalledOnce();
+
+    unmount();
+  });
+
+  it('Audit F-4: does NOT fire onAccountRevoked when callback is absent (staff/admin sessions)', () => {
+    // Staff sessions don't pass onAccountRevoked (the guard handles their doc).
+    // The feed must not crash or misfire when the callback is absent.
+    let feedCallback: ((garage: any, metadata?: { fromCache: boolean }) => void) | null = null;
+    serviceMocks.subscribeToGarage.mockImplementation((_garageId: string, callback: (garage: any, metadata?: { fromCache: boolean }) => void) => {
+      feedCallback = callback;
+      return vi.fn();
+    });
+    const baseProps = createBaseProps();
+    const { unmount } = renderHook(() => useGarageSync({
+      ...baseProps,
+      isSessionReady: true,
+      view: 'garage',
+      garage: { id: 'garage-1' } as any,
+      // onAccountRevoked intentionally omitted.
+    }));
+
+    // Fresh non-existence: no crash, no fire.
+    expect(() => act(() => feedCallback?.(null, { fromCache: false }))).not.toThrow();
+    unmount();
+  });
+
   it('clears prior owner Admin and Delegate lists before the next owner renders', () => {
     const baseProps = createBaseProps();
     const { result, rerender } = renderHook(

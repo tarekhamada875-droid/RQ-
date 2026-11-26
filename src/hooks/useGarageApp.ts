@@ -160,6 +160,9 @@ export function useGarageApp() {
     // PR-D piggyback: lets the delegate dashboard poll pass includeDelegate=false
     // when the session-guard onSnapshot has a fresh delegate doc snapshot.
     getLatestEntitySnapshot: session.getLatestEntitySnapshot,
+    // Audit F-4 (Phase 3b, 2026-11-26): for garage-owner sessions, the feed is
+    // the single listener and also handles account-deletion detection.
+    onAccountRevoked: session.handleAccountRevoked,
   });
 
   // 3. Vehicle Operations Hook

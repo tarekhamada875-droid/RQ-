@@ -71,6 +71,25 @@ const createProps = () => ({
   showToast: vi.fn(),
 });
 
+// Audit F-4 (Phase 3b, 2026-11-26): the session guard no longer attaches an
+// onSnapshot for garage-owner sessions (docCollection === 'garages'). The
+// data-feed listener in useGarageSync is the single listener for that doc.
+// The guard still attaches for staff sessions (docCollection === 'staff').
+// Tests that need to exercise the guard's onSnapshot use this staff variant.
+const createStaffProps = () => ({
+  view: 'garage',
+  setView: vi.fn(),
+  garage: { id: 'garage-1' } as any,
+  setGarage: vi.fn(),
+  delegate: null,
+  setDelegate: vi.fn(),
+  currentStaff: { id: 'staff-1' } as any,
+  setCurrentStaff: vi.fn(),
+  currentSupervisor: null,
+  setCurrentSupervisor: vi.fn(),
+  showToast: vi.fn(),
+});
+
 const entitySnapshot = (activeSessionIds: string[], currentSessionId?: string) => ({
   metadata: { fromCache: false },
   exists: () => true,
@@ -155,21 +174,37 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     hook.unmount();
   });
 
-  it('closes the session-guard snapshot on unmount and starts cleanly after remount', async () => {
-    const firstMount = renderHook(() => useGarageSession(createProps()));
+  it('Audit F-4: does NOT attach a session-guard onSnapshot for garage-owner sessions (feed is the single listener)', async () => {
+    // The guard used to attach a second onSnapshot to garages/{id} for garage-
+    // owner sessions. F-4 consolidated: the data-feed listener in
+    // useGarageSync is now the single listener for that doc and also handles
+    // account-deletion detection. The guard must NOT attach for garage-owner
+    // sessions (docCollection === 'garages').
+    const hook = renderHook(() => useGarageSession(createProps()));
+    await waitFor(() => expect(hook.result.current.isSessionReady).toBe(true));
+    expect(sessionMocks.onSnapshot).not.toHaveBeenCalled();
+    expect(listenerTracker.getActiveListenerCount()).toBe(0);
+    hook.unmount();
+  });
+
+  it('closes the session-guard snapshot on unmount and starts cleanly after remount (staff session)', async () => {
+    // Audit F-4 (Phase 3b): the guard still attaches for staff sessions
+    // (docCollection === 'staff'). This test uses a staff session to verify
+    // the guard's lifecycle is unchanged for non-garage-owner sessions.
+    const firstMount = renderHook(() => useGarageSession(createStaffProps()));
     await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
     expect(listenerTracker.getActiveListenersMap()).toEqual({
-      'session_guard/garages/garage-1': 1,
+      'session_guard/staff/staff-1': 1,
     });
 
     firstMount.unmount();
     expect(snapshotUnsubscribes[0]).toHaveBeenCalledOnce();
     expect(listenerTracker.getActiveListenerCount()).toBe(0);
 
-    const secondMount = renderHook(() => useGarageSession(createProps()));
+    const secondMount = renderHook(() => useGarageSession(createStaffProps()));
     await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledTimes(2));
     expect(listenerTracker.getActiveListenersMap()).toEqual({
-      'session_guard/garages/garage-1': 1,
+      'session_guard/staff/staff-1': 1,
     });
 
     secondMount.unmount();
@@ -183,7 +218,7 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     const intervalSpy = vi.spyOn(globalThis, 'setInterval');
 
     const hook = renderHook(() => useGarageSession(props));
-    await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
+    await waitFor(() => expect(hook.result.current.isSessionReady).toBe(true));
 
     const heartbeat = intervalSpy.mock.calls.find(([, delay]) => delay === 60 * 60 * 1000)?.[0] as
       (() => Promise<void>) | undefined;
@@ -205,12 +240,16 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     intervalSpy.mockRestore();
   });
 
-  it('does not log out or re-validate when the entity marker shows another device', async () => {
+  it('does not log out or re-validate when the entity marker shows another device (staff session)', async () => {
     // 2026-11-13 incident: the entity doc's activeSessionIds array has several
     // non-transactional Worker writers, so marker churn must not be treated as
     // eviction. The guard ignores marker changes entirely; revocation arrives
     // through API 401s and the validate-or-refresh heartbeat instead.
-    const props = createProps();
+    //
+    // Audit F-4 (Phase 3b): uses a staff session because the guard no longer
+    // attaches for garage-owner sessions (the feed handles that doc). The
+    // guard's marker-ignore behavior is unchanged for staff/delegate sessions.
+    const props = createStaffProps();
     const hook = renderHook(() => useGarageSession(props));
     await waitFor(() => expect(snapshotCallbacks).toHaveLength(1));
 
@@ -264,7 +303,7 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     }));
     const props = createProps();
     const hook = renderHook(() => useGarageSession(props));
-    await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
+    await waitFor(() => expect(hook.result.current.isSessionReady).toBe(true));
 
     act(() => {
       void hook.result.current.handleLogout();
@@ -291,7 +330,7 @@ describe('useGarageSession Firestore listener lifecycle', () => {
       resolveRelease = resolve;
     }));
     const hook = renderHook(() => useGarageSession(createProps()));
-    await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
+    await waitFor(() => expect(hook.result.current.isSessionReady).toBe(true));
 
     act(() => {
       void hook.result.current.handleLogout();
@@ -324,7 +363,7 @@ describe('useGarageSession Firestore listener lifecycle', () => {
 
     const props = createProps();
     const hook = renderHook(() => useGarageSession(props));
-    await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
+    await waitFor(() => expect(hook.result.current.isSessionReady).toBe(true));
 
     await act(async () => {
       await hook.result.current.handleLogout();
@@ -350,7 +389,7 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     });
     const props = createProps();
     const hook = renderHook(() => useGarageSession(props));
-    await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
+    await waitFor(() => expect(hook.result.current.isSessionReady).toBe(true));
 
     await act(async () => {
       await hook.result.current.handleLogout();
@@ -379,7 +418,7 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     // call returns the same user without a network round-trip.
     const props = createProps();
     const hook = renderHook(() => useGarageSession(props));
-    await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
+    await waitFor(() => expect(hook.result.current.isSessionReady).toBe(true));
 
     // Set up an existing anonymous user (simulating a prior login).
     const existingUid = 'existing-anon-uid-123';

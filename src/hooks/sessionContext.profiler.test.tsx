@@ -51,6 +51,9 @@ function TestHarness() {
     handleInitiateLogout: vi.fn(),
     // PR-H: getLatestEntitySnapshot added by PR-D
     getLatestEntitySnapshot: vi.fn(),
+    // Audit F-4 (Phase 3b): handleAccountRevoked added for garage-owner
+    // account-deletion detection via the feed.
+    handleAccountRevoked: vi.fn(),
   }), [
     showLogoutConfirm,
     // setShowLogoutConfirm is stable (from useState)

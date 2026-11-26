@@ -73,15 +73,20 @@ export const garageService = {
 
   subscribeToGarage: (
     garageId: string,
-    callback: (garage: Garage, metadata?: { fromCache: boolean; hasPendingWrites: boolean }) => void
+    callback: (garage: Garage | null, metadata?: { fromCache: boolean; hasPendingWrites: boolean }) => void
   ) => {
     const trackerUnsub = listenerTracker.register(`garages/${garageId}`);
     const unsub = onSnapshot(doc(db, 'garages', garageId), (snapshot) => {
+      const metadata = { fromCache: snapshot.metadata.fromCache, hasPendingWrites: snapshot.metadata.hasPendingWrites };
+      // Audit F-4 (Phase 3b, 2026-11-26): deliver null on non-existence so the
+      // feed (useGarageSync) can detect account deletion/disabling — the role
+      // previously filled by the session guard's separate onSnapshot. Only the
+      // feed acts on null (guarded by !fromCache); existing callers that only
+      // handle non-null are unaffected (null is a no-op for them).
       if (snapshot.exists()) {
-        callback(
-          { id: snapshot.id, ...snapshot.data() } as Garage,
-          { fromCache: snapshot.metadata.fromCache, hasPendingWrites: snapshot.metadata.hasPendingWrites }
-        );
+        callback({ id: snapshot.id, ...snapshot.data() } as Garage, metadata);
+      } else {
+        callback(null, metadata);
       }
     }, (err) => handleFirestoreError(err, OperationType.GET, `garages/${garageId}`));
 
