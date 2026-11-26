@@ -28,10 +28,10 @@ import { useTheme } from './utils/ThemeContext';
 export default function App() {
   const app = useGarageApp();
   const { session, navigationUi, garageData, vehicleOperations, adminManagement } = app;
-  const { isAuthReady, isSessionReady, isLoggingOut, currentStaff, showLogoutConfirm, setShowLogoutConfirm } = session;
-  const { view, setView, showOfflineScreen, isLandscapeMobile, showSubscribers, setShowSubscribers, showDeleteConfirm, setShowDeleteConfirm, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails } = navigationUi;
-  const { garage, delegate } = garageData;
-  const { isLoading, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, showSubscriberWarning, setShowSubscriberWarning, setSelectedVehicle, setSubscriberWarningPlate } = vehicleOperations;
+  const { isAuthReady, isSessionReady, isLoggingOut, showLogoutConfirm, setShowLogoutConfirm } = session;
+  const { view, setView, showOfflineScreen, isLandscapeMobile, showSubscribers, setShowSubscribers, showDeleteConfirm, setShowDeleteConfirm, setSelectedGarageForDetails, setSelectedDelegateForDetails } = navigationUi;
+  const { garage } = garageData;
+  const { showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, showSubscriberWarning, setShowSubscriberWarning, setSelectedVehicle, setSubscriberWarningPlate } = vehicleOperations;
 
   // Force light theme when the garage view is active — garage owners always
   // see the light/day theme for maximum clarity, regardless of their phone's
@@ -46,14 +46,12 @@ export default function App() {
   const adminColor = systemConfig?.adminColor || localAdminColor || '#10b981';
   const activeColor = (view && (view.startsWith('admin_') || view === 'admin_dashboard')) ? adminColor : (garage?.shimmerColor || '#10b981');
 
-  useEffect(() => {
-    if (!isLoading && isAuthReady) {
-      if (view === 'garage' && !garage && !currentStaff && !localStorage.getItem('app_garage') && !localStorage.getItem('app_staff')) setView('login');
-      else if (view === 'delegate_dashboard' && !delegate && !localStorage.getItem('app_delegate')) setView('login');
-      else if (view === 'admin_garage_details' && !selectedGarageForDetails) setView('admin_dashboard');
-      else if (view === 'admin_delegate_details' && !selectedDelegateForDetails) setView('admin_dashboard');
-    }
-  }, [isLoading, isAuthReady, view, garage, delegate, currentStaff, selectedGarageForDetails, selectedDelegateForDetails, setView]);
+  // Audit F-8 (Phase 3, 2026-11-26): the duplicate 4-branch view guard that
+  // lived here was deleted. The single source of truth is the router's copy in
+  // AppRoutes.tsx (useEffect ~L40), which runs on the same deps and is
+  // co-located with the view rendering it protects. Two copies invited the
+  // exact drift that produced the refresh→login regression class — a new view
+  // guarded in one file but not the other stranded the user on a blank screen.
 
   // UX-C soft loading: the FIRST gate of a page load renders immediately so
   // the handoff from main.tsx's BootSplash stays seamless. Any gate that

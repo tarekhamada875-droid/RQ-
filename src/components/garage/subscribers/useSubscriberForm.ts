@@ -4,6 +4,7 @@ import type { Subscriber, Garage } from '../../../types';
 import { getCleanPlate, getRawPlate } from '../../../utils/plates';
 import { getCairoDateKey } from '../../../domain/garage/businessDay';
 import { getStorage } from '../../../utils/storage';
+import { parseDateKey, formatDateKey } from '../../../utils/dates';
 import { useAsyncAction } from '../../../hooks/useAsyncAction';
 
 // PR-I: debounce interval for draft persistence. 400ms balances the user's
@@ -11,25 +12,14 @@ import { useAsyncAction } from '../../../hooks/useAsyncAction';
 // unmount.
 const DRAFT_PERSIST_DEBOUNCE_MS = 400;
 
-const parseDateKey = (dateKey: string | any): Date => {
-  if (!dateKey) return new Date();
-  if (typeof dateKey === 'string' && dateKey.length === 10 && dateKey[4] === '-' && dateKey[7] === '-') {
-    const y = parseInt(dateKey.substring(0, 4), 10);
-    const m = parseInt(dateKey.substring(5, 7), 10);
-    const d = parseInt(dateKey.substring(8, 10), 10);
-    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
-      return new Date(y, m - 1, d);
-    }
-  }
-  return new Date(dateKey);
-};
-
-const formatDateKey = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+// Audit F-7 (Phase 3, 2026-11-26): the local parseDateKey/formatDateKey copies
+// were deleted. The shared exports from utils/dates.ts are now the single
+// definitions. IMPORTANT behavior fix: this local copy previously fell back to
+// `new Date(dateKey)` (raw constructor → Invalid Date on bad strings) instead
+// of `safeDate(dateKey)` (→ now). That drift meant a bad subscriber expiry
+// value could produce a different expiry status on this edit screen vs. the
+// list/renew screens. The shared parser unifies the fallback to safeDate, so
+// all three screens now agree.
 
 type Duration = '1w' | '2w' | '1m' | 'custom';
 

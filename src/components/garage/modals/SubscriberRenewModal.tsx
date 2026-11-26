@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { X } from 'lucide-react';
 import { formatPlateNumber } from '../../../utils/plates';
-import { safeDate } from '../../../utils/dates';
+import { parseDateKey, formatDateKey } from '../../../utils/dates';
 import { getCairoDateKey } from '../../../domain/garage/businessDay';
 import type { Subscriber } from '../../../types';
 import { useModalA11y } from '../../../hooks/useModalA11y';
@@ -17,7 +17,9 @@ import { useModalA11y } from '../../../hooks/useModalA11y';
  * ~80 lines of inline JSX in SubscriberModals.tsx, plus the two
  * date-parsing helpers (parseDateKey / formatDateKey) at module scope.
  *
- * The date-preview logic moved WITH the modal — it's only used here.
+ * Audit F-7 (Phase 3, 2026-11-26): the local date-key helpers were deleted
+ * and replaced with the shared exports from utils/dates.ts. Same behavior,
+ * one definition.
  */
 
 export type SubscriberRenewType = 'week' | 'two_weeks' | 'month';
@@ -29,24 +31,6 @@ interface SubscriberRenewModalProps {
   onConfirm: (type: SubscriberRenewType) => void;
   isSubmitting: boolean;
 }
-
-const parseDateKey = (dateKey: string | any): Date => {
-  if (!dateKey) return new Date();
-  if (typeof dateKey === 'string' && dateKey.length === 10 && dateKey[4] === '-' && dateKey[7] === '-') {
-    const y = parseInt(dateKey.substring(0, 4), 10);
-    const m = parseInt(dateKey.substring(5, 7), 10);
-    const d = parseInt(dateKey.substring(8, 10), 10);
-    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return new Date(y, m - 1, d);
-  }
-  return safeDate(dateKey);
-};
-
-const formatDateKey = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
 
 const RENEW_OPTIONS: ReadonlyArray<{ type: SubscriberRenewType; label: string; days: number | null }> = [
   { type: 'week', label: 'تجديد لمدة أسبوع', days: 7 },

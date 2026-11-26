@@ -89,3 +89,47 @@ export const formatEntryTimeParts = (entryTime: any, referenceNow?: Date) => {
     return { main: timeStr, sub: dayName, sub2: dayMonth, isPast: true };
   }
 };
+
+/**
+ * Parse a `YYYY-MM-DD` date key into a local Date (midnight).
+ *
+ * Audit F-7 (Phase 3, 2026-11-26): this parser previously existed as three
+ * private copies across the subscriber screens. Two copies fell back to
+ * `safeDate` on invalid input; the third (`useSubscriberForm`) fell back to
+ * the raw `new Date(dateKey)` constructor, which returns Invalid Date for bad
+ * strings instead of "now". That drift meant the same bad subscriber expiry
+ * value could produce a different expiry status on the edit screen vs. the
+ * list/renew screens. One shared parser with the shared `safeDate` fallback
+ * closes the gap permanently.
+ *
+ * - Empty / falsy input → `new Date()` (now), matching the originals.
+ * - A 10-char `YYYY-MM-DD` string with `-` at positions 4 and 7 →
+ *   `new Date(y, m-1, d)` (local midnight).
+ * - Anything else → `safeDate(dateKey)` (the shared defensive fallback).
+ */
+export const parseDateKey = (dateKey: string | any): Date => {
+  if (!dateKey) return new Date();
+  if (typeof dateKey === 'string' && dateKey.length === 10 && dateKey[4] === '-' && dateKey[7] === '-') {
+    const y = parseInt(dateKey.substring(0, 4), 10);
+    const m = parseInt(dateKey.substring(5, 7), 10);
+    const d = parseInt(dateKey.substring(8, 10), 10);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+      return new Date(y, m - 1, d);
+    }
+  }
+  return safeDate(dateKey);
+};
+
+/**
+ * Format a Date into a `YYYY-MM-DD` date key (local time).
+ *
+ * Audit F-7 (Phase 3, 2026-11-26): co-located with `parseDateKey` so the
+ * key format has exactly one definition. Previously duplicated in
+ * `SubscriberRenewModal` and `useSubscriberForm`.
+ */
+export const formatDateKey = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
