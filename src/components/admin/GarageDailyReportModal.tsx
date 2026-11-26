@@ -16,7 +16,7 @@ import { safeDate, AR_DAY } from '../../utils/dates';
 import { getCairoDayBounds } from '../../../server/projections';
 import { useToast } from '../../hooks/toast';
 import type { ActivityLog, Garage } from '../../types';
-import { useModalA11y } from '../../hooks/useModalA11y';
+import { ModalShell } from '../ui/ModalShell';
 import { useAsyncAction } from '../../hooks/useAsyncAction';
 import { isMissingActivityLogIndexError } from '../../services/activityLogShared';
 import { formatNumberAr } from '../../utils/money';
@@ -475,19 +475,14 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
     }
   }, [pickerOpen, onClose]);
 
-  const modalA11y = useModalA11y(handleRequestClose);
-
   return (
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 font-sans"
-      dir="rtl"
-      onClick={onClose}
+    <>
+    <ModalShell
+      onClose={handleRequestClose}
+      zIndex="z-[200]"
+      overlayClassName="font-sans"
+      panelClassName="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md max-h-[85vh] max-h-[85dvh] flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl"
     >
-      <div
-        className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md max-h-[85vh] max-h-[85dvh] flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl "
-        onClick={(e) => e.stopPropagation()}
-        {...modalA11y.containerProps}
-      >
         {/* Header */}
         <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
@@ -634,22 +629,17 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
             </div>
           )}
         </div>
-      </div>
+      </ModalShell>
 
       {/* Busy-day choice: latest 200 only, or every operation of that day */}
       {choiceDay && (
-        <div
-          className="fixed inset-0 z-[210] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 font-sans"
-          dir="rtl"
-          onClick={() => setChoiceDay(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-label="اختر نطاق التحميل"
+        <ModalShell
+          onClose={() => setChoiceDay(null)}
+          zIndex="z-[210]"
+          overlayClassName="font-sans"
+          panelAriaLabel="اختر نطاق التحميل"
+          panelClassName="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl"
         >
-          <div
-            className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
             <div className="p-5 border-b border-slate-100 dark:border-slate-800/80">
               <h4 className="text-base font-black text-slate-900 dark:text-white">
                 هذا اليوم فيه {opsLabel(choiceDay.count)}
@@ -686,9 +676,8 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
                 رجوع
               </button>
             </div>
-          </div>
-        </div>
+        </ModalShell>
       )}
-    </div>
+    </>
   );
 };

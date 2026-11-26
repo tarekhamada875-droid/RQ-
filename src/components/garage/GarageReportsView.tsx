@@ -6,6 +6,7 @@ import {
   CalendarDays,
   TrendingUp,
 } from 'lucide-react';
+import { FullScreenSheet } from '../ui/FullScreenSheet';
 import { Garage, Staff } from '../../types';
 import { garageService, vehicleService, GarageDashboardSummary, isFreshGarageDashboardSummary } from '../../services';
 import { formatArabicDigits } from '../../utils/plates';
@@ -177,7 +178,7 @@ export const GarageReportsView = memo(({
   // ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#faf9f6] dark:bg-slate-950 flex flex-col pt-safe px-safe overflow-hidden select-none" dir="rtl">
+    <FullScreenSheet className="select-none">
       {/* Header */}
       <header className="relative bg-[#faf9f6] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 z-40 w-full shrink-0">
         <div className="max-w-2xl mx-auto flex items-center gap-3 w-full">
@@ -345,6 +346,6 @@ export const GarageReportsView = memo(({
           </div>
         </>
       )}
-    </div>
+    </FullScreenSheet>
   );
 });

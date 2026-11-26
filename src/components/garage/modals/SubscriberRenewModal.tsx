@@ -4,7 +4,7 @@ import { formatPlateNumber } from '../../../utils/plates';
 import { parseDateKey, formatDateKey } from '../../../utils/dates';
 import { getCairoDateKey } from '../../../domain/garage/businessDay';
 import type { Subscriber } from '../../../types';
-import { useModalA11y } from '../../../hooks/useModalA11y';
+import { ModalShell } from '../../ui/ModalShell';
 
 /**
  * SubscriberRenewModal
@@ -46,13 +46,17 @@ export const SubscriberRenewModal = memo(function SubscriberRenewModal({
   isSubmitting,
 }: SubscriberRenewModalProps) {
   // Stays mounted while hidden — re-arm Escape/trap/focus on every open.
-  const modalA11y = useModalA11y(onClose, undefined, isOpen && !!subscriber);
   if (!isOpen || !subscriber) return null;
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-end sm:items-center justify-center p-4 bg-slate-900/60 dark:bg-black/80">
-      <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md rounded-[2rem] sm:rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden " dir="rtl" {...modalA11y.containerProps}>
+    <ModalShell
+      onClose={onClose}
+      active={isOpen && !!subscriber}
+      zIndex="z-[130]"
+      variant="sheet-padded"
+      backdropClassName="bg-slate-900/60 dark:bg-black/80"
+      panelClassName="bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md rounded-[2rem] sm:rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden"
+    >
 
         {/* Header */}
         <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
@@ -121,8 +125,7 @@ export const SubscriberRenewModal = memo(function SubscriberRenewModal({
             })}
           </div>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 });
 

@@ -2,7 +2,7 @@ import React from 'react';
 import { X as XIcon, Gift, Zap, Sparkles, Coins } from 'lucide-react';
 import { ActivityLog } from '../../../types';
 import { safeDate } from '../../../utils/dates';
-import { useModalA11y } from '../../../hooks/useModalA11y';
+import { ModalShell } from '../../ui/ModalShell';
 import { formatNumberAr } from '../../../utils/money';
 
 interface CreditGrantNotificationModalProps {
@@ -22,8 +22,8 @@ export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModal
   onClose
 }) => {
   // Stays mounted while hidden (the dashboard pre-warms this chunk by
-  // rendering it unconditionally) — re-arm Escape/trap/focus on every open.
-  const modalA11y = useModalA11y(onClose, undefined, isOpen && !!creditGrantLog);
+  // rendering it unconditionally) — ModalShell re-arms a11y via `active`.
+  const isDialogActive = isOpen && !!creditGrantLog;
   if (!isOpen || !creditGrantLog) return null;
 
   const details = creditGrantLog.details as Record<string, any> | undefined;
@@ -88,16 +88,12 @@ export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModal
 
   if (isPrepaidCreditTopUp) {
     return (
-      <div
-        className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-[110] flex items-center justify-center p-4"
-        onClick={onClose}
+      <ModalShell
+        onClose={onClose}
+        active={isDialogActive}
+        zIndex="z-[110]"
+        panelClassName="w-full max-w-md bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 relative overflow-hidden"
       >
-        <div
-          className="w-full max-w-md bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 relative overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-          dir="rtl"
-          {...modalA11y.containerProps}
-        >
           <button
             onClick={onClose}
             className="absolute top-4 left-4 w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center outline-none z-20"
@@ -150,8 +146,7 @@ export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModal
               تمام
             </button>
           </div>
-        </div>
-      </div>
+      </ModalShell>
     );
   }
 
@@ -174,16 +169,12 @@ export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModal
     : `${creditGrantLog.amount} ج.م`;
 
   return (
-    <div
-      className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-[110] flex items-center justify-center p-4"
-      onClick={onClose}
+    <ModalShell
+      onClose={onClose}
+      active={isDialogActive}
+      zIndex="z-[110]"
+      panelClassName="w-full max-w-md bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 relative overflow-hidden"
     >
-      <div
-        className="w-full max-w-md bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 relative overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-        dir="rtl"
-        {...modalA11y.containerProps}
-      >
         {/* Subtle, modern close button */}
         <button
           onClick={onClose}
@@ -292,8 +283,7 @@ export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModal
             تمام
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };
 
