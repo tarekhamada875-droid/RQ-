@@ -12,6 +12,7 @@ import {
   printHtmlDocument
 } from '../../utils/incomeExport';
 import { safeDate } from '../../utils/dates';
+import { formatNumberEn } from '../../utils/money';
 
 interface AdminIncomeViewProps {
   onBack: () => void;
@@ -180,7 +181,7 @@ export const AdminIncomeView: React.FC<AdminIncomeViewProps> = ({ onBack, showTo
             </div>
           </div>
           <p className="mt-4 text-4xl sm:text-5xl font-black font-mono leading-none relative z-10">
-            {(total ?? 0).toLocaleString('ar-EG')}
+            {formatNumberEn(total)}
             <span className="text-lg font-black font-sans mr-2">{'ج.م'}</span>
           </p>
         </div>
@@ -268,12 +269,12 @@ export const AdminIncomeView: React.FC<AdminIncomeViewProps> = ({ onBack, showTo
                     {formatDate(row.occurredAt)}
                   </p>
                   <p className="mt-3 text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400 leading-none">
-                    +{egp.toLocaleString('ar-EG')}
+                    +{formatNumberEn(egp)}
                     <span className="text-xs font-black font-sans mr-1.5">{'ج.م'}</span>
                   </p>
                   <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
                     <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                      {'الرصيد المضاف:'} <span className="font-mono text-slate-900 dark:text-slate-100">{credits.toLocaleString('ar-EG')}</span>
+                      {'الرصيد المضاف:'} <span className="font-mono text-slate-900 dark:text-slate-100">{formatNumberEn(credits)}</span>
                     </p>
                     {row.reason ? (
                       <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 truncate max-w-[55%]" title={row.reason}>

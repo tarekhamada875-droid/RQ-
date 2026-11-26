@@ -9,6 +9,7 @@ import { getDomainErrorMessage } from '../../utils/domainErrors';
 import { CREDIT_AMOUNT_MAX_EGP, CREDIT_AMOUNT_MIN_EGP, CREDIT_CORRECTION_MAX_CREDITS } from '../../utils/limits';
 import { useGlobalCreditRate } from '../../hooks/useGlobalCreditRate';
 import { useAsyncAction } from '../../hooks/useAsyncAction';
+import { formatNumberEn } from '../../utils/money';
 
 const CREDIT_ERROR_MESSAGES: Record<string, string> = {
   ADMIN_ONLY: 'ليس لديك صلاحية لإدارة الرصيد.',
@@ -77,7 +78,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
       // 50..2,000). The server derives credits from it with the garage's
       // price — the preview below shows that conversion live.
       if (!Number.isSafeInteger(rawAmount) || rawAmount < CREDIT_AMOUNT_MIN_EGP || rawAmount > CREDIT_AMOUNT_MAX_EGP) {
-        setError(`أدخل مبلغًا صحيحًا من ${CREDIT_AMOUNT_MIN_EGP} إلى ${CREDIT_AMOUNT_MAX_EGP.toLocaleString('en-US')} ج.م.`);
+        setError(`أدخل مبلغًا صحيحًا من ${CREDIT_AMOUNT_MIN_EGP} إلى ${formatNumberEn(CREDIT_AMOUNT_MAX_EGP)} ج.م.`);
         setSuccess('');
         return;
       }
@@ -127,9 +128,9 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
         const newBalance = Number(result?.balance);
         setSuccess(
           Number.isFinite(grantedCredits) && grantedCredits > 0
-            ? `${grantedCredits.toLocaleString('en-US')} رصيد تمت إضافته مقابل ${creditAmount.toLocaleString('en-US')} ج.م`
-              + (Number.isFinite(newBalance) ? ` — الرصيد الحالي: ${newBalance.toLocaleString('en-US')}` : '')
-            : `${creditAmount.toLocaleString('en-US')} رصيد تمت إضافته.`,
+            ? `${formatNumberEn(grantedCredits)} رصيد تمت إضافته مقابل ${formatNumberEn(creditAmount)} ج.م`
+              + (Number.isFinite(newBalance) ? ` — الرصيد الحالي: ${formatNumberEn(newBalance)}` : '')
+            : `${formatNumberEn(creditAmount)} رصيد تمت إضافته.`,
         );
       } else {
         await adminService.adminCorrectGarageCredits(garage.id, {
@@ -137,7 +138,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
           reason,
           idempotencyKey
         });
-        setSuccess(`${Math.abs(creditAmount).toLocaleString('en-US')} رصيد تم خصمه.`);
+        setSuccess(`${formatNumberEn(Math.abs(creditAmount))} رصيد تم خصمه.`);
       }
       setAmount('');
       idempotencyIntentRef.current = null;
@@ -170,7 +171,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
         {/* Big balance block */}
         <div className="flex sm:flex-col items-baseline sm:items-start gap-x-1.5 sm:gap-y-0.5 sm:pl-3.5 sm:border-l sm:border-slate-200 dark:sm:border-slate-800 shrink-0">
           <span className="text-[11px] font-black text-slate-500 dark:text-slate-400">الرصيد الحالي</span>
-          <span className="font-mono text-2xl font-black text-emerald-600 dark:text-emerald-400 leading-none">{currentBalance.toLocaleString('en-US')}</span>
+          <span className="font-mono text-2xl font-black text-emerald-600 dark:text-emerald-400 leading-none">{formatNumberEn(currentBalance)}</span>
           <span className="text-[10px] font-black text-slate-500 dark:text-slate-400">رصيد</span>
         </div>
 
@@ -221,8 +222,8 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
           </div>
           {mode === 'grant' && previewCredits !== null && (
             <p aria-live="polite" className="text-center text-xs font-bold text-slate-500 dark:text-slate-400">
-              <span className="font-mono">{parsedAmount.toLocaleString('en-US')}</span> ج.م ←{' '}
-              <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">{previewCredits.toLocaleString('en-US')}</span> رصيد
+              <span className="font-mono">{formatNumberEn(parsedAmount)}</span> ج.م ←{' '}
+              <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">{formatNumberEn(previewCredits)}</span> رصيد
               {ownEgpPerCredit !== null && (
                 <span className="text-amber-600 dark:text-amber-400"> · سعر خاص {formatEgpPerCredit(ownEgpPerCredit)} ج.م/رصيد</span>
               )}

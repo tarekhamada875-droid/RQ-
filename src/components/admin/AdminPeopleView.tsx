@@ -14,6 +14,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { authService, delegateService } from '../../services';
+import { formatNumberEn } from '../../utils/money';
 import { generateSafePin, formatDisplayPin } from '../../utils/pins';
 import { normalizeDigits } from '../../utils/plates';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
@@ -298,7 +299,7 @@ export const AdminPeopleView = memo(({
                   <div className="text-left font-mono">
                     <span className="block text-[10px] text-slate-400 font-sans">الجراجات / المبيعات</span>
                     <span className="text-xs font-black text-slate-900 dark:text-white">
-                      {assignedGaragesCount} جراج • +{(d.totalRechargedAmount || 0).toLocaleString()} ج.م
+                      {assignedGaragesCount} جراج • +{formatNumberEn(d.totalRechargedAmount)} ج.م
                     </span>
                   </div>
                 </div>

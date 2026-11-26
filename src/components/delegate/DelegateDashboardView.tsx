@@ -28,6 +28,7 @@ const TermsAndConditionsModal = lazyWithRetry(() => import('../modals/TermsAndCo
 import { DelegateDashboardOverlays } from './DelegateDashboardOverlays';
 import { delegateService, type DelegateCreditRequest } from '../../services/delegateService';
 import { CREDIT_AMOUNT_MAX_EGP, CREDIT_AMOUNT_MIN_EGP } from '../../utils/limits';
+import { formatNumberEn } from '../../utils/money';
 import { useDelegateDashboard } from '../../hooks/delegateDashboardContext';
 import { useToast } from '../../hooks/toast';
 import { useAsyncAction } from '../../hooks/useAsyncAction';
@@ -289,7 +290,7 @@ export const DelegateDashboardView = memo(({
               </p>
               <div className="flex items-baseline justify-center gap-1 font-mono leading-none">
                 <FitText minFontSize={20}>
-                  {commissionValue.toLocaleString('en-US', { maximumFractionDigits: 1 })}
+                  {formatNumberEn(commissionValue, { maximumFractionDigits: 1 })}
                 </FitText>
                 <span className="text-sm font-black text-amber-600 dark:text-amber-400">ج.م</span>
               </div>
@@ -301,7 +302,7 @@ export const DelegateDashboardView = memo(({
               </p>
               <div className="flex items-baseline justify-center gap-1 font-mono leading-none">
                 <FitText minFontSize={20}>
-                  {unsettledCommission.toLocaleString('en-US', { maximumFractionDigits: 1 })}
+                  {formatNumberEn(unsettledCommission, { maximumFractionDigits: 1 })}
                 </FitText>
                 <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">ج.م</span>
               </div>
@@ -488,7 +489,7 @@ export const DelegateDashboardView = memo(({
 
             <form onSubmit={handleSubmitCreditRequest} className="space-y-4 text-right">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">المبلغ المحصل من الجراج ({CREDIT_AMOUNT_MIN_EGP} إلى {CREDIT_AMOUNT_MAX_EGP.toLocaleString('en-US')} ج.م)</label>
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">المبلغ المحصل من الجراج ({CREDIT_AMOUNT_MIN_EGP} إلى {formatNumberEn(CREDIT_AMOUNT_MAX_EGP)} ج.م)</label>
                 <FastInput
                   type="text"
                   inputMode="numeric"

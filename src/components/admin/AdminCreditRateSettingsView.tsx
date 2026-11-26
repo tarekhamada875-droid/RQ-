@@ -11,6 +11,7 @@ import {
   egpPerCreditToRate,
   formatEgpPerCredit,
 } from '../../utils/creditRate';
+import { formatNumberEn } from '../../utils/money';
 
 interface AdminCreditRateSettingsViewProps {
   onBack: () => void;
@@ -186,9 +187,9 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
                           )}
                         </div>
                         <div className="text-xs font-bold text-slate-500 dark:text-slate-400 font-mono">
-                          {PREVIEW_EGP.toLocaleString('ar-EG')} ج.م ←{' '}
+                          {formatNumberEn(RATE_PREVIEW_EGP)} ج.م ←{' '}
                           <span className="text-emerald-600 dark:text-emerald-400">
-                            {previewCredits.toLocaleString('ar-EG')} رصيد
+                            {formatNumberEn(previewCredits)} رصيد
                           </span>
                         </div>
                       </button>

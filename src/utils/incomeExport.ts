@@ -16,6 +16,7 @@
  */
 import type { AdminIncomeRow } from '../services/adminIncomeService';
 import { safeDate } from './dates';
+import { formatNumberAr } from './money';
 
 export const INCOME_EXPORT_MAX_ROWS = 5000;
 export const INCOME_EXPORT_PAGE_SIZE = 100;
@@ -31,7 +32,7 @@ export const incomeSourceLabel = (source: string | undefined): string => {
 
 const roundMoney2 = (value: number): number => Math.round(value * 100) / 100;
 
-const arabicNumber = (value: number): string => roundMoney2(value).toLocaleString('ar-EG');
+const arabicNumber = (value: number): string => formatNumberAr(roundMoney2(value));
 
 /** Excel-friendly timestamp: Latin digits, Cairo timezone, sortable-ish. */
 const formatCsvTimestamp = (timestamp: unknown): string => {

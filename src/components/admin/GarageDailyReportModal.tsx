@@ -19,6 +19,7 @@ import type { ActivityLog, Garage } from '../../types';
 import { useModalA11y } from '../../hooks/useModalA11y';
 import { useAsyncAction } from '../../hooks/useAsyncAction';
 import { isMissingActivityLogIndexError } from '../../services/activityLogShared';
+import { formatNumberAr } from '../../utils/money';
 
 interface GarageDailyReportModalProps {
   garage: Garage;
@@ -172,7 +173,7 @@ function getAmountContent(log: any): string | number {
 
 /** Arabic count of operations with proper singular/dual/plural forms. */
 function opsLabel(n: number): string {
-  const digits = n.toLocaleString('ar-EG');
+  const digits = formatNumberAr(n);
   if (n === 1) return 'عملية واحدة';
   if (n === 2) return 'عمليتان';
   if (n >= 3 && n <= 10) return `${digits} عمليات`;
@@ -654,7 +655,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
                 هذا اليوم فيه {opsLabel(choiceDay.count)}
               </h4>
               <p className="mt-1 text-xs font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
-                التحميل السريع يشمل آخر {DAILY_REPORT_LOG_LIMIT.toLocaleString('ar-EG')} عملية فقط. اختر ما يناسبك:
+                التحميل السريع يشمل آخر {formatNumberAr(DAILY_REPORT_LOG_LIMIT)} عملية فقط. اختر ما يناسبك:
               </p>
             </div>
             <div className="p-5 space-y-2.5">
@@ -665,7 +666,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
                 className="w-full py-3 rounded-2xl bg-emerald-500 text-white font-black text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-                <span>تحميل كل العمليات ({choiceDay.count.toLocaleString('ar-EG')})</span>
+                <span>تحميل كل العمليات ({formatNumberAr(choiceDay.count)})</span>
               </button>
               <button
                 type="button"
@@ -674,7 +675,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
                 className="w-full py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-black text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download className="w-5 h-5" />
-                <span>تحميل آخر {DAILY_REPORT_LOG_LIMIT.toLocaleString('ar-EG')} عملية فقط</span>
+                <span>تحميل آخر {formatNumberAr(DAILY_REPORT_LOG_LIMIT)} عملية فقط</span>
               </button>
               <button
                 type="button"

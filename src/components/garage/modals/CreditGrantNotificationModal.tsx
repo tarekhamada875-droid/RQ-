@@ -3,6 +3,7 @@ import { X as XIcon, Gift, Zap, Sparkles, Coins } from 'lucide-react';
 import { ActivityLog } from '../../../types';
 import { safeDate } from '../../../utils/dates';
 import { useModalA11y } from '../../../hooks/useModalA11y';
+import { formatNumberAr } from '../../../utils/money';
 
 interface CreditGrantNotificationModalProps {
   isOpen: boolean;
@@ -82,7 +83,7 @@ export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModal
 
   const currentBalanceDisplay =
     typeof currentCredits === 'number' && Number.isFinite(currentCredits)
-      ? currentCredits.toLocaleString('ar-EG')
+      ? formatNumberAr(currentCredits)
       : null;
 
   if (isPrepaidCreditTopUp) {
@@ -115,7 +116,7 @@ export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModal
             </h3>
 
             <p className="text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400 leading-none mb-6">
-              +{creditAmount.toLocaleString('ar-EG')} رصيد
+              +{formatNumberAr(creditAmount)} رصيد
             </p>
 
             <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl px-4 py-3.5 text-right border border-slate-100 dark:border-slate-800/50 mb-6">

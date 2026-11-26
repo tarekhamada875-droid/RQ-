@@ -4,6 +4,7 @@ import { Garage } from '../../types';
 import { safeDate } from '../../utils/dates';
 import { adminBillingService } from '../../services/adminBillingService';
 import type { DelegateCreditRequest } from '../../services/delegateService';
+import { formatNumberEn } from '../../utils/money';
 
 interface AdminRequestsViewProps {
   pendingGarages: Garage[];
@@ -299,7 +300,7 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
                       </div>
                     </div>
                     <span className="shrink-0 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[11px] font-black text-amber-600 dark:text-amber-400">
-                      {request.amount.toLocaleString('en-US')} ج.م
+                      {formatNumberEn(request.amount)} ج.م
                     </span>
                   </div>
 
@@ -309,9 +310,9 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
                   {typeof request.creditsPreview === 'number' && request.creditsPreview > 0 && (
                     <div className="rounded-xl bg-amber-50 px-3 py-2 text-center text-[11px] font-black text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
                       الموافقة ستضيف{' '}
-                      <span className="font-mono">{request.creditsPreview.toLocaleString('en-US')}</span> رصيد{' '}
+                      <span className="font-mono">{formatNumberEn(request.creditsPreview)}</span> رصيد{' '}
                       مقابل{' '}
-                      <span className="font-mono">{request.amount.toLocaleString('en-US')}</span> ج.م
+                      <span className="font-mono">{formatNumberEn(request.amount)}</span> ج.م
                     </div>
                   )}
 

@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Garage } from '../../../types';
 import { formatArabicDigits } from '../../../utils/plates';
+import { formatNumberEn } from '../../../utils/money';
 
 interface GarageSubscriptionCardProps {
   garage: Garage;
@@ -54,7 +55,7 @@ export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardPr
           </div>
         )}
         <div className={`relative z-10 py-1 text-4xl md:text-7xl font-black font-mono ${showDebitFeedback ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-100'}`} aria-live="polite">
-          {formatArabicDigits(totalCredits.toLocaleString('en-US'))}
+          {formatArabicDigits(formatNumberEn(totalCredits))}
         </div>
         {showDebitFeedback && (
           <span key={debitNonce} id="balance_arrows_container" aria-hidden="true" className="absolute inset-0 z-20 overflow-hidden pointer-events-none" data-testid="credit-debit-feedback">
