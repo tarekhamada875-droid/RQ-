@@ -22,6 +22,10 @@ type ReportViewMode = 'initial' | 'daily' | 'monthly';
 interface GarageReportsViewProps {
   garage: Garage;
   staffList: Staff[];
+  /** AUDIT F-3 (2026-11-26): lazy staff-roster loader from the sync hook.
+   *  Called once on mount — replaces the retired eager boot fetch so a
+   *  garage session pays the roster reads only when reports are opened. */
+  ensureStaffLoaded: (garageId: string) => Promise<void>;
   onClose: () => void;
   onToggleMenu?: () => void;
   showToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
@@ -30,6 +34,7 @@ interface GarageReportsViewProps {
 export const GarageReportsView = memo(({
   garage,
   staffList,
+  ensureStaffLoaded,
   onClose,
   showToast,
 }: GarageReportsViewProps) => {
@@ -54,6 +59,18 @@ export const GarageReportsView = memo(({
   useEffect(() => {
     setLocalGarage(garage);
   }, [garage]);
+
+  // AUDIT F-3 (2026-11-26): hydrate the staff roster on first mount of the
+  // reports view. Until this lands, the sync hook fetched the roster eagerly
+  // on every garage-session boot — one read per staff member per session —
+  // although only this view ever displays it. Repeat opens are free (the
+  // sync hook memoizes per garage); the fetch is discarded safely on
+  // logout/garage switch by the sync hook's owner guards.
+  useEffect(() => {
+    if (garage?.id) {
+      void ensureStaffLoaded(garage.id);
+    }
+  }, [ensureStaffLoaded, garage?.id]);
 
   // ── Daily report: start on-demand listener + fetch server summary ──
   // Only runs when viewMode === 'daily'. Stops when user navigates back.

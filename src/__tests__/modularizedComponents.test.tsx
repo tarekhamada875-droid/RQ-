@@ -311,6 +311,7 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
         onLogout={vi.fn()}
         showToast={vi.fn()}
         staffList={[]}
+        ensureStaffLoaded={vi.fn().mockResolvedValue(undefined)}
         showSubscribers={false}
         setShowSubscribers={vi.fn()}
       />
@@ -336,6 +337,7 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
         onLogout={vi.fn()}
         showToast={vi.fn()}
         staffList={[]}
+        ensureStaffLoaded={vi.fn().mockResolvedValue(undefined)}
         showSubscribers={false}
         setShowSubscribers={vi.fn()}
       />

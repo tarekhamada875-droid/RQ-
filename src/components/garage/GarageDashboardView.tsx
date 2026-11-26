@@ -35,6 +35,9 @@ interface GarageDashboardViewProps {
   onLogout: () => void;
   showToast: (message: string, type?: ToastType) => void;
   staffList: Staff[];
+  /** AUDIT F-3: lazy staff-roster loader — the reports view calls it on mount
+   *  instead of the old eager boot fetch. */
+  ensureStaffLoaded: (garageId: string) => Promise<void>;
   showSubscribers: boolean;
   setShowSubscribers: (show: boolean) => void;
 }
@@ -47,6 +50,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
     onLogout,
     showToast,
     staffList,
+    ensureStaffLoaded,
     showSubscribers,
     setShowSubscribers,
   } = props;
@@ -260,6 +264,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
         onCloseTerms={() => setShowTermsModal(false)}
         currentStaff={currentStaff}
         staffList={staffList}
+        ensureStaffLoaded={ensureStaffLoaded}
         isCreditGrantNotificationOpen={isCreditGrantNotificationOpen}
         creditGrantLog={latestCreditGrantLog}
         onCloseCreditGrantNotification={handleAcknowledgeCreditGrant}

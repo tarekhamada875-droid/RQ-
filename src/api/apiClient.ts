@@ -389,11 +389,18 @@ async function apiFetchOnce<T = Record<string, any>>(endpoint: string, options: 
 
   // DEBUG (owner audit 2026-11-17): settle the entry with timings and a
   // PII-safe structural snapshot of the response (field names + sizes only).
+  // AUDIT F-2 (2026-11-26): the response stringify + sanitize pass now runs
+  // only while recording is actually enabled (?debug=1) — on production
+  // devices these two evaluation costs per API call are pure waste.
   let dbgResBytes: number | null = null;
-  try {
-    dbgResBytes = JSON.stringify(result).length;
-  } catch {
-    dbgResBytes = null;
+  let dbgResFields: unknown = null;
+  if (debugRecorder.isEnabled) {
+    try {
+      dbgResBytes = JSON.stringify(result).length;
+    } catch {
+      dbgResBytes = null;
+    }
+    dbgResFields = sanitizeValue(result);
   }
   debugRecorder.apiEnd(dbgSeq, {
     status: response.status,
@@ -406,7 +413,7 @@ async function apiFetchOnce<T = Record<string, any>>(endpoint: string, options: 
     errorCode: null,
     errorMessage: null,
     correlationId: serverCorrelationId,
-    resFields: sanitizeValue(result),
+    resFields: dbgResFields,
   });
 
   return result as T;

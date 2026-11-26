@@ -119,6 +119,7 @@ const DashboardHarness = ({ garage = makeGarage() }: { garage?: any }) => {
       onLogout={vi.fn()}
       showToast={vi.fn()}
       staffList={[]}
+      ensureStaffLoaded={vi.fn().mockResolvedValue(undefined)}
       showSubscribers={showSubscribers}
       setShowSubscribers={setShowSubscribers}
     />

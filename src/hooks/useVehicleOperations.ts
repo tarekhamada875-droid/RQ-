@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useMemo } from 'react';
 import { Vehicle, Garage, Staff } from '../types';
 import { adminService, vehicleService } from '../services';
 import { soundManager } from '../utils/sounds';
-import { useServerTimeNow } from './serverTimeContext';
+import { useServerTimeGetNow } from './serverTimeContext';
 import { generateIdempotencyKey } from '../types/apiContracts';
 import { calculateCost } from '../utils/cost';
 import { safeDate } from '../utils/dates';
@@ -41,7 +41,15 @@ export function useVehicleOperations({
   closeKeyboard,
   onCheckOutComplete,
 }: UseVehicleOperationsProps) {
-  const now = useServerTimeNow();
+  // AUDIT F-1 (2026-11-26): the hook no longer subscribes to the 60-second
+  // server-time tick. confirmCheckOut needs the corrected time only when it
+  // RUNS (for the cost calculation), so it reads getNow() at confirm time.
+  // Previously `now` sat in confirmCheckOut's dependency array, so every tick
+  // produced a new callback → a new memoized operations object → new context
+  // values → a full re-render of the active dashboard (~1,440 wasted renders
+  // per device per day while idle). The ticking clock remains only where it
+  // is actually displayed: CheckOutModal's elapsed time.
+  const getNow = useServerTimeGetNow();
   // PR-U: newPlateNumber state removed — moved to RegistrationCard local state.
   // The draft no longer lives in this hook (a context bucket), so every
   // keystroke only re-renders RegistrationCard, not the whole app.
@@ -319,7 +327,7 @@ export function useVehicleOperations({
     closeKeyboard();
 
     const vehicleToOut = selectedVehicle;
-    const cost = calculateCost(vehicleToOut, garage, now);
+    const cost = calculateCost(vehicleToOut, garage, getNow());
     setIsLoading(true);
     setLoadingType('checkout');
     acquireTransactionLock();
@@ -411,7 +419,7 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, onCheckOutComplete]);
+  }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, getNow, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, onCheckOutComplete]);
 
   // Delete Vehicle — receipt-mode (mirrors check-in/check-out).
   //
