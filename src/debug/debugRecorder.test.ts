@@ -77,7 +77,7 @@ describe('sanitizeValue (PII-safe structural snapshot)', () => {
     }];
     localStorage.setItem('rq_debug_recorder_v1', JSON.stringify({ savedAt: '2026-11-17T06:00:01.000Z', entries: previous }));
 
-    debugRecorder.init();
+    debugRecorder.init({ enabled: true }); // AUDIT F-2: tests opt IN to recording
     const exported = JSON.parse(debugRecorder.exportJson()) as { entries: Array<Record<string, unknown>> };
     const boots = exported.entries.filter((e) => e.ev === 'boot');
     // Exactly one boot entry; seq continues after the restored entry (7) and
@@ -87,6 +87,36 @@ describe('sanitizeValue (PII-safe structural snapshot)', () => {
     expect(exported.entries[0].ev).toBe('from_previous_load');
     const restoredCount = exported.entries.filter((e) => e.ev === 'from_previous_load').length;
     expect(restoredCount).toBe(1);
+    debugRecorder.resetForTests();
+  });
+
+  it('AUDIT F-2 (2026-11-26): init without ?debug=1 gates ALL recording — zero entries, zero storage', () => {
+    debugRecorder.resetForTests();
+    // A previous session's persisted entries must NOT be restored either.
+    localStorage.setItem('rq_debug_recorder_v1', JSON.stringify({
+      savedAt: '2026-11-26T00:00:00.000Z',
+      entries: [{ seq: 3, t: '2026-11-26T00:00:00.000Z', cat: 'note', ev: 'from_previous_load' }],
+    }));
+
+    debugRecorder.init({ enabled: false }); // production boot path (no ?debug flag)
+
+    debugRecorder.record('note', { ev: 'should_not_land' });
+    debugRecorder.authEvent('signin_anon_begin');
+    debugRecorder.sessionEvent('coordinator_start');
+    const orphanSeq = debugRecorder.apiBegin({ method: 'GET', endpoint: '/api/anything' });
+    expect(orphanSeq).toBe(-1);
+    debugRecorder.apiEnd(orphanSeq, { status: 200, ok: true, clientMs: 5 });
+
+    const exported = JSON.parse(debugRecorder.exportJson()) as { meta: { events: number }; entries: unknown[] };
+    expect(exported.meta.events).toBe(0);
+    expect(exported.entries).toHaveLength(0);
+    // No localStorage mirror may be written while gated.
+    expect(localStorage.getItem('rq_debug_recorder_v1')).toBe(
+      JSON.stringify({
+        savedAt: '2026-11-26T00:00:00.000Z',
+        entries: [{ seq: 3, t: '2026-11-26T00:00:00.000Z', cat: 'note', ev: 'from_previous_load' }],
+      })
+    );
     debugRecorder.resetForTests();
   });
 });

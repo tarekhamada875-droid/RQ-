@@ -125,12 +125,25 @@ class DebugRecorder {
   private startedAt = new Date().toISOString();
   private initialized = false;
   private lastFlushAt = 0;
+  // AUDIT F-2 (2026-11-26): recording is OFF in production. The recorder was
+  // built for owner-level debugging, but it initialized on every boot and
+  // recorded every API call on every device around the clock — JSON.parse +
+  // a recursive sanitize pass per call, and a localStorage mirror every 30s —
+  // for a tool only the owner opens. Now init() derives `enabled` from the
+  // same ?debug=1 flag that gates the DebugHud viewer: no flag, no recording,
+  // no parse, no flush timer. When enabled, behavior is identical to before.
+  // Default is true so direct record()/apiBegin() calls (unit tests, pre-init
+  // error capture) behave as before until init() decides.
+  private enabled = true;
 
-  init(): void {
+  init(opts?: { enabled?: boolean }): void {
     if (this.initialized || typeof window === 'undefined') return;
     this.initialized = true;
-    this.startedAt = new Date().toISOString();
+    this.enabled = opts?.enabled ?? new URLSearchParams(window.location.search).has('debug');
 
+    if (!this.enabled) return; // production: no listeners, no restore, no boot record
+
+    this.startedAt = new Date().toISOString();
     window.addEventListener('error', (event) => {
       this.record('error', {
         ev: 'window_error',
@@ -208,6 +221,7 @@ class DebugRecorder {
   }
 
   record(cat: DebugCategory, data: Record<string, unknown>): void {
+    if (!this.enabled) return;
     this.seq += 1;
     const entry: DebugEntry = {
       seq: this.seq,
@@ -228,6 +242,7 @@ class DebugRecorder {
    * (request that never completed before export).
    */
   apiBegin(input: ApiBeginInput): number {
+    if (!this.enabled) return -1;
     let reqFields: unknown = null;
     if (input.bodyString && input.bodyString.length <= MAX_BODY_STRING_FOR_PARSE) {
       try {
@@ -258,6 +273,7 @@ class DebugRecorder {
   }
 
   apiEnd(seq: number, patch: ApiPatch): void {
+    if (!this.enabled || seq < 0) return;
     for (let i = this.entries.length - 1; i >= 0; i -= 1) {
       const entry = this.entries[i];
       if (entry.seq === seq && entry.cat === 'api') {
@@ -304,6 +320,12 @@ class DebugRecorder {
     return this.entries.length;
   }
 
+  /** True when recording is active (?debug=1). apiClient checks this before
+   *  paying for response stringify + sanitize that only feed debug entries. */
+  get isEnabled(): boolean {
+    return this.enabled;
+  }
+
   clear(): void {
     this.entries = [];
     this.seq = 0;
@@ -323,6 +345,7 @@ class DebugRecorder {
     this.seq = 0;
     this.initialized = false;
     this.lastFlushAt = 0;
+    this.enabled = true; // tests default to recording ON; the gate test re-inits with enabled:false
     this.cachedEnvMeta = null; // PERF: force re-collection after reset
     this.startedAt = new Date().toISOString();
     try {
@@ -406,6 +429,7 @@ class DebugRecorder {
   }
 
   private flush(force: boolean): void {
+    if (!this.enabled) return;
     if (!force && Date.now() - this.lastFlushAt < LS_FLUSH_INTERVAL_MS) return;
     this.lastFlushAt = Date.now();
     try {

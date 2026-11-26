@@ -31,7 +31,7 @@ const stubGarageData: GarageDataContextValue = {
   loadMoreAdminGarages: vi.fn().mockResolvedValue(undefined),
   loadMoreAdminDelegates: vi.fn().mockResolvedValue(undefined),
   refreshAdminLists: vi.fn().mockResolvedValue(undefined),
-  loadGarageData: vi.fn().mockResolvedValue(undefined),
+  ensureStaffLoaded: vi.fn().mockResolvedValue(undefined),
   isInitialSyncComplete: true,
 };
 

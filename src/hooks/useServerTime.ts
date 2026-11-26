@@ -73,5 +73,12 @@ export function useServerTime() {
     return () => clearInterval(timer);
   }, [serverTimeOffset]);
 
-  return { now, serverTimeOffset, setServerTimeOffset, fetchServerTimeOffset };
+  // AUDIT F-1 (2026-11-26): stable, non-subscribing clock read for confirm-time
+  // cost calculations. Consumers that need the CURRENT corrected time only when
+  // an action runs (confirmCheckOut) use getNow() instead of subscribing to the
+  // 60s tick — the tick then re-renders only the components that actually
+  // display elapsed time (CheckOutModal), not the whole dashboard.
+  const getNow = useCallback(() => new Date(Date.now() + offsetRef.current), []);
+
+  return { now, getNow, serverTimeOffset, setServerTimeOffset, fetchServerTimeOffset };
 }

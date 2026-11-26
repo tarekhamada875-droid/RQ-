@@ -27,7 +27,7 @@ describe('GarageReportsView monthly revenue card', () => {
 
   it('shows the total with no icon and no redundant coverage note', async () => {
     const { container } = render(
-      <GarageReportsView garage={makeGarage()} staffList={[]} onClose={vi.fn()} />
+      <GarageReportsView garage={makeGarage()} staffList={[]} ensureStaffLoaded={vi.fn().mockResolvedValue(undefined)} onClose={vi.fn()} />
     );
 
     // Enter the monthly report from the chooser.

@@ -604,13 +604,11 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     expect(result.current.delegates).toEqual([]);
   });
 
-  it('loads staff for the active garage after session readiness and ignores a previous garage response', async () => {
+  it('AUDIT F-3: staff loads lazily via ensureStaffLoaded — never on boot — one fetch per garage', async () => {
     vi.useRealTimers();
-    let resolveGarageA!: (staff: any[]) => void;
-    let resolveGarageB!: (staff: any[]) => void;
     serviceMocks.getStaffByGarageOnce
-      .mockImplementationOnce(() => new Promise((resolve) => { resolveGarageA = resolve; }))
-      .mockImplementationOnce(() => new Promise((resolve) => { resolveGarageB = resolve; }));
+      .mockResolvedValueOnce([{ id: 'staff-a', name: 'Garage A staff' }])
+      .mockResolvedValueOnce([{ id: 'staff-b', name: 'Garage B staff' }]);
 
     const baseProps = createBaseProps();
     const { result, rerender, unmount } = renderHook(
@@ -623,23 +621,37 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
       { initialProps: { garage: { id: 'garage-a' } as any } }
     );
 
-    expect(serviceMocks.getStaffByGarageOnce).toHaveBeenCalledWith('garage-a');
-    rerender({ garage: { id: 'garage-b' } as any });
-    expect(serviceMocks.getStaffByGarageOnce).toHaveBeenCalledWith('garage-b');
+    // The eager boot read is retired: mounting a ready garage session must NOT
+    // fetch the staff roster anymore.
+    expect(serviceMocks.getStaffByGarageOnce).not.toHaveBeenCalled();
 
+    // First reports open fetches exactly once.
     await act(async () => {
-      resolveGarageB([{ id: 'staff-b', name: 'Garage B staff' }]);
-      await Promise.resolve();
+      await result.current.ensureStaffLoaded('garage-a');
     });
+    expect(serviceMocks.getStaffByGarageOnce).toHaveBeenCalledTimes(1);
+    expect(serviceMocks.getStaffByGarageOnce).toHaveBeenCalledWith('garage-a');
+    await waitFor(() => {
+      expect(result.current.staffList.map((staff) => staff.id)).toEqual(['staff-a']);
+    });
+
+    // Repeat open: served from the per-garage memo — no new read.
+    await act(async () => {
+      await result.current.ensureStaffLoaded('garage-a');
+    });
+    expect(serviceMocks.getStaffByGarageOnce).toHaveBeenCalledTimes(1);
+
+    // Garage switch (owner-key change resets the memo): the new garage
+    // refetches its own roster on its first reports open.
+    rerender({ garage: { id: 'garage-b' } as any });
+    await act(async () => {
+      await result.current.ensureStaffLoaded('garage-b');
+    });
+    expect(serviceMocks.getStaffByGarageOnce).toHaveBeenCalledTimes(2);
+    expect(serviceMocks.getStaffByGarageOnce).toHaveBeenLastCalledWith('garage-b');
     await waitFor(() => {
       expect(result.current.staffList.map((staff) => staff.id)).toEqual(['staff-b']);
     });
-
-    await act(async () => {
-      resolveGarageA([{ id: 'staff-a', name: 'Garage A staff' }]);
-      await Promise.resolve();
-    });
-    expect(result.current.staffList.map((staff) => staff.id)).toEqual(['staff-b']);
     unmount();
   });
 

@@ -30,6 +30,8 @@ interface GarageDashboardOverlaysProps {
   onCloseTerms: () => void;
   currentStaff: Staff | null;
   staffList: Staff[];
+  /** AUDIT F-3: lazy staff-roster loader — the reports view calls it on mount. */
+  ensureStaffLoaded: (garageId: string) => Promise<void>;
   isCreditGrantNotificationOpen: boolean;
   creditGrantLog: ActivityLog | null;
   onCloseCreditGrantNotification: () => void;
@@ -53,6 +55,7 @@ export const GarageDashboardOverlays = ({
   onCloseTerms,
   currentStaff,
   staffList,
+  ensureStaffLoaded,
   isCreditGrantNotificationOpen,
   creditGrantLog,
   onCloseCreditGrantNotification,
@@ -86,6 +89,7 @@ export const GarageDashboardOverlays = ({
           <GarageReportsLazy
             garage={garage}
             staffList={staffList}
+            ensureStaffLoaded={ensureStaffLoaded}
             onClose={onCloseReports}
             onToggleMenu={onToggleMenu}
             showToast={showToast}

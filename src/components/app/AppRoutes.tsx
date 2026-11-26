@@ -24,7 +24,7 @@ const GarageDashboardLazy = lazyWithRetry(() => import('../garage/GarageDashboar
 export function AppRoutes() {
   const { view, setView, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails, loginPhone, setLoginPhone, showToast, closeKeyboard, showSubscribers, setShowSubscribers, setShowDeleteConfirm } = useNavigationUi();
   const { isAuthReady, currentStaff, handleInitiateLogout } = useSession();
-  const { garage, delegate, delegates, allGarages, delegateGarages, staffList, setStaffList, delegatePagination, delegateListsLoading, delegateListsError, delegateDashboardLoading, delegateDashboardError, retryDelegateDashboard, loadMoreDelegateGarages, loadMoreAdminGarages, loadMoreAdminDelegates, refreshAdminLists, adminGarageHasMore, adminDelegateHasMore, adminListsLoading, adminListsError } = useGarageData();
+  const { garage, delegate, delegates, allGarages, delegateGarages, staffList, setStaffList, delegatePagination, delegateListsLoading, delegateListsError, delegateDashboardLoading, delegateDashboardError, retryDelegateDashboard, loadMoreDelegateGarages, loadMoreAdminGarages, loadMoreAdminDelegates, refreshAdminLists, adminGarageHasMore, adminDelegateHasMore, adminListsLoading, adminListsError, ensureStaffLoaded } = useGarageData();
   const { isLoading, setIsLoading } = useVehicleOps();
   const { handleGarageLogin, createNewGarage, removeDelegate } = useAdminMutations();
 
@@ -84,7 +84,7 @@ export function AppRoutes() {
     return <ErrorBoundary><AdminDelegateDetailsLazy delegate={liveDelegate} setView={setView} setSelectedDelegate={setSelectedDelegateForDetails} removeDelegate={removeDelegate} /></ErrorBoundary>;
   }
 
-  if (view === 'garage' && garage) return <ErrorBoundary><GarageDashboardLazy garage={garage} currentStaff={currentStaff} closeKeyboard={closeKeyboard} onLogout={handleInitiateLogout} showToast={showToast} staffList={staffList} showSubscribers={showSubscribers} setShowSubscribers={setShowSubscribers} /></ErrorBoundary>;
+  if (view === 'garage' && garage) return <ErrorBoundary><GarageDashboardLazy garage={garage} currentStaff={currentStaff} closeKeyboard={closeKeyboard} onLogout={handleInitiateLogout} showToast={showToast} staffList={staffList} ensureStaffLoaded={ensureStaffLoaded} showSubscribers={showSubscribers} setShowSubscribers={setShowSubscribers} /></ErrorBoundary>;
 
   return <LoginView loginPhone={loginPhone} setLoginPhone={setLoginPhone} handleGarageLogin={handleGarageLogin} isLoading={isLoading || !isAuthReady} closeKeyboard={closeKeyboard} />;
 }

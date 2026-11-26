@@ -142,6 +142,10 @@ export function useGarageSync({
     delegatePageLoadingRef.current = { createdGarages: false, referredGarages: false };
 
     setStaffList([]);
+    staffLoadedForGarageRef.current = null; // AUDIT F-3: new owner → reports refetches its own roster
+    staffLoadGenerationRef.current += 1; // discard any in-flight roster response
+    staffLoadInFlightRef.current = null;
+    staffInFlightGarageRef.current = null;
     setAllGarages([]);
     setDelegates([]);
     setAdminGarageHasMore(false);
@@ -187,39 +191,55 @@ export function useGarageSync({
   // removed entirely along with the vehicles state.
 
   const staffLoadGenerationRef = useRef(0);
-  const loadGarageData = useCallback(async (garageId: string) => {
+  // AUDIT F-3 (2026-11-26): the staff roster is fetched LAZILY, on the first
+  // reports-page open, instead of eagerly on every garage-session boot. The
+  // only garage-flow consumer of staffList is the reports view (lazy, opened
+  // on demand); at fleet scale the boot fetch burned roughly one read per
+  // staff member per session for data the first screen never displays.
+  // Single-flight + per-garage memo keeps repeat opens free, and the same
+  // generation/owner guards discard in-flight responses on switch/logout.
+  const staffLoadedForGarageRef = useRef<string | null>(null);
+  const staffLoadInFlightRef = useRef<Promise<void> | null>(null);
+  const staffInFlightGarageRef = useRef<string | null>(null);
+  const ensureStaffLoaded = useCallback((garageId: string): Promise<void> => {
+    if (staffLoadedForGarageRef.current === garageId) {
+      return staffLoadInFlightRef.current ?? Promise.resolve();
+    }
+    // Single-flight PER GARAGE: an in-flight roster for a previous garage
+    // must not swallow the new garage's request (garage switch while the
+    // reports view is open). The generation guard discards the stale response.
+    if (staffLoadInFlightRef.current && staffInFlightGarageRef.current === garageId) {
+      return staffLoadInFlightRef.current;
+    }
     const requestGeneration = ++staffLoadGenerationRef.current;
     const ownerKey = dataOwnerKey;
-    try {
-      const staff = await adminService.getStaffByGarageOnce(garageId);
-      if (
-        requestGeneration !== staffLoadGenerationRef.current ||
-        previousDataOwnerKeyRef.current !== ownerKey
-      ) return;
-      setStaffList(staff);
-    } catch (err) {
-      if (
-        requestGeneration === staffLoadGenerationRef.current &&
-        previousDataOwnerKeyRef.current === ownerKey
-      ) {
-        console.error('Failed to load garage data:', err);
+    const request = (async () => {
+      try {
+        const staff = await adminService.getStaffByGarageOnce(garageId);
+        if (
+          requestGeneration !== staffLoadGenerationRef.current ||
+          previousDataOwnerKeyRef.current !== ownerKey
+        ) return;
+        setStaffList(staff);
+        staffLoadedForGarageRef.current = garageId;
+      } catch (err) {
+        if (
+          requestGeneration === staffLoadGenerationRef.current &&
+          previousDataOwnerKeyRef.current === ownerKey
+        ) {
+          console.error('Failed to load garage staff:', err);
+        }
+      } finally {
+        if (staffLoadInFlightRef.current === request) {
+          staffLoadInFlightRef.current = null;
+          staffInFlightGarageRef.current = null;
+        }
       }
-    }
+    })();
+    staffLoadInFlightRef.current = request;
+    staffInFlightGarageRef.current = garageId;
+    return request;
   }, [dataOwnerKey, setStaffList]);
-
-  // Staff reports depend on the current garage's staff roster. Hydrate it only
-  // after the protected garage session is ready, and discard responses on switch/logout.
-  useEffect(() => {
-    if (!isSessionReady || view !== 'garage' || !garage?.id) {
-      staffLoadGenerationRef.current += 1;
-      return;
-    }
-
-    void loadGarageData(garage.id);
-    return () => {
-      staffLoadGenerationRef.current += 1;
-    };
-  }, [isSessionReady, view, garage?.id, loadGarageData]);
 
   const loadAdminGaragePage = useCallback(async (reset = false) => {
     if ((!reset && adminGarageLoadingRef.current) || (!reset && !adminGarageHasMore)) return;
@@ -607,7 +627,7 @@ export function useGarageSync({
     return allGarages.filter(g => g.createdByDelegateId === delegate.id || g.referrerId === delegate.id);
   }, [allGarages, delegate]);
 
-  return {
+  return useMemo(() => ({
     allGarages,
     setAllGarages,
     delegates,
@@ -628,8 +648,17 @@ export function useGarageSync({
     delegateDashboardError,
     retryDelegateDashboard,
     loadMoreDelegateGarages,
-    loadGarageData,
+    ensureStaffLoaded,
     delegateGarages,
     isInitialSyncComplete,
-  };
+  // AUDIT F-1b (2026-11-26): the return object is memoized so the hook's host
+  // (useGarageApp) can spread it into the memoized GarageDataProvider bucket
+  // without busting that memo on every render. Before, every host render
+  // produced a new return object → a new context value → unnecessary
+  // re-renders of every context consumer.
+  }), [allGarages, setAllGarages, delegates, setDelegates, adminGarageHasMore, adminDelegateHasMore,
+    adminListsLoading, adminListsError, loadAdminGaragePage, loadAdminDelegatePage,
+    refreshAdminLists, staffList, setStaffList, delegatePagination, delegateListsLoading,
+    delegateListsError, delegateDashboardLoading, delegateDashboardError, retryDelegateDashboard,
+    loadMoreDelegateGarages, ensureStaffLoaded, delegateGarages, isInitialSyncComplete]);
 }
