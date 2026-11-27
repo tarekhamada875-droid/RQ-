@@ -28,8 +28,6 @@ vi.mock('../../../services', () => {
     getDashboardSummary: vi.fn().mockResolvedValue({ entriesToday: 0 }),
     isPinTaken: vi.fn(),
     checkPinAvailability: vi.fn(),
-    addStaff: vi.fn().mockResolvedValue({ id: 'staff_test_1' }),
-    removeStaff: vi.fn().mockResolvedValue(undefined),
     subscribeToCreditGrantLogs: vi.fn(() => () => {}),
     subscribeToSubscribers: vi.fn(() => () => {}),
     subscribeToSystemConfig: vi.fn((cb) => {
@@ -98,8 +96,6 @@ const renderView = () =>
           setView={vi.fn()}
           setSelectedGarageForDetails={vi.fn()}
           setShowDeleteConfirm={vi.fn()}
-          staffList={[]}
-          setStaffList={vi.fn()}
           isLoading={false}
           setIsLoading={vi.fn()}
         />
@@ -117,8 +113,8 @@ const fillFastInput = (el: HTMLElement, value: string) => {
 };
 
 const openPinModal = () => {
-  // staffList is empty and the accordion is closed, so the hero PIN chip
-  // hosts the only «تعديل» button on the page.
+  // The accordion is closed and there is no staff section anymore, so the
+  // hero PIN chip hosts the only «تعديل» button on the page.
   fireEvent.click(screen.getByText('تعديل'));
   return screen.getByPlaceholderText('••••') as HTMLInputElement;
 };

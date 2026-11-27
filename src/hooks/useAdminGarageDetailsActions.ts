@@ -1,17 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { adminService, authService, garageService } from '../services';
+import { authService, garageService } from '../services';
 import { normalizeDigits } from '../utils/plates';
 import { canChangeGarageRates } from '../utils/businessRules';
 import { useAsyncAction } from './useAsyncAction';
 import { generateSafePin, isHashedPin } from '../utils/pins';
 import { getGaragePinUpdateErrorMessage, PIN_UPDATE_ERROR_MESSAGES } from '../utils/domainErrors';
-import type { Garage, Staff } from '../types';
+import type { Garage } from '../types';
 
 interface UseAdminGarageDetailsActionsArgs {
   garage: Garage;
   setSelectedGarageForDetails: (g: Garage | null) => void;
-  staffList: Staff[];
-  setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
   isLoading: boolean;
   setIsLoading: (b: boolean) => void;
   onRefreshAdminLists?: () => Promise<void>;
@@ -40,10 +38,6 @@ interface UseAdminGarageDetailsActionsResult {
   pinError: string;
   setPinError: (v: string) => void;
   handleSaveGaragePin: (e: React.FormEvent) => Promise<void>;
-  // Staff
-  handleAddStaffSubmit: (e: React.FormEvent, staffForm: { name: string; pin: string }, resetForm: () => void, closeModal: () => void) => Promise<void>;
-  handleDeleteStaff: (staffId: string) => Promise<void>;
-  generateNewStaffPin: () => string;
   /** @param alsoExclude keeps the suggestion from matching what's already in the field. */
   generateNewGaragePin: (alsoExclude?: string) => string;
 }
@@ -56,22 +50,14 @@ interface UseAdminGarageDetailsActionsResult {
  *   - lock/suspend toggle
  *   - monthly-subscribers toggle
  *   - garage PIN edit state + save handler
- *   - staff add/delete handlers
- *
- * The view component keeps pure UI toggle state (modal visibility, form
- * drafts, menu, accordion) and the inline staff-PIN editing state (which
- * is purely visual — the actual updateStaff call lives in
- * AdminGarageSettingsSection).
  */
 export function useAdminGarageDetailsActions({
   garage,
   setSelectedGarageForDetails,
-  staffList,
-  setStaffList,
-  isLoading,
-  setIsLoading,
+  isLoading: _isLoading,
+  setIsLoading: _setIsLoading,
   onRefreshAdminLists,
-  showToast,
+  showToast: _showToast,
 }: UseAdminGarageDetailsActionsArgs): UseAdminGarageDetailsActionsResult {
   // ── Rates ────────────────────────────────────────────────────────────
   const [hourlyRateInput, setHourlyRateInput] = useState<string>(String(garage.hourlyRate || 0));
@@ -189,81 +175,18 @@ export function useAdminGarageDetailsActions({
     });
   };
 
-  // ── Staff add / delete ───────────────────────────────────────────────
-  const handleAddStaffSubmit = async (
-    e: React.FormEvent,
-    staffForm: { name: string; pin: string },
-    resetForm: () => void,
-    closeModal: () => void,
-  ) => {
-    e.preventDefault();
-    const name = staffForm.name.trim();
-    if (!name || !staffForm.pin) return;
-    setIsLoading(true);
-    try {
-      const pinCheck = await authService.isPinTaken(staffForm.pin);
-      if (pinCheck.taken) {
-        showToast('الرمز مستخدم بالفعل', 'error');
-        return;
-      }
-      const staffData: Omit<Staff, 'id'> = {
-        name,
-        pin: staffForm.pin,
-        garageId: garage.id,
-        role: 'staff'
-      };
-      const created = await adminService.addStaff(staffData);
-      if (!created?.id) throw new Error('STAFF_CREATE_MISSING_ID');
-      setStaffList((current) => [
-        ...current.filter((staff) => staff.id !== created.id),
-        { ...staffData, id: created.id },
-      ]);
-      resetForm();
-      closeModal();
-    } catch (error) {
-      console.error('Failed to add Staff.');
-      const message = error instanceof Error ? error.message : '';
-      const pinAlreadyTaken = message === 'الرمز مستخدم بالفعل' || message === 'PIN_ALREADY_TAKEN' || message === 'PIN_PREVIOUSLY_USED';
-      showToast(
-        pinAlreadyTaken ? 'الرمز مستخدم بالفعل' : 'تعذر إضافة الموظف. يرجى المحاولة مرة أخرى.',
-        'error'
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteStaff = async (staffId: string) => {
-    if (isLoading) return;
-    setIsLoading(true);
-    try {
-      await adminService.removeStaff(staffId);
-      setStaffList((current) => current.filter((staff) => staff.id !== staffId));
-    } catch {
-      console.error('Failed to delete Staff.');
-      showToast('تعذر حذف الموظف. يرجى المحاولة مرة أخرى.', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const generateNewStaffPin = useCallback(() => {
-    return generateSafePin(staffList.map((staff) => staff.pin));
-  }, [staffList]);
-
   // Owner-PIN generator (owner request 2026-11-19): the edit modal opens
   // with a generated suggestion instead of asking the admin to invent one.
-  // Same crypto-safe generator as staff PINs; excludes this garage's staff
-  // PINs and the garage's own current (plaintext) PIN so the suggestion is
-  // always a change. Global uniqueness (active + retired PINs) stays
-  // enforced by the server at save time.
+  // Same crypto-safe generator; excludes the garage's own current (plaintext)
+  // PIN so the suggestion is always a change. Global uniqueness (active +
+  // retired PINs) stays enforced by the server at save time.
   const generateNewGaragePin = useCallback((alsoExclude?: string) => {
-    const excluded = new Set<string>(staffList.map((staff) => staff.pin));
+    const excluded = new Set<string>();
     if (garage.pin && !isHashedPin(garage.pin)) excluded.add(garage.pin);
     if (garage.ownerPin && !isHashedPin(garage.ownerPin)) excluded.add(garage.ownerPin);
     if (alsoExclude) excluded.add(alsoExclude);
     return generateSafePin(excluded);
-  }, [staffList, garage.pin, garage.ownerPin]);
+  }, [garage.pin, garage.ownerPin]);
 
   return {
     hourlyRateInput,
@@ -283,9 +206,6 @@ export function useAdminGarageDetailsActions({
     pinError,
     setPinError,
     handleSaveGaragePin,
-    handleAddStaffSubmit,
-    handleDeleteStaff,
-    generateNewStaffPin,
     generateNewGaragePin,
   };
 }

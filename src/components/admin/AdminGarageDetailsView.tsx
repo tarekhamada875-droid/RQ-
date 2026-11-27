@@ -13,10 +13,8 @@ import {
   Wallet,
   Settings
 } from 'lucide-react';
-import { Garage, Staff } from '../../types';
-import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import { Garage } from '../../types';
 import { useAdminGarageDetailsActions } from '../../hooks/useAdminGarageDetailsActions';
-import { useAsyncAction } from '../../hooks/useAsyncAction';
 import { useToast } from '../../hooks/toast';
 import { AdminGarageSettingsSection } from './AdminGarageSettingsSection';
 import { AdminGarageHeroAndStats } from './garage-details/AdminGarageHeroAndStats';
@@ -31,8 +29,6 @@ interface AdminGarageDetailsViewProps {
   setView: (view: any) => void;
   setSelectedGarageForDetails: (garage: Garage | null) => void;
   setShowDeleteConfirm: (show: boolean) => void;
-  staffList: Staff[];
-  setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
   onRefreshAdminLists?: () => Promise<void>;
@@ -43,43 +39,24 @@ export const AdminGarageDetailsView = memo(({
   setView,
   setSelectedGarageForDetails,
   setShowDeleteConfirm,
-  staffList,
-  setStaffList,
   isLoading,
   setIsLoading,
   onRefreshAdminLists,
 }: AdminGarageDetailsViewProps) => {
   // ── UI toggle state (stays in the view) ──────────────────────────────
-  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
-  const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
-  const [staffForm, setStaffForm] = useState({ name: '', pin: '' });
   const [showMenu, setShowMenu] = useState(false);
   const [isZone3Open, setIsZone3Open] = useState(false);
   const [showEditGaragePinModal, setShowEditGaragePinModal] = useState(false);
 
   // ── Back-handler registrations ──────────────────────────────────────
   useBackHandler(() => { setShowEditGaragePinModal(false); return true; }, showEditGaragePinModal);
-  useBackHandler(() => { setStaffToDelete(null); return true; }, Boolean(staffToDelete));
-  useBackHandler(() => { setShowAddStaffModal(false); return true; }, showAddStaffModal);
   useBackHandler(() => { setShowMenu(false); return true; }, showMenu);
-
-  // Inline staff-PIN editing state — purely visual; the actual updateStaff
-  // call lives in AdminGarageSettingsSection and runs through the shared
-  // useAsyncAction save helper (same instance as the rest of this view).
-  const [editingStaffPinId, setEditingStaffPinId] = useState<string | null>(null);
-  const [editingStaffPinValue, setEditingStaffPinValue] = useState<string>('');
-  const { isLoading: isUpdatingStaffPin, run: runStaffPinUpdate } = useAsyncAction();
-
-  
-  
 
   // ── Actions + business state (extracted to hook) ─────────────────────
   const { showToast } = useToast();
   const actions = useAdminGarageDetailsActions({
     garage: selectedGarageForDetails,
     setSelectedGarageForDetails,
-    staffList,
-    setStaffList,
     isLoading,
     setIsLoading,
     onRefreshAdminLists,
@@ -98,23 +75,9 @@ export const AdminGarageDetailsView = memo(({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useBodyScrollLock(Boolean(showAddStaffModal || staffToDelete));
-
-  const openAddStaffModal = () => {
-    setStaffForm({ name: '', pin: actions.generateNewStaffPin() });
-    setShowAddStaffModal(true);
-  };
-
-  // Wire delete: the hook clears the staff list; the view clears its
-  // staffToDelete state to close the confirm modal.
-  const handleDeleteStaff = async (staffId: string) => {
-    await actions.handleDeleteStaff(staffId);
-    setStaffToDelete(null);
-  };
-
   return (
     <div
-      className={`h-screen bg-[#faf9f6] dark:bg-slate-950 font-sans pb-32 custom-scrollbar-slate text-right text-slate-900 dark:text-slate-100 ${showAddStaffModal || staffToDelete ? 'overflow-hidden' : 'overflow-y-auto'}`}
+      className={`h-screen bg-[#faf9f6] dark:bg-slate-950 font-sans pb-32 custom-scrollbar-slate text-right text-slate-900 dark:text-slate-100 ${showEditGaragePinModal ? 'overflow-hidden' : 'overflow-y-auto'}`}
       dir="rtl"
     >
       {/* Header */}
@@ -213,51 +176,27 @@ export const AdminGarageDetailsView = memo(({
           />
         </section>
 
-        {/* Zone 3: Operations & staff */}
+        {/* Zone 3: Operations & pricing */}
         <section className="space-y-3">
-          <AdminGarageZoneHead icon={Settings} label={'التشغيل والطاقم'} />
+          <AdminGarageZoneHead icon={Settings} label={'التشغيل والأسعار'} />
           <AdminGarageSettingsSection
-          isZone3Open={isZone3Open}
-          setIsZone3Open={setIsZone3Open}
-          rateCheck={actions.rateCheck}
-          hourlyRateInput={actions.hourlyRateInput}
-          setHourlyRateInput={actions.setHourlyRateInput}
-          overnightRateInput={actions.overnightRateInput}
-          setOvernightRateInput={actions.setOvernightRateInput}
-          hasRateChanges={actions.hasRateChanges}
-          isSavingRates={actions.isSavingRates}
-          handleSaveRates={actions.handleSaveRates}
-          staffList={staffList}
-          setStaffList={setStaffList}
-          openAddStaffModal={openAddStaffModal}
-          editingStaffPinId={editingStaffPinId}
-          setEditingStaffPinId={setEditingStaffPinId}
-          editingStaffPinValue={editingStaffPinValue}
-          setEditingStaffPinValue={setEditingStaffPinValue}
-          isUpdatingStaffPin={isUpdatingStaffPin}
-          runStaffPinUpdate={runStaffPinUpdate}
-          setStaffToDelete={setStaffToDelete}
-        />
+            isZone3Open={isZone3Open}
+            setIsZone3Open={setIsZone3Open}
+            rateCheck={actions.rateCheck}
+            hourlyRateInput={actions.hourlyRateInput}
+            setHourlyRateInput={actions.setHourlyRateInput}
+            overnightRateInput={actions.overnightRateInput}
+            setOvernightRateInput={actions.setOvernightRateInput}
+            hasRateChanges={actions.hasRateChanges}
+            isSavingRates={actions.isSavingRates}
+            handleSaveRates={actions.handleSaveRates}
+          />
         </section>
       </div>
 
       {/* Modals */}
       <AdminGarageModals
         garage={selectedGarageForDetails}
-        isLoading={isLoading}
-        showAddStaffModal={showAddStaffModal}
-        setShowAddStaffModal={setShowAddStaffModal}
-        staffForm={staffForm}
-        setStaffForm={setStaffForm}
-        onAddStaffSubmit={(e) => actions.handleAddStaffSubmit(
-          e,
-          staffForm,
-          () => setStaffForm({ name: '', pin: '' }),
-          () => setShowAddStaffModal(false),
-        )}
-        staffToDelete={staffToDelete}
-        setStaffToDelete={setStaffToDelete}
-        onDeleteStaff={handleDeleteStaff}
         showEditGaragePinModal={showEditGaragePinModal}
         setShowEditGaragePinModal={setShowEditGaragePinModal}
         onRegeneratePin={() => {

@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeAll } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { ThemeProvider } from '../utils/ThemeContext';
 import { ToastProvider } from '../hooks/toast';
@@ -29,8 +29,7 @@ import { ErrorBoundary } from '../components/layout/ErrorBoundary';
 import { GarageSubscriptionCard } from '../components/garage/dashboard/GarageSubscriptionCard';
 import { AdminGarageHeroAndStats } from '../components/admin/garage-details/AdminGarageHeroAndStats';
 import { AdminGarageFinancialsSection } from '../components/admin/garage-details/AdminGarageFinancialsSection';
-import { adminService, authService } from '../services';
-import type { Garage, Staff } from '../types';
+import type { Garage } from '../types';
 
 // Mock audio soundManager
 vi.mock('../utils/sounds', () => ({
@@ -45,8 +44,6 @@ vi.mock('../services', () => { const _svc = {
     getGarageById: vi.fn().mockResolvedValue(null),
     getDashboardSummary: vi.fn().mockResolvedValue({ entriesToday: 0 }),
     isPinTaken: vi.fn().mockResolvedValue({ taken: false }),
-    addStaff: vi.fn().mockResolvedValue({ id: 'staff_test_1' }),
-    removeStaff: vi.fn().mockResolvedValue(undefined),
     subscribeToCreditGrantLogs: vi.fn(() => () => {}),
     subscribeToSubscribers: vi.fn(() => () => {}),
     subscribeToSystemConfig: vi.fn((cb) => {
@@ -116,12 +113,10 @@ const renderWithTheme = (ui: React.ReactElement) => {
 // event which FastInput doesn't see. To fill a FastInput in tests, we must
 // set the DOM value directly and dispatch a native 'input' event, then
 // blur to trigger onCommit.
-const fillFastInput = (placeholder: string, value: string) => {
-  const input = screen.getByPlaceholderText(placeholder) as HTMLInputElement;
-  input.value = value;
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  fireEvent.blur(input);
-};
+//
+// (Removed with the staff-management UI: the only test that needed this
+// helper was the staff add/delete flow, which is gone. Kept the comment
+// as a note for the next person who needs to fill a FastInput here.)
 
 describe('Modularized Admin Components Integrity', () => {
   it('renders AdminGarageHeroAndStats with correct status and KPI stats', () => {
@@ -177,8 +172,6 @@ describe('Modularized Admin Components Integrity', () => {
         setView={setView}
         setSelectedGarageForDetails={setSelected}
         setShowDeleteConfirm={setShowDelete}
-        staffList={[]}
-        setStaffList={vi.fn()}
         isLoading={false}
         setIsLoading={vi.fn()}
       />
@@ -192,48 +185,6 @@ describe('Modularized Admin Components Integrity', () => {
     fireEvent.click(backBtn);
     expect(setView).toHaveBeenCalledWith('admin_dashboard');
     expect(setSelected).toHaveBeenCalledWith(null);
-  });
-
-  it('updates the visible Staff list immediately after successful create and delete', async () => {
-    vi.mocked(authService.isPinTaken).mockResolvedValueOnce({ taken: false });
-    vi.mocked(adminService.addStaff).mockResolvedValueOnce({ id: 'staff_test_refresh' });
-    vi.mocked(adminService.removeStaff).mockResolvedValueOnce(undefined);
-
-    const TestHarness = () => {
-      const [staffList, setStaffList] = React.useState<Staff[]>([]);
-      const [isLoading, setIsLoading] = React.useState(false);
-      return (
-        <AdminGarageDetailsView
-          selectedGarageForDetails={mockGarage}
-          setView={vi.fn()}
-          setSelectedGarageForDetails={vi.fn()}
-          setShowDeleteConfirm={vi.fn()}
-          staffList={staffList}
-          setStaffList={setStaffList}
-          isLoading={isLoading}
-          setIsLoading={setIsLoading}
-        />
-      );
-    };
-
-    renderWithTheme(<TestHarness />);
-    fireEvent.click(screen.getByText('الإعدادات والتعريفة وطاقم العمل'));
-    fireEvent.click(screen.getByText('إضافة موظف'));
-    fillFastInput('مثال: أحمد محمد', 'H Staff Probe');
-    fireEvent.click(screen.getByText('تأكيد الإضافة'));
-
-    expect(await screen.findByText('H Staff Probe')).toBeDefined();
-    expect(adminService.addStaff).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'H Staff Probe',
-      garageId: mockGarage.id,
-      role: 'staff',
-      pin: expect.stringMatching(/^\d{5}$/),
-    }));
-
-    fireEvent.click(screen.getByTitle('حذف الموظف'));
-    fireEvent.click(screen.getByText('تأكيد الحذف'));
-    await waitFor(() => expect(adminService.removeStaff).toHaveBeenCalledWith('staff_test_refresh'));
-    await waitFor(() => expect(screen.queryByText('H Staff Probe')).toBeNull());
   });
 });
 
