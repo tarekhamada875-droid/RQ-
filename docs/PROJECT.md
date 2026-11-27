@@ -8,7 +8,7 @@ Garage billing uses prepaid credits only. Admin confirms payment and grants cred
 
 Each garage has a single credit balance, stored as the `credits` field on the garage document. The previous three-bucket model (paid / referral / trial) was collapsed into this single balance on 2026-10-29 by owner decision; the *kind* of every ledger entry is still recorded for audit, but there is only one live balance number. Credits do not expire.
 
-Regular vehicle entry consumes 1 credit per car at check-in. Monthly subscriber check-in is free at check-in; subscriber renewal debits 1 credit per renewal from the single balance (owner decision, PR #725 — renewal costs the same as a regular check-in).
+Regular vehicle entry consumes 1 credit per car at check-in. Active monthly subscribers are **not checked in**: a check-in attempt on a subscriber plate is refused (client-side warning modal + error sound, and the Worker independently rejects it with `MONTHLY_SUBSCRIBER_NOT_CHECKED_IN`), the car is never recorded in the cars-inside list, and no credit is consumed. Subscriber renewal debits 1 credit per renewal from the single balance (owner decision, PR #725 — renewal costs the same as a regular check-in). The owner reaffirmed the refusal rule on 2026-11-27 (decision 1B); earlier text saying subscriber check-in was "free" described a retired behavior and must not be reintroduced.
 
 A new trial grants exactly 50 credits (added to the single balance as a `trial_grant` ledger entry; owner decision, PR #666). Trial credits are not cash revenue.
 

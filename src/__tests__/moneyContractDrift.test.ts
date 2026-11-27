@@ -17,6 +17,7 @@ import { describe, expect, it } from 'vitest';
  *   - subscriber renewal: 1 credit per renewal (owner decision, PR #725)
  *   - referral reward:    10 credits (owner decision, PR #666)
  *   - new-garage trial:   exactly 50 credits (owner decision, PR #666)
+ *   - subscriber check-in: refused, never "free" (owner decision 1B, 2026-11-27)
  */
 
 const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8');
@@ -24,13 +25,19 @@ const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8');
 describe('money contract drift guard (owner-confirmed 1 / 10 / 50, 2026-11-21)', () => {
   it('docs/PROJECT.md states the confirmed renewal / referral / trial numbers', () => {
     const doc = read('docs/PROJECT.md');
-    expect(doc).toMatch(/subscriber renewal debits 1 credit per renewal/);
+    expect(doc).toMatch(/subscriber renewal debits 1 credit per renewal/i);
     expect(doc).toMatch(/A new trial grants exactly 50 credits/);
     expect(doc).toMatch(/The referral reward is 10 credits/);
-    // The stale numbers must never come back.
+    // Owner decision 1B (2026-11-27): subscriber check-in is refused —
+    // subscriber cars are never recorded and never charged at check-in.
+    expect(doc).toMatch(/not checked in/);
+    expect(doc).toMatch(/MONTHLY_SUBSCRIBER_NOT_CHECKED_IN/);
+    // The stale numbers and the retired "free entry" rule must never come back.
     expect(doc).not.toMatch(/renewal debits 2 credits/);
     expect(doc).not.toMatch(/exactly 100 credits/);
     expect(doc).not.toMatch(/referral reward is 20 credits/);
+    expect(doc).not.toMatch(/subscriber check-in is free/i);
+    expect(doc).not.toMatch(/Monthly subscriber check-in is free/i);
   });
 
   it('README and the other money-mentioning docs carry the same confirmed numbers', () => {
