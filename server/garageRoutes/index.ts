@@ -18,7 +18,6 @@ import { registerGarageList } from './list';
 import { registerGarageMaintenance } from './maintenance';
 import { registerGarageDashboardSummaryRead } from './dashboardSummaryRead';
 import { registerGarageDetail } from './detail';
-import { registerStaffRoutes } from '../staffRoutes';
 import { registerDelegateRoutes } from '../delegateRoutes';
 import { registerCreditGrantRoutes } from '../creditGrantRoutes';
 
@@ -32,8 +31,8 @@ export function registerGarageRoutes(app: WorkerApp): void {
   registerGarageDashboardSummaryRead(app);
   registerGarageDetail(app);
 
-  // Staff, delegate, and credit-grant routes are split into focused modules.
-  registerStaffRoutes(app);
+  // Delegate and credit-grant routes are split into focused modules.
+  // Staff management routes were removed when the staff role was retired.
   registerDelegateRoutes(app);
   registerCreditGrantRoutes(app);
 }

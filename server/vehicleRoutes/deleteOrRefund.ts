@@ -31,7 +31,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
     const callerRole = user?.role;
     let garageId = '';
 
-    if (callerRole === 'garage' || callerRole === 'staff') {
+    if (callerRole === 'garage') {
       if (!user?.garageId) {
         return c.json({ success: false, error: 'FORBIDDEN: Garage ID missing in session' }, 403);
       }

@@ -23,7 +23,6 @@ const tokens = {
   supervisor: 'valid-supervisor-token',
   delegate: 'valid-delegate-token',
   garage: 'valid-garage-token-garage-a',
-  staff: 'valid-staff-token-garage-a',
   viewer: 'valid-viewer-token',
   worker: 'valid-worker-token'
 } as const;
@@ -33,21 +32,18 @@ async function call(path: string, token: string, init: RequestInit = {}) {
   let defaultSessionHeader: Record<string, string> = {};
   if (
     !Object.keys(providedHeaders).some((key) => key.toLowerCase() === 'x-session-id') &&
-    ['valid-admin-token', 'valid-delegate-token', 'valid-garage-token-garage-a', 'valid-staff-token-garage-a'].includes(token)
+    ['valid-admin-token', 'valid-delegate-token', 'valid-garage-token-garage-a'].includes(token)
   ) {
     const sessionId = `matrix-session-${token}`;
     const roleDetails = token === 'valid-admin-token'
       ? { uid: 'admin-uid', role: 'admin', entityId: 'auth_pin', sessions: 'admin_sessions', collection: 'admin_settings', documentId: 'auth_pin' }
       : token === 'valid-delegate-token'
         ? { uid: 'delegate-uid', role: 'delegate', entityId: 'delegate-a', sessions: 'delegate_sessions', collection: 'delegates', documentId: 'delegate-a' }
-        : token === 'valid-garage-token-garage-a'
-          ? { uid: 'garage-uid-garage-a', role: 'garage', entityId: 'garage-a', sessions: 'garage_sessions', collection: 'garages', documentId: 'garage-a' }
-          : { uid: 'staff-uid-garage-a', role: 'staff', entityId: 'staff-a', garageId: 'garage-a', sessions: 'staff_sessions', collection: 'staff', documentId: 'staff-a' };
+        : { uid: 'garage-uid-garage-a', role: 'garage', entityId: 'garage-a', sessions: 'garage_sessions', collection: 'garages', documentId: 'garage-a' };
     mockDb.seed(`${roleDetails.sessions}/${roleDetails.uid}`, {
       uid: roleDetails.uid,
       role: roleDetails.role,
       entityId: roleDetails.entityId,
-      ...(roleDetails.garageId ? { garageId: roleDetails.garageId } : {}),
       sessionId,
       isActive: true,
       lastActive: new Date()
@@ -87,7 +83,6 @@ describe('Worker role and garage-scope authorization matrix', () => {
   it.each([
     ['admin', tokens.admin, 200],
     ['garage owner in own garage', tokens.garage, 200],
-    ['staff in assigned garage', tokens.staff, 200],
     ['delegate without garage principal scope', tokens.delegate, 403]
   ])('applies direct garage-read scope for %s', async (_label, token, expectedStatus) => {
     const response = await call('/api/garages/garage-a', token);
@@ -97,8 +92,7 @@ describe('Worker role and garage-scope authorization matrix', () => {
   it.each([
     ['admin', tokens.admin],
     ['delegate', tokens.delegate],
-    ['garage', tokens.garage],
-    ['staff', tokens.staff]
+    ['garage', tokens.garage]
   ])('rejects a %s role claim without an active server session', async (_label, token) => {
     const response = await call('/api/garages/garage-a', token, { headers: { 'x-session-id': '' } });
     expect(response.status).toBe(401);
@@ -157,7 +151,6 @@ describe('Worker role and garage-scope authorization matrix', () => {
 
   it.each([
     ['garage owner', tokens.garage],
-    ['staff', tokens.staff],
     ['delegate', tokens.delegate]
   ])('denies %s from reading another garage by URL manipulation', async (_label, token) => {
     const response = await call('/api/garages/garage-b', token);
@@ -246,7 +239,7 @@ describe('Worker role and garage-scope authorization matrix', () => {
     ['/api/admin/delegates', 'GET'],
     ['/api/garages/delete', 'POST']
   ])('denies non-admin access to %s for every non-admin role', async (path, method) => {
-    for (const token of [tokens.supervisor, tokens.delegate, tokens.garage, tokens.staff]) {
+    for (const token of [tokens.supervisor, tokens.delegate, tokens.garage]) {
       const response = await call(path, token, {
         method,
         body: method === 'POST' ? JSON.stringify({ garageId: 'garage-a', amount: 10 }) : undefined

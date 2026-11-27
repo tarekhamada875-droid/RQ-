@@ -12,13 +12,13 @@ import { loadSystemConfigCached, syncSystemConfigCache } from './systemConfigCac
 export function registerReadRoutes(app: WorkerApp): void {
 
 // Private route returning only the active, explicitly allowlisted config fields.
-// Public-shape route (same JSON for admin/garage/staff/delegate — see
+// Public-shape route (same JSON for admin/garage/delegate — see
 // systemConfigCache.ts): served from the version-keyed edge cache. The role
 // gate stays here so unauthenticated/unauthorized requests never touch the
 // cache or Firestore (foundation test 3 pins this).
 app.get('/api/system-config', requireWorkerAuth, withErrorHandler(async (c) => {
   const user = c.get('user') as WorkerUser | undefined;
-  if (!user || !['admin', 'garage', 'staff', 'delegate'].includes(user.role)) {
+  if (!user || !['admin', 'garage', 'delegate'].includes(user.role)) {
     return c.json({ success: false, error: 'FORBIDDEN' }, 403);
   }
   return loadSystemConfigCached(c);

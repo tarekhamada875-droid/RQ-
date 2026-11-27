@@ -197,21 +197,11 @@ describe('Worker session lifecycle routes', () => {
       name: 'Garage A', carsInside: 4, currentSessionId: 'garage-device-a', activeSessionIds: ['garage-device-a']
     });
 
-    mockDb.seed('staff_sessions/staff-uid-staff-a', {
-      uid: 'staff-uid-staff-a', role: 'staff', entityId: 'staff-a', sessionId: 'staff-device-a',
-      currentSessionId: 'staff-device-a', activeSessionIds: ['staff-device-a'], isActive: true
-    });
-    mockDb.seed('staff_sessions/staff-uid-staff-a/sessions/staff-device-a', {
-      uid: 'staff-uid-staff-a', entityId: 'staff-a', sessionId: 'staff-device-a', isActive: true
-    });
-    mockDb.seed('staff/staff-a', {
-      name: 'Staff A', garageId: 'garage-a', currentSessionId: 'staff-device-a', activeSessionIds: ['staff-device-a']
-    });
     mockDb.seed('unrelated/audit_marker', { retained: true });
 
     const response = await request('/api/auth/invalidate-all-sessions', { method: 'POST' });
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ success: true, invalidatedSessions: 9, clearedEntityMarkers: 4 });
+    expect(await response.json()).toEqual({ success: true, invalidatedSessions: 7, clearedEntityMarkers: 3 });
 
     for (const path of [
       'admin_sessions/admin-uid',
@@ -221,21 +211,18 @@ describe('Worker session lifecycle routes', () => {
       'delegate_sessions/delegate-uid/sessions/delegate-device-a',
       'delegate_sessions/delegate-uid/sessions/delegate-device-old',
       'garage_sessions/garage-uid-garage-a',
-      'garage_sessions/garage-uid-garage-a/sessions/garage-device-a',
-      'staff_sessions/staff-uid-staff-a',
-      'staff_sessions/staff-uid-staff-a/sessions/staff-device-a'
+      'garage_sessions/garage-uid-garage-a/sessions/garage-device-a'
     ]) {
       expect(mockDb.records.get(path)?.isActive).toBe(false);
       expect(mockDb.records.get(path)?.lastActive).toBeInstanceOf(Date);
     }
-    for (const path of ['admin_settings/auth_pin', 'delegates/delegate-a', 'garages/garage-a', 'staff/staff-a']) {
+    for (const path of ['admin_settings/auth_pin', 'delegates/delegate-a', 'garages/garage-a']) {
       expect(mockDb.records.get(path)?.currentSessionId).toBeNull();
       expect(mockDb.records.get(path)?.activeSessionIds).toEqual([]);
     }
     expect(mockDb.records.get('admin_settings/auth_pin')?.currentSessionId).toBeNull();
     expect(mockDb.records.get('delegates/delegate-a')?.balance).toBe(240);
     expect(mockDb.records.get('garages/garage-a')?.carsInside).toBe(4);
-    expect(mockDb.records.get('staff/staff-a')?.garageId).toBe('garage-a');
     expect(mockDb.records.get('delegate_sessions/delegate-uid')?.preservedRootField).toBe('delegate-root');
     expect(mockDb.records.get('unrelated/audit_marker')).toEqual({ retained: true });
 

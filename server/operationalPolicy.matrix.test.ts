@@ -15,13 +15,13 @@ const noJob = { exists: false };
 /**
  * C5 policy contract:
  * - Destructive garage deletion and maintenance are admin-only.
- * - Garage owners and staff can manage only their own garage scope.
+ * - Garage owners can manage only their own garage scope.
  * - Delegates and supervisors do not inherit garage data-management authority.
  * - Reports and projections are deterministic, read-only calculations.
  */
 describe('non-financial operational policy matrix', () => {
   it('allows only admins to enter garage deletion and maintenance operations', () => {
-    for (const role of ['garage', 'staff', 'delegate', 'supervisor', 'backend-operator', undefined]) {
+    for (const role of ['garage', 'delegate', 'supervisor', 'backend-operator', undefined]) {
       expect(decideGarageDeletion({ callerRole: role, garageId: 'garage_1' }, garage, noJob)).toEqual({
         ok: false,
         error: 'FORBIDDEN_ADMIN_REQUIRED',
@@ -54,13 +54,11 @@ describe('non-financial operational policy matrix', () => {
     });
   });
 
-  it('keeps garage-scoped writes limited to admins, owners, and same-garage staff', () => {
+  it('keeps garage-scoped writes limited to admins and owners', () => {
     expect(canManageGarageScopedData({ role: 'admin' }, 'garage_2')).toBe(true);
     expect(canManageGarageScopedData({ role: 'garage', garageId: 'garage_1' }, 'garage_1')).toBe(true);
-    expect(canManageGarageScopedData({ role: 'staff', garageId: 'garage_1' }, 'garage_1')).toBe(true);
     for (const principal of [
       { role: 'garage', garageId: 'garage_1' },
-      { role: 'staff', garageId: 'garage_1' },
       { role: 'delegate', garageId: 'garage_1' },
       { role: 'supervisor', garageId: 'garage_1' },
     ]) {
@@ -72,7 +70,7 @@ describe('non-financial operational policy matrix', () => {
 
   it('keeps financial reports admin-only and projection rebuilds deterministic', () => {
     expect(canViewFinancialReport({ role: 'admin' })).toBe(true);
-    for (const role of ['garage', 'staff', 'delegate', 'supervisor', 'backend-operator']) {
+    for (const role of ['garage', 'delegate', 'supervisor', 'backend-operator']) {
       expect(canViewFinancialReport({ role })).toBe(false);
     }
     const events = [

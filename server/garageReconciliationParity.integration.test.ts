@@ -477,7 +477,6 @@ describe('garage creation Hono contract', () => {
   it('denies roles outside Admin/delegate scope without writes', async () => {
     const deniedTokens = [
       'valid-garage-token-create-test-garage',
-      'valid-staff-token-create-test-garage',
       'valid-worker-token'
     ];
     for (const token of deniedTokens) {
@@ -814,7 +813,6 @@ describe('garage update Hono contract', () => {
     };
     const roleTokens = [
       'valid-garage-token-reconciliation-test-garage',
-      'valid-staff-token-garage-a',
       'valid-delegate-token',
       'valid-worker-token'
     ];

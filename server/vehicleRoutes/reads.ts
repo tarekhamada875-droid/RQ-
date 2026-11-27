@@ -22,7 +22,7 @@ app.get('/api/vehicles/inside', requireWorkerAuth, withErrorHandler(async (c) =>
     return c.json({ success: false, error: 'GARAGE_ID_REQUIRED' }, 400);
   }
   const isAdmin = user?.role === 'admin';
-  const isGarageScoped = (user?.role === 'garage' || user?.role === 'staff') && (user?.garageId === garageId || user?.entityId === garageId);
+  const isGarageScoped = user?.role === 'garage' && (user?.garageId === garageId || user?.entityId === garageId);
 
   if (!isAdmin && !isGarageScoped) {
     return c.json({ success: false, error: 'FORBIDDEN: Garage scope required' }, 403);
@@ -60,7 +60,7 @@ app.get('/api/vehicles/history', requireWorkerAuth, withErrorHandler(async (c) =
     return c.json({ success: false, error: 'GARAGE_ID_REQUIRED' }, 400);
   }
   const isAdmin = user?.role === 'admin';
-  const isGarageScoped = (user?.role === 'garage' || user?.role === 'staff') && (user?.garageId === garageId || user?.entityId === garageId);
+  const isGarageScoped = user?.role === 'garage' && (user?.garageId === garageId || user?.entityId === garageId);
 
   if (!isAdmin && !isGarageScoped) {
     return c.json({ success: false, error: 'FORBIDDEN: Garage scope required' }, 403);

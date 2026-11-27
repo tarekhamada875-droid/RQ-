@@ -19,7 +19,7 @@ export function authorizeVehicleGarageScope(
     };
   }
 
-  if (principal?.role !== 'garage' && principal?.role !== 'staff') {
+  if (principal?.role !== 'garage') {
     return { allowed: false, reason: 'role_not_authorized' };
   }
 
@@ -72,8 +72,9 @@ export function canManageDelegates(principal: AuthorizationPrincipal | null | un
 
 /**
  * Decides whether a principal may manage garage-scoped records.
+ *
  * This pure policy intentionally preserves the current route contract:
- * admins are global, while garage owners and staff are scoped to their garage.
+ * admins are global, while garage owners are scoped to their garage.
  */
 export function canManageGarageScopedData(
   principal: AuthorizationPrincipal | null | undefined,
@@ -81,11 +82,11 @@ export function canManageGarageScopedData(
 ): boolean {
   if (!principal) return false;
   if (principal.role === 'admin') return true;
-  return (principal.role === 'garage' || principal.role === 'staff') && principal.garageId === targetGarageId;
+  return principal.role === 'garage' && principal.garageId === targetGarageId;
 }
 
 /**
- * Resolves the garage scope used by staff-management handlers.
+ * Resolves the garage scope used by garage-owner handlers.
  *
  * This intentionally mirrors the pre-H2 route behavior: an explicit garageId
  * wins, while garage principals may fall back to their entityId. It is kept
@@ -102,21 +103,7 @@ export function resolveStaffManagementGarageId(
   return null;
 }
 
-/**
- * Decides whether a caller may manage staff assigned to a target garage.
- * Admins are global; only the garage owner may manage that garage's staff.
- */
-export function canManageStaffForGarage(
-  principal: AuthorizationPrincipal | null | undefined,
-  targetGarageId: unknown,
-): boolean {
-  if (principal?.role === 'admin') return true;
-  if (principal?.role !== 'garage') return false;
-  if (typeof targetGarageId !== 'string' || !targetGarageId) return false;
-  return resolveStaffManagementGarageId(principal) === targetGarageId;
-}
-
-/** Admins manage all PINs; garage owners manage only their own garage and its staff. */
+/** Admins manage all PINs; garage owners manage only their own garage. */
 export function canUpdateEntityPin(
   principal: AuthorizationPrincipal | null | undefined,
   entityType: unknown,
@@ -124,7 +111,7 @@ export function canUpdateEntityPin(
 ): boolean {
   if (principal?.role === 'admin') return true;
   if (principal?.role !== 'garage') return false;
-  if (entityType !== 'garages' && entityType !== 'staff') return false;
+  if (entityType !== 'garages') return false;
   if (typeof targetGarageId !== 'string' || !targetGarageId) return false;
   return resolveStaffManagementGarageId(principal) === targetGarageId;
 }
