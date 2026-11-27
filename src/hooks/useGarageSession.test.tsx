@@ -64,37 +64,13 @@ const createProps = () => ({
   setGarage: vi.fn(),
   delegate: null,
   setDelegate: vi.fn(),
-  currentStaff: null,
-  setCurrentStaff: vi.fn(),
-  currentSupervisor: null,
-  setCurrentSupervisor: vi.fn(),
   showToast: vi.fn(),
 });
 
 // Audit F-4 (Phase 3b, 2026-11-26): the session guard no longer attaches an
 // onSnapshot for garage-owner sessions (docCollection === 'garages'). The
 // data-feed listener in useGarageSync is the single listener for that doc.
-// The guard still attaches for staff sessions (docCollection === 'staff').
-// Tests that need to exercise the guard's onSnapshot use this staff variant.
-const createStaffProps = () => ({
-  view: 'garage',
-  setView: vi.fn(),
-  garage: { id: 'garage-1' } as any,
-  setGarage: vi.fn(),
-  delegate: null,
-  setDelegate: vi.fn(),
-  currentStaff: { id: 'staff-1' } as any,
-  setCurrentStaff: vi.fn(),
-  currentSupervisor: null,
-  setCurrentSupervisor: vi.fn(),
-  showToast: vi.fn(),
-});
-
-const entitySnapshot = (activeSessionIds: string[], currentSessionId?: string) => ({
-  metadata: { fromCache: false },
-  exists: () => true,
-  data: () => ({ activeSessionIds, currentSessionId }),
-});
+// Staff sessions are retired (PR 2/4); all tests now use garage-owner props.
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -187,31 +163,6 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     hook.unmount();
   });
 
-  it('closes the session-guard snapshot on unmount and starts cleanly after remount (staff session)', async () => {
-    // Audit F-4 (Phase 3b): the guard still attaches for staff sessions
-    // (docCollection === 'staff'). This test uses a staff session to verify
-    // the guard's lifecycle is unchanged for non-garage-owner sessions.
-    const firstMount = renderHook(() => useGarageSession(createStaffProps()));
-    await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
-    expect(listenerTracker.getActiveListenersMap()).toEqual({
-      'session_guard/staff/staff-1': 1,
-    });
-
-    firstMount.unmount();
-    expect(snapshotUnsubscribes[0]).toHaveBeenCalledOnce();
-    expect(listenerTracker.getActiveListenerCount()).toBe(0);
-
-    const secondMount = renderHook(() => useGarageSession(createStaffProps()));
-    await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledTimes(2));
-    expect(listenerTracker.getActiveListenersMap()).toEqual({
-      'session_guard/staff/staff-1': 1,
-    });
-
-    secondMount.unmount();
-    expect(snapshotUnsubscribes[1]).toHaveBeenCalledOnce();
-    expect(listenerTracker.getActiveListenerCount()).toBe(0);
-  });
-
   it('logs out promptly when the heartbeat confirms the session was revoked', async () => {
     const props = createProps();
     sessionMocks.refreshEntitySession.mockResolvedValue(false);
@@ -238,37 +189,6 @@ describe('useGarageSession Firestore listener lifecycle', () => {
 
     hook.unmount();
     intervalSpy.mockRestore();
-  });
-
-  it('does not log out or re-validate when the entity marker shows another device (staff session)', async () => {
-    // 2026-11-13 incident: the entity doc's activeSessionIds array has several
-    // non-transactional Worker writers, so marker churn must not be treated as
-    // eviction. The guard ignores marker changes entirely; revocation arrives
-    // through API 401s and the validate-or-refresh heartbeat instead.
-    //
-    // Audit F-4 (Phase 3b): uses a staff session because the guard no longer
-    // attaches for garage-owner sessions (the feed handles that doc). The
-    // guard's marker-ignore behavior is unchanged for staff/delegate sessions.
-    const props = createStaffProps();
-    const hook = renderHook(() => useGarageSession(props));
-    await waitFor(() => expect(snapshotCallbacks).toHaveLength(1));
-
-    await act(async () => {
-      snapshotCallbacks[0](entitySnapshot(['session-lifecycle-test']));
-      snapshotCallbacks[0](entitySnapshot([], 'session-on-another-device'));
-      snapshotCallbacks[0](entitySnapshot([]));
-      await Promise.resolve();
-    });
-
-    expect(sessionMocks.validateOrRefreshSessionOnServer).not.toHaveBeenCalled();
-    expect(props.setView).not.toHaveBeenCalled();
-    expect(props.showToast).not.toHaveBeenCalled();
-    expect(sessionMocks.releaseEntitySession).not.toHaveBeenCalled();
-    expect(sessionMocks.signOut).not.toHaveBeenCalled();
-    expect(listenerTracker.getActiveListenerCount()).toBe(1);
-
-    hook.unmount();
-    expect(listenerTracker.getActiveListenerCount()).toBe(0);
   });
 
   it('does not install timers or listeners if unmounted while the session claim is pending', async () => {
@@ -397,7 +317,6 @@ describe('useGarageSession Firestore listener lifecycle', () => {
 
     expect(props.setGarage).toHaveBeenCalledWith(null);
     expect(props.setDelegate).toHaveBeenCalledWith(null);
-    expect(props.setCurrentStaff).toHaveBeenCalledWith(null);
     expect(props.setView).toHaveBeenCalledWith('login');
     // PERF (2026-11-20): no signOut on logout — anonymous account kept alive.
     expect(sessionMocks.signOut).not.toHaveBeenCalled();

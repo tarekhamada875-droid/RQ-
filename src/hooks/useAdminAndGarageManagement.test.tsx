@@ -60,12 +60,6 @@ vi.mock('../utils', () => ({
 }));
 vi.mock('../utils/authDiagnosticLogger', () => ({ logDiagnostic: mocks.logDiagnostic }));
 
-const createSnapshot = (exists: boolean, garageData: Record<string, unknown> = {}) => ({
-  exists: vi.fn(() => exists),
-  id: 'garage-1',
-  data: vi.fn(() => garageData)
-});
-
 const createProps = () => ({
   allGarages: [],
   delegate: null,
@@ -74,7 +68,6 @@ const createProps = () => ({
   setUser: vi.fn(),
   setGarage: vi.fn(),
   setDelegate: vi.fn(),
-  setCurrentStaff: vi.fn(),
   setSelectedGarageForDetails: vi.fn(),
   setView: vi.fn(),
   setIsLoading: vi.fn(),
@@ -88,20 +81,20 @@ const createProps = () => ({
   refreshAdminLists: vi.fn().mockResolvedValue(undefined)
 });
 
-const staffAuthResult = {
+const garageAuthResult = {
   success: true,
-  role: 'staff',
+  role: 'garage',
   sessionClaimed: true,
   account: {
-    id: 'staff-1',
-    garageId: 'garage-1',
-    name: 'Test Staff',
-    pin: 'staff-secret'
+    id: 'garage-1',
+    name: 'Test Garage',
+    pin: 'garage-secret',
+    status: 'approved'
   }
 };
 
 beforeEach(() => {
-  mocks.authenticateUserCredentials.mockReset().mockResolvedValue(staffAuthResult);
+  mocks.authenticateUserCredentials.mockReset().mockResolvedValue(garageAuthResult);
   mocks.currentUser.getIdToken.mockReset().mockResolvedValue('test-token');
   mocks.doc.mockReset().mockReturnValue({ path: 'garages/garage-1' });
   mocks.getDoc.mockReset();
@@ -123,7 +116,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('useAdminAndGarageManagement staff login garage read (FE-004)', () => {
+describe('useAdminAndGarageManagement garage-owner login', () => {
   it('reuses the same idempotency key when retrying an ambiguous garage creation result', async () => {
     vi.mocked(garageService.createGarage)
       .mockResolvedValueOnce({ success: false, error: 'NETWORK_TIMEOUT' })
@@ -206,7 +199,7 @@ describe('useAdminAndGarageManagement staff login garage read (FE-004)', () => {
 
   it('releases the exact attempted session when a login claim fails ambiguously', async () => {
     mocks.authenticateUserCredentials.mockResolvedValue({
-      ...staffAuthResult,
+      ...garageAuthResult,
       sessionClaimed: false
     });
     mocks.claimEntitySession.mockRejectedValue(new Error('network timeout'));
@@ -218,27 +211,22 @@ describe('useAdminAndGarageManagement staff login garage read (FE-004)', () => {
     });
 
     expect(mocks.claimEntitySession).toHaveBeenCalledWith({
-      role: 'staff',
-      entityId: 'staff-1',
+      role: 'garage',
+      entityId: 'garage-1',
       sessionId: 'session-1',
       uid: 'staff-login-user',
       pin: '12345678'
     });
     expect(mocks.releaseEntitySession).toHaveBeenCalledWith({
-      role: 'staff',
-      entityId: 'staff-1',
+      role: 'garage',
+      entityId: 'garage-1',
       sessionId: 'session-1',
       uid: 'staff-login-user'
     });
     expect(props.setView).not.toHaveBeenCalledWith('garage');
   });
 
-  it('reuses the status-check snapshot on successful login and scrubs garage PIN', async () => {
-    mocks.getDoc.mockResolvedValue(createSnapshot(true, {
-      name: 'Test Garage',
-      status: 'active',
-      pin: 'garage-secret'
-    }));
+  it('scrubs the garage PIN on successful login and navigates to the garage view', async () => {
     const props = createProps();
     const { result } = renderHook(() => useAdminAndGarageManagement(props));
 
@@ -246,64 +234,16 @@ describe('useAdminAndGarageManagement staff login garage read (FE-004)', () => {
       await result.current.handleGarageLogin();
     });
 
-    expect(mocks.doc).toHaveBeenCalledTimes(1);
-    expect(mocks.getDoc).toHaveBeenCalledTimes(1);
-    expect(mocks.doc).toHaveBeenCalledWith(mocks.db, 'garages', 'garage-1');
     expect(props.setGarage).toHaveBeenCalledTimes(1);
-    expect(props.setGarage).toHaveBeenCalledWith({ id: 'garage-1', name: 'Test Garage', status: 'active' });
-    expect(props.setCurrentStaff).toHaveBeenCalledWith({
-      id: 'staff-1',
-      garageId: 'garage-1',
-      name: 'Test Staff'
-    });
+    expect(props.setGarage).toHaveBeenCalledWith({ id: 'garage-1', name: 'Test Garage', status: 'approved' });
     expect(props.setView).toHaveBeenCalledWith('garage');
   });
 
-  it.each(['pending', 'rejected'])('reads the linked garage once and releases the session when its status is %s', async (status) => {
-    mocks.getDoc.mockResolvedValue(createSnapshot(true, { name: 'Test Garage', status }));
-    const props = createProps();
-    const { result } = renderHook(() => useAdminAndGarageManagement(props));
-
-    await act(async () => {
-      await result.current.handleGarageLogin();
+  it.each(['pending', 'rejected'])('releases the session and refuses login when the garage account status is %s', async (status) => {
+    mocks.authenticateUserCredentials.mockResolvedValue({
+      ...garageAuthResult,
+      account: { ...garageAuthResult.account, status }
     });
-
-    expect(mocks.getDoc).toHaveBeenCalledTimes(1);
-    expect(mocks.releaseEntitySession).toHaveBeenCalledWith({
-      role: 'staff',
-      entityId: 'staff-1',
-      sessionId: 'session-1',
-      uid: 'staff-login-user'
-    });
-    expect(props.setGarage).not.toHaveBeenCalled();
-    expect(props.setCurrentStaff).not.toHaveBeenCalled();
-    expect(props.setView).not.toHaveBeenCalled();
-  });
-
-  it('releases the claimed Staff session and refuses login when the linked garage is missing', async () => {
-    mocks.getDoc.mockResolvedValue(createSnapshot(false));
-    const props = createProps();
-    const { result } = renderHook(() => useAdminAndGarageManagement(props));
-
-    await act(async () => {
-      await result.current.handleGarageLogin();
-    });
-
-    expect(mocks.getDoc).toHaveBeenCalledTimes(1);
-    expect(mocks.releaseEntitySession).toHaveBeenCalledWith({
-      role: 'staff',
-      entityId: 'staff-1',
-      sessionId: 'session-1',
-      uid: 'staff-login-user'
-    });
-    expect(props.setGarage).not.toHaveBeenCalled();
-    expect(props.setCurrentStaff).not.toHaveBeenCalled();
-    expect(props.setView).not.toHaveBeenCalled();
-    expect(props.showToast).toHaveBeenCalledWith('الورشة المرتبطة بهذا الحساب غير موجودة', 'error');
-  });
-
-  it('releases the claimed Staff session if reading the linked garage fails', async () => {
-    mocks.getDoc.mockRejectedValue(new Error('network unavailable'));
     const props = createProps();
     const { result } = renderHook(() => useAdminAndGarageManagement(props));
 
@@ -312,15 +252,15 @@ describe('useAdminAndGarageManagement staff login garage read (FE-004)', () => {
     });
 
     expect(mocks.releaseEntitySession).toHaveBeenCalledWith({
-      role: 'staff',
-      entityId: 'staff-1',
+      role: 'garage',
+      entityId: 'garage-1',
       sessionId: 'session-1',
       uid: 'staff-login-user'
     });
     expect(props.setGarage).not.toHaveBeenCalled();
-    expect(props.setCurrentStaff).not.toHaveBeenCalled();
     expect(props.setView).not.toHaveBeenCalled();
   });
+
   it('keeps the retired account role out of Admin', async () => {
     mocks.authenticateUserCredentials.mockResolvedValue({
       success: true,

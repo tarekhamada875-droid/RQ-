@@ -11,8 +11,6 @@ const stubSession: SessionContextValue = {
   isAuthReady: true,
   sessionId: 'test-session-id',
   isSessionReady: true,
-  currentStaff: null,
-  setCurrentStaff: vi.fn(),
   showLogoutConfirm: false,
   setShowLogoutConfirm: vi.fn(),
   isLoggingOut: false,

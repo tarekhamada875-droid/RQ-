@@ -22,10 +22,10 @@ const makeProps = (minutesSinceEntry = 60) => {
       entryTime: new Date(now.getTime() - minutesSinceEntry * 60 * 1000),
       isSubscriber: false,
       type: 'hourly',
-      staffId: 'staff-1',
-      enteredByEntityId: 'staff-1',
-      enteredByRole: 'staff',
-      staffName: 'Test Staff',
+      staffId: null,
+      enteredByEntityId: 'garage-1',
+      enteredByRole: 'garage',
+      staffName: 'مدير الجراج',
     } as any,
     garage: {
       id: 'garage-1',
@@ -33,7 +33,6 @@ const makeProps = (minutesSinceEntry = 60) => {
       hourlyRate: 10,
       overnightRate: 30,
     } as any,
-    currentStaff: { id: 'staff-1', name: 'Test Staff' } as any,
     isLoading: false,
     loadingType: null,
     now,
@@ -95,7 +94,6 @@ describe('CheckOutModal icon actions', () => {
 
   it('allows a garage owner to delete only a vehicle they entered', () => {
     const props = makeProps(2);
-    props.currentStaff = null;
     props.selectedVehicle.staffId = 'garage-1';
     props.selectedVehicle.enteredByEntityId = 'garage-1';
     props.selectedVehicle.enteredByRole = 'garage';

@@ -24,17 +24,16 @@ import { GarageSubscriptionCard } from "./dashboard/GarageSubscriptionCard";
 import { GarageActiveCountCard } from "./dashboard/GarageActiveCountCard";
 import { useGarageDashboardLiveData } from "../../hooks/useGarageDashboardLiveData";
 import { getCairoDateKey } from "../../domain/garage/businessDay";
-import type { Garage, Staff } from "../../types";
+import type { Garage, StaffMember } from "../../types";
 
 type ToastType = 'success' | 'error' | 'info';
 
 interface GarageDashboardViewProps {
   garage: Garage;
-  currentStaff: Staff | null;
   closeKeyboard: () => void;
   onLogout: () => void;
   showToast: (message: string, type?: ToastType) => void;
-  staffList: Staff[];
+  staffList: StaffMember[];
   /** AUDIT F-3: lazy staff-roster loader — the reports view calls it on mount
    *  instead of the old eager boot fetch. */
   ensureStaffLoaded: (garageId: string) => Promise<void>;
@@ -45,7 +44,6 @@ interface GarageDashboardViewProps {
 export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const {
     garage,
-    currentStaff,
     closeKeyboard,
     onLogout,
     showToast,
@@ -171,7 +169,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
       {/* Header and Slide-Out Drawer Navigation */}
       <GarageDashboardHeaderAndDrawer
         garage={garage}
-        currentStaff={currentStaff}
         isInputFocused={isInputFocused}
         isMenuOpen={isMenuOpen}
         setIsMenuOpen={setIsMenuOpen}
@@ -262,7 +259,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
         }}
         onCloseReports={() => setIsReportsOpen(false)}
         onCloseTerms={() => setShowTermsModal(false)}
-        currentStaff={currentStaff}
         staffList={staffList}
         ensureStaffLoaded={ensureStaffLoaded}
         isCreditGrantNotificationOpen={isCreditGrantNotificationOpen}

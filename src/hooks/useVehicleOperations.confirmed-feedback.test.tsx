@@ -54,7 +54,6 @@ function renderOperations(initialGarage: Garage) {
     const operations = useVehicleOperations({
       garage,
       setGarage,
-      currentStaff: null,
       isOnline: true,
       showToast,
       closeKeyboard,

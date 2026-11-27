@@ -98,12 +98,21 @@ export interface Garage {
   isTrial?: boolean; // Server-owned trial-credit grant indicator
 }
 
-export interface Staff {
+/**
+ * Read-only staff record for the garage reports per-staff breakdown.
+ *
+ * The staff role is being retired (PR 1-4 of the staff-role removal). This
+ * type covers the remaining read path from the `staff` collection (used by
+ * `getStaffByGarageOnce` → reports view). The `role: 'staff'` discriminant
+ * was removed because the type no longer represents a login-capable entity.
+ * PR 4 will retire the collection entirely.
+ */
+export interface StaffMember {
   id: string;
   name: string;
-  pin: string;
   garageId: string;
-  role: 'staff';
+  pin?: string;
+  role?: string;
   currentSessionId?: string | null;
   lastActive?: FirestoreTimestamp;
 }

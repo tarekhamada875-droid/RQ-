@@ -43,8 +43,6 @@ const createBaseProps = () => ({
     return valueOrUpdater;
   }),
   delegate: null,
-  currentStaff: null,
-  currentSupervisor: null,
   setDelegate: vi.fn(),
   selectedGarageForDetails: null,
   setSelectedGarageForDetails: vi.fn(),

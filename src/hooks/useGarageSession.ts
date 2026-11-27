@@ -3,7 +3,7 @@ import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { logDiagnostic } from '../utils/authDiagnosticLogger';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { Garage, Staff } from '../types';
+import { Garage } from '../types';
 import {
   getCanonicalSessionId,
   claimEntitySession,
@@ -49,8 +49,6 @@ interface UseGarageSessionProps {
   setGarage: (g: Garage | null) => void;
   delegate: any | null;
   setDelegate: (d: any | null) => void;
-  currentStaff: Staff | null;
-  setCurrentStaff: (s: Staff | null) => void;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
@@ -61,8 +59,6 @@ export function useGarageSession({
   setGarage,
   delegate,
   setDelegate,
-  currentStaff,
-  setCurrentStaff,
   showToast,
 }: UseGarageSessionProps) {
   const [user, setUser] = useState<User | null>(null);
@@ -144,10 +140,7 @@ export function useGarageSession({
     const currentUser = auth.currentUser;
 
     if (view === 'garage') {
-      if (currentStaff) {
-        activeRole = 'staff';
-        activeEntityId = currentStaff.id;
-      } else if (garage) {
+      if (garage) {
         activeRole = 'garage';
         activeEntityId = garage.id;
       }
@@ -192,7 +185,6 @@ export function useGarageSession({
 
     setGarage(null);
     setDelegate(null);
-    setCurrentStaff(null);
     setView('login');
     setShowLogoutConfirm(false);
 
@@ -242,7 +234,7 @@ export function useGarageSession({
       logoutInProgressRef.current = false;
       setIsLoggingOut(false);
     }
-  }, [view, currentStaff, garage, delegate, sessionId, setGarage, setDelegate, setCurrentStaff, setView]);
+  }, [view, garage, delegate, sessionId, setGarage, setDelegate, setView]);
 
   const handleInitiateLogout = () => {
     setShowLogoutConfirm(true);
@@ -317,7 +309,6 @@ export function useGarageSession({
       debugRecorder.sessionEvent('coordinator_start', {
         view,
         hasStoredGarage: hasValidStoredEntity('app_garage'),
-        hasStoredStaff: hasValidStoredEntity('app_staff'),
         hasStoredDelegate: hasValidStoredEntity('app_delegate'),
         hasCurrentUser: Boolean(auth.currentUser),
       });
@@ -361,14 +352,10 @@ export function useGarageSession({
 
       let activeRole: EntityRole | null = null;
       let activeEntityId: string | null = null;
-      let docCollection: 'garages' | 'staff' | 'delegates' | 'admin_settings' | null = null;
+      let docCollection: 'garages' | 'delegates' | 'admin_settings' | null = null;
 
       if (view === 'garage') {
-        if (currentStaff) {
-          activeRole = 'staff';
-          activeEntityId = currentStaff.id;
-          docCollection = 'staff';
-        } else if (garage) {
+        if (garage) {
           activeRole = 'garage';
           activeEntityId = garage.id;
           docCollection = 'garages';
@@ -388,16 +375,14 @@ export function useGarageSession({
         // Malformed JSON or an object without an ID must not keep protected views
         // spinning forever while the session coordinator waits for hydration.
         const hasStoredGarage = hasValidStoredEntity('app_garage');
-        const hasStoredStaff = hasValidStoredEntity('app_staff');
         const hasStoredDelegate = hasValidStoredEntity('app_delegate');
         debugRecorder.sessionEvent('coordinator_no_active_role', {
           view,
           hasStoredGarage,
-          hasStoredStaff,
           hasStoredDelegate,
         });
         if (
-          (view === 'garage' && (hasStoredGarage || hasStoredStaff)) ||
+          (view === 'garage' && hasStoredGarage) ||
           (view === 'delegate_dashboard' && hasStoredDelegate)
         ) {
           return;
@@ -585,7 +570,7 @@ export function useGarageSession({
         document.removeEventListener('visibilitychange', visibilityHandler);
       }
     };
-  }, [view, isAuthReady, sessionId, garage?.id, delegate?.id, currentStaff?.id]);
+  }, [view, isAuthReady, sessionId, garage?.id, delegate?.id]);
 
   // AUDIT EXTENSION (2026-11-19, owner login-hang investigation):
   // Coordinator-stuck watchdog. Purely observational — does NOT change app
@@ -610,7 +595,6 @@ export function useGarageSession({
         view,
         msSinceAuthReady: 15_000,
         hasStoredGarage: hasValidStoredEntity('app_garage'),
-        hasStoredStaff: hasValidStoredEntity('app_staff'),
         hasStoredDelegate: hasValidStoredEntity('app_delegate'),
         hasCurrentUser: Boolean(auth.currentUser),
         uid: auth.currentUser?.uid || null,

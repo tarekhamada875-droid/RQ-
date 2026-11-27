@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from 'react';
-import type { Garage, Delegate, Staff } from '../types';
+import type { Garage, Delegate, StaffMember } from '../types';
 import type { useGarageSync } from './useGarageSync';
 import type { useLocalStorageState } from './useLocalStorage';
 
@@ -47,5 +47,5 @@ export function useGarageData(): GarageDataContextValue {
   return ctx;
 }
 
-// Re-export for downstream consumers that need the staff type.
-export type { Staff };
+// Re-export for downstream consumers that need the staff-member type.
+export type { StaffMember };

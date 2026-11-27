@@ -23,7 +23,7 @@ const GarageDashboardLazy = lazyWithRetry(() => import('../garage/GarageDashboar
  */
 export function AppRoutes() {
   const { view, setView, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails, loginPhone, setLoginPhone, showToast, closeKeyboard, showSubscribers, setShowSubscribers, setShowDeleteConfirm } = useNavigationUi();
-  const { isAuthReady, currentStaff, handleInitiateLogout } = useSession();
+  const { isAuthReady, handleInitiateLogout } = useSession();
   const { garage, delegate, delegates, allGarages, delegateGarages, staffList, delegatePagination, delegateListsLoading, delegateListsError, delegateDashboardLoading, delegateDashboardError, retryDelegateDashboard, loadMoreDelegateGarages, loadMoreAdminGarages, loadMoreAdminDelegates, refreshAdminLists, adminGarageHasMore, adminDelegateHasMore, adminListsLoading, adminListsError, ensureStaffLoaded } = useGarageData();
   const { isLoading, setIsLoading } = useVehicleOps();
   const { handleGarageLogin, createNewGarage, removeDelegate } = useAdminMutations();
@@ -39,10 +39,9 @@ export function AppRoutes() {
 
   useEffect(() => {
     if (!isLoading && isAuthReady) {
-      if (view === 'garage' && !garage && !currentStaff) {
+      if (view === 'garage' && !garage) {
         const storedGarage = localStorage.getItem('app_garage');
-        const storedStaff = localStorage.getItem('app_staff');
-        if (!storedGarage && !storedStaff) setView('login');
+        if (!storedGarage) setView('login');
       } else if (view === 'delegate_dashboard' && !delegate && !localStorage.getItem('app_delegate')) {
         setView('login');
       } else if (view === 'admin_garage_details' && !selectedGarageForDetails) {
@@ -51,7 +50,7 @@ export function AppRoutes() {
         setView('admin_dashboard');
       }
     }
-  }, [view, garage, delegate, currentStaff, selectedGarageForDetails, selectedDelegateForDetails, isLoading, isAuthReady, setView]);
+  }, [view, garage, delegate, selectedGarageForDetails, selectedDelegateForDetails, isLoading, isAuthReady, setView]);
 
   // PR-J fix 2: memoize the DelegateDashboardProvider value so it
   // doesn't get a new object reference on every AppRoutes render.
@@ -84,7 +83,7 @@ export function AppRoutes() {
     return <ErrorBoundary><AdminDelegateDetailsLazy delegate={liveDelegate} setView={setView} setSelectedDelegate={setSelectedDelegateForDetails} removeDelegate={removeDelegate} /></ErrorBoundary>;
   }
 
-  if (view === 'garage' && garage) return <ErrorBoundary><GarageDashboardLazy garage={garage} currentStaff={currentStaff} closeKeyboard={closeKeyboard} onLogout={handleInitiateLogout} showToast={showToast} staffList={staffList} ensureStaffLoaded={ensureStaffLoaded} showSubscribers={showSubscribers} setShowSubscribers={setShowSubscribers} /></ErrorBoundary>;
+  if (view === 'garage' && garage) return <ErrorBoundary><GarageDashboardLazy garage={garage} closeKeyboard={closeKeyboard} onLogout={handleInitiateLogout} showToast={showToast} staffList={staffList} ensureStaffLoaded={ensureStaffLoaded} showSubscribers={showSubscribers} setShowSubscribers={setShowSubscribers} /></ErrorBoundary>;
 
   return <LoginView loginPhone={loginPhone} setLoginPhone={setLoginPhone} handleGarageLogin={handleGarageLogin} isLoading={isLoading || !isAuthReady} closeKeyboard={closeKeyboard} />;
 }

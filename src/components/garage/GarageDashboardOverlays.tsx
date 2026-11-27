@@ -4,7 +4,7 @@ import { SubscribersView } from "./SubscribersView";
 import { CreditGrantHistoryView } from "./CreditGrantHistoryView";
 import { lazyWithRetry } from "../../utils/lazyWithRetry";
 import { DelayedFallback, ModalSuspenseBackdrop, PageSkeleton } from "../layout/LoadingFallbacks";
-import type { ActivityLog, Garage, Staff } from "../../types";
+import type { ActivityLog, Garage, StaffMember } from "../../types";
 import type { SharedSubscriberPage } from "../../hooks/useGarageDashboardLiveData";
 
 const GarageReportsLazy = lazyWithRetry(() => import("./GarageReportsView").then((module) => ({ default: module.GarageReportsView })));
@@ -28,8 +28,7 @@ interface GarageDashboardOverlaysProps {
   onCloseCreditGrantHistory: () => void;
   onCloseReports: () => void;
   onCloseTerms: () => void;
-  currentStaff: Staff | null;
-  staffList: Staff[];
+  staffList: StaffMember[];
   /** AUDIT F-3: lazy staff-roster loader — the reports view calls it on mount. */
   ensureStaffLoaded: (garageId: string) => Promise<void>;
   isCreditGrantNotificationOpen: boolean;
@@ -53,7 +52,6 @@ export const GarageDashboardOverlays = ({
   onCloseCreditGrantHistory,
   onCloseReports,
   onCloseTerms,
-  currentStaff,
   staffList,
   ensureStaffLoaded,
   isCreditGrantNotificationOpen,
@@ -84,7 +82,7 @@ export const GarageDashboardOverlays = ({
       {isCreditGrantHistoryOpen && (
         <CreditGrantHistoryView garage={garage} onClose={onCloseCreditGrantHistory} showToast={showToast} onToggleMenu={onToggleMenu} sharedLogs={creditGrantLogs} sharedIsLoading={isCreditGrantLogsLoading} />
       )}
-      {isReportsOpen && !currentStaff && (
+      {isReportsOpen && (
         <Suspense fallback={<DelayedFallback><PageSkeleton /></DelayedFallback>}>
           <GarageReportsLazy
             garage={garage}

@@ -1,18 +1,18 @@
 import { db } from '../firebase';
 import { apiFetch } from '../api/apiClient';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import type { Staff } from '../types';
+import type { StaffMember } from '../types';
 
 export const adminCoreService = {
   // Reads the staff list for a garage. Used by the garage-side reports view
   // to break down per-staff performance. The admin-side staff management UI
   // (add/update/delete) was removed when the staff role was retired; the
   // collection itself is preserved until the role's full removal phase.
-  getStaffByGarageOnce: async (garageId: string): Promise<Staff[]> => {
+  getStaffByGarageOnce: async (garageId: string): Promise<StaffMember[]> => {
     try {
       const q = query(collection(db, 'staff'), where('garageId', '==', garageId));
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Staff));
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as StaffMember));
     } catch (e) {
       console.warn('Error in getStaffByGarageOnce:', e);
       return [];
