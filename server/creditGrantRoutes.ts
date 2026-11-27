@@ -32,7 +32,7 @@ app.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
     const user = c.get('user');
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { entityType, entityId, newPin } = body;
-    if (!entityType || !entityId || !['garages', 'delegates', 'staff'].includes(entityType)) {
+    if (!entityType || !entityId || !['garages', 'delegates'].includes(entityType)) {
       return c.json({ success: false, error: 'INVALID_ENTITY_TYPE' }, 400);
     }
 
@@ -69,10 +69,6 @@ app.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
     }
 
     let targetGarageId: unknown = entityType === 'garages' ? entityId : undefined;
-    if (entityType === 'staff' && user?.role !== 'admin') {
-      const targetStaffSnap = await adminDb.collection('staff').doc(entityId).get();
-      targetGarageId = targetStaffSnap.exists ? targetStaffSnap.data()?.garageId : null;
-    }
     if (!canUpdateEntityPin(user, entityType, targetGarageId)) {
       return c.json({ success: false, error: 'FORBIDDEN: Insufficient permissions' }, 403);
     }
@@ -477,7 +473,7 @@ app.get('/api/garages/:id/credit-ledger', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
     const garageId = validateId(c.req.param('id'), 'garageId', true);
-    const scopedGarage = (user?.role === 'garage' || user?.role === 'staff') && (user?.garageId === garageId || user?.entityId === garageId);
+    const scopedGarage = user?.role === 'garage' && (user?.garageId === garageId || user?.entityId === garageId);
     if (user?.role !== 'admin' && !scopedGarage) return c.json({ success: false, error: 'FORBIDDEN' }, 403);
     const kindFilter = (c.req.query('kind') || '').trim();
     if (kindFilter && !CREDIT_LEDGER_KINDS.has(kindFilter)) {

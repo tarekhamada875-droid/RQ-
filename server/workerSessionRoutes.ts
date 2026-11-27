@@ -86,15 +86,13 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     }
 
     // The legacy phone-plus-PIN login path has been removed. All roles
-    // (admin, delegate, garage, staff) log in with PIN-only — the phone
-    // field is never sent by the UI and the phone-based delegate lookup
-    // was dead code. Removing it simplifies the verify-pin route and
-    // eliminates a Firestore query that was never executed in production.
-    // Audit ref: operator decision 2026-11-07.
+    // (admin, delegate, garage) log in with PIN-only — the phone field is
+    // never sent by the UI and the phone-based delegate lookup was dead
+    // code. The staff role is retired (PR 3/4); its collection is no longer
+    // checked at login. Audit ref: operator decision 2026-11-07.
 
-    const collectionsToCheck: Array<{ name: string; role: 'supervisor' | 'delegate' | 'staff' | 'garage' }> = [
+    const collectionsToCheck: Array<{ name: string; role: 'supervisor' | 'delegate' | 'garage' }> = [
       { name: 'garages', role: 'garage' },
-      { name: 'staff', role: 'staff' },
       { name: 'delegates', role: 'delegate' },
       { name: 'supervisors', role: 'supervisor' }
     ];
@@ -114,7 +112,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     const pinLookupMs = Date.now() - pinLookupStartedAt;
 
     const matchResolutionStartedAt = Date.now();
-    const matches: Array<{ role: 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage'; id: string; account?: any; isLegacyMatch?: boolean }> = [];
+    const matches: Array<{ role: 'admin' | 'supervisor' | 'delegate' | 'garage'; id: string; account?: any; isLegacyMatch?: boolean }> = [];
     const adminCheck = verifyPinMatch(normalizedPin, adminPinStored);
     if (adminCheck.matches) {
       matches.push({ role: 'admin', id: 'admin', isLegacyMatch: adminCheck.isLegacy });
@@ -163,7 +161,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       const entitySnap = await transaction.get(entityRef);
       const entityData = entitySnap.exists ? entitySnap.data() || {} : {};
       const activeSessionIds = await claimEntityActiveSessionIds(transaction, entityData, sessionId, secColl, effectiveUid);
-      const resolvedGarageId = match.role === 'staff' ? (entityData.garageId || '') : (match.role === 'garage' ? entityDocId : '');
+      const resolvedGarageId = match.role === 'garage' ? entityDocId : '';
       const displayName = match.account?.name || (match.role === 'admin' ? 'مدير النظام' : (match.role === 'garage' ? 'مدير الجراج' : match.role));
       const sessionData = { uid: effectiveUid, role: match.role, entityId: entityDocId, garageId: resolvedGarageId, displayName, sessionId, isActive: true, lastActive: new Date(), createdAt: new Date() };
       transaction.set(entityRef, { currentSessionId: sessionId, activeSessionIds, lastActive: new Date() }, { merge: true });
@@ -526,8 +524,8 @@ workerApp.post('/api/auth/invalidate-all-sessions', async (c) => {
     const sessionCollList: Array<{ name: string; entityCollection: string; fixedEntityId?: string }> = [
       { name: 'admin_sessions', entityCollection: 'admin_settings', fixedEntityId: 'auth_pin' },
       { name: 'delegate_sessions', entityCollection: 'delegates' },
-      { name: 'garage_sessions', entityCollection: 'garages' },
-      { name: 'staff_sessions', entityCollection: 'staff' }
+      { name: 'garage_sessions', entityCollection: 'garages' }
+      // staff_sessions removed (PR 3/4) — staff role retired
     ];
 
     // Audit N12 (Phase 4, 2026-11-06): paginate the session collection

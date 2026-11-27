@@ -177,65 +177,51 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     expect([...mockDb.records.values()].some((record: any) => record.kind === 'authorized_deletion_restore' && record.amount === 1)).toBe(true);
   });
 
-  it('allows the same garage or staff entity to correct its entry after re-login with a new Firebase UID', async () => {
-    const cases = [
-      {
-        role: 'garage',
-        initialToken: `Bearer valid-garage-token-${testGarageId}`,
-        reloginToken: `Bearer valid-garage-relogin-token-${testGarageId}`,
-        plateNumber: 'GRG 4444',
-        plateRaw: 'GRG4444',
-        entrantEntityId: testGarageId,
-        originalUid: `garage-uid-${testGarageId}`
-      },
-      {
-        role: 'staff',
-        initialToken: `Bearer valid-staff-token-${testGarageId}`,
-        reloginToken: `Bearer valid-staff-relogin-token-${testGarageId}`,
-        plateNumber: 'STF 5555',
-        plateRaw: 'STF5555',
-        entrantEntityId: `staff-uid-${testGarageId}`,
-        originalUid: `staff-uid-${testGarageId}`
-      }
-    ];
+  it('allows the same garage entity to correct its entry after re-login with a new Firebase UID', async () => {
+    const entry = {
+      role: 'garage',
+      initialToken: `Bearer valid-garage-token-${testGarageId}`,
+      reloginToken: `Bearer valid-garage-relogin-token-${testGarageId}`,
+      plateNumber: 'GRG 4444',
+      plateRaw: 'GRG4444',
+      entrantEntityId: testGarageId,
+      originalUid: `garage-uid-${testGarageId}`
+    };
 
-    for (const entry of cases) {
-      const checkIn = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: entry.initialToken },
-        body: JSON.stringify({ garageId: testGarageId, plateNumber: entry.plateNumber, plateRaw: entry.plateRaw })
-      }), workerEnv);
-      expect(checkIn.status).toBe(200);
+    const checkIn = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: entry.initialToken },
+      body: JSON.stringify({ garageId: testGarageId, plateNumber: entry.plateNumber, plateRaw: entry.plateRaw })
+    }), workerEnv);
+    expect(checkIn.status).toBe(200);
 
-      const storedVehicle = mockDb.records.get(`garages/${testGarageId}/vehicles/${entry.plateRaw}`);
-      expect(storedVehicle).toMatchObject({
-        enteredByUid: entry.originalUid,
-        enteredByEntityId: entry.entrantEntityId,
-        enteredByRole: entry.role,
-        staffId: entry.entrantEntityId
-      });
+    const storedVehicle = mockDb.records.get(`garages/${testGarageId}/vehicles/${entry.plateRaw}`);
+    expect(storedVehicle).toMatchObject({
+      enteredByUid: entry.originalUid,
+      enteredByEntityId: entry.entrantEntityId,
+      enteredByRole: entry.role
+    });
 
-      const correction = await api.fetch(new Request('http://localhost/api/vehicles/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: entry.reloginToken, 'x-idempotency-key': `relogin-correction-${entry.role}` },
-        body: JSON.stringify({ garageId: testGarageId, vehicleId: entry.plateRaw, refundAmount: 0 })
-      }), workerEnv);
-      expect(correction.status).toBe(200);
-    }
+    const correction = await api.fetch(new Request('http://localhost/api/vehicles/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: entry.reloginToken, 'x-idempotency-key': `relogin-correction-${entry.role}` },
+      body: JSON.stringify({ garageId: testGarageId, vehicleId: entry.plateRaw, refundAmount: 0 })
+    }), workerEnv);
+    expect(correction.status).toBe(200);
   });
 
-  it('denies peer and unidentified legacy corrections to garage/staff while preserving Admin correction access', async () => {
+  it('denies peer and unidentified legacy corrections to garage while preserving Admin correction access', async () => {
     const legacyPath = `garages/${testGarageId}/vehicles/LEGACY123`;
     mockDb.seed(legacyPath, {
       plateNumber: 'LEGACY 123',
       plateNumberRaw: 'LEGACY123',
       status: 'outside',
-      enteredByUid: `staff-uid-${testGarageId}`,
-      staffId: `staff-uid-${testGarageId}`
+      enteredByUid: `garage-uid-${testGarageId}`,
+      enteredByEntityId: testGarageId
     });
     const legacyDenied = await api.fetch(new Request('http://localhost/api/vehicles/delete', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer valid-staff-token-${testGarageId}`, 'x-idempotency-key': 'legacy-staff-correction' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer valid-garage-token-${testGarageId}`, 'x-idempotency-key': 'legacy-garage-correction' },
       body: JSON.stringify({ garageId: testGarageId, vehicleId: 'LEGACY123', refundAmount: 0 })
     }), workerEnv);
     expect(legacyDenied.status).toBe(403);
@@ -246,13 +232,13 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       plateNumber: 'PEER 1234',
       plateNumberRaw: 'PEER1234',
       status: 'outside',
-      enteredByUid: `staff-uid-${testGarageId}`,
-      enteredByEntityId: `staff-uid-${testGarageId}`,
-      enteredByRole: 'staff'
+      enteredByUid: `garage-uid-${testGarageId}`,
+      enteredByEntityId: testGarageId,
+      enteredByRole: 'garage'
     });
     const peerDenied = await api.fetch(new Request('http://localhost/api/vehicles/delete', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer valid-staff-peer-token-${testGarageId}`, 'x-idempotency-key': 'peer-staff-correction' },
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-garage-token-other-garage', 'x-idempotency-key': 'peer-garage-correction' },
       body: JSON.stringify({ garageId: testGarageId, vehicleId: 'PEER1234', refundAmount: 0 })
     }), workerEnv);
     expect(peerDenied.status).toBe(403);
@@ -266,23 +252,23 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     expect(adminCorrection.status).toBe(200);
   });
 
-  it('shares the three-event Cairo-day correction allowance across staff operations', async () => {
-    const staffToken = `Bearer valid-staff-token-${testGarageId}`;
+  it('shares the three-event Cairo-day correction allowance across garage-owner operations', async () => {
+    const garageToken = `Bearer valid-garage-token-${testGarageId}`;
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     mockDb.seed(`garages/${testGarageId}`, { dailyDeletionCount: 0, lastDeletionDate: today });
     for (let index = 1; index <= 4; index += 1) {
-      mockDb.seed(`garages/${testGarageId}/vehicles/staff-error-${index}`, {
-        plateNumber: `staff-error-${index}`,
-        plateNumberRaw: `staff-error-${index}`,
+      mockDb.seed(`garages/${testGarageId}/vehicles/garage-error-${index}`, {
+        plateNumber: `garage-error-${index}`,
+        plateNumberRaw: `garage-error-${index}`,
         status: 'outside',
-        enteredByUid: `staff-uid-${testGarageId}`,
-        enteredByEntityId: `staff-uid-${testGarageId}`,
-        enteredByRole: 'staff',
+        enteredByUid: `garage-uid-${testGarageId}`,
+        enteredByEntityId: testGarageId,
+        enteredByRole: 'garage',
       });
       const response = await api.fetch(new Request('http://localhost/api/vehicles/delete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: staffToken, 'x-idempotency-key': `staff-correction-${index}` },
-        body: JSON.stringify({ garageId: testGarageId, vehicleId: `staff-error-${index}`, refundAmount: 0 }),
+        headers: { 'Content-Type': 'application/json', Authorization: garageToken, 'x-idempotency-key': `garage-correction-${index}` },
+        body: JSON.stringify({ garageId: testGarageId, vehicleId: `garage-error-${index}`, refundAmount: 0 }),
       }), workerEnv);
       expect(response.status).toBe(index <= 3 ? 200 : 409);
     }

@@ -30,8 +30,8 @@ export interface WorkerAuthMiddleware {
 const WORKER_SESSION_DEFINITIONS: Record<string, { sessions: string; entity: string }> = {
   admin: { sessions: 'admin_sessions', entity: 'admin_settings' },
   delegate: { sessions: 'delegate_sessions', entity: 'delegates' },
-  garage: { sessions: 'garage_sessions', entity: 'garages' },
-  staff: { sessions: 'staff_sessions', entity: 'staff' }
+  garage: { sessions: 'garage_sessions', entity: 'garages' }
+  // staff role retired (PR 3/4) — collection stays for historical data
 };
 
 function workerSessionDefinition(role: string | undefined) {
@@ -166,13 +166,8 @@ async function resolveWorkerSessionUser(
           // DELETE /api/auth/sessions/:key, invalidate-all-sessions), which is
           // what the isActive check above already enforces.
           if (entitySnap.exists) {
-            const entityData = entitySnap.data() || {};
             let garageId = sessionData.garageId || indexData.garageId || (indexedRole === 'garage' ? entityId : null);
             let displayName = sessionData.displayName || indexData.displayName || '';
-            if (indexedRole === 'staff') {
-              garageId = garageId || entityData.garageId || null;
-              displayName = displayName || entityData.name || '';
-            }
             console.info('[Worker Auth] session resolution', { path: 'indexed', outcome: 'hit', role: indexedRole });
             return {
               user: {

@@ -355,12 +355,10 @@ class FirebaseAuthRest {
   constructor(public readonly projectId: string) {}
   /**
    * Audit fix (2026-11-21): delete a Firebase Auth user via the Identity
-   * Toolkit REST API. staffRoutes calls adminAuth.deleteUser(uid) when a
-   * staff member is removed; with the real Admin SDK this exists, but the
-   * production REST client only implemented verifyIdToken, so the call
-   * threw TypeError which the route's per-uid catch swallowed — deleted
-   * staff could keep a live Firebase Auth account forever. Requires the
-   * identitytoolkit scope on the service-account token (see
+   * Toolkit REST API. Originally added for staffRoutes' delete flow; the
+   * staff role is now retired (PR 3/4) but deleteUser remains for any
+   * future route that needs to clean up Firebase Auth accounts. Requires
+   * the identitytoolkit scope on the service-account token (see
    * getGoogleAccessToken).
    */
   async deleteUser(uid: string): Promise<void> {

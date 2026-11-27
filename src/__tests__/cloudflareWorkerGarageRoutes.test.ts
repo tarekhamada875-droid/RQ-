@@ -115,7 +115,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     }), workerEnv);
     expect(unauthenticated.status).toBe(401);
 
-    for (const token of ['valid-garage-token-garage-a', 'valid-staff-token-garage-a', 'valid-delegate-token', 'valid-worker-token']) {
+    for (const token of ['valid-garage-token-garage-a', 'valid-delegate-token', 'valid-worker-token']) {
       const response = await api.fetch(new Request('http://localhost/api/garages/reconciliation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -399,10 +399,10 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     });
 
     const deniedStatus = await api.fetch(new Request(`http://localhost/api/garages/delete-status?garageId=${testGarageId}`, {
-      headers: { Authorization: 'Bearer valid-staff-token-garage-a' }
+      headers: { Authorization: 'Bearer valid-garage-token-garage-a' }
     }), workerEnv);
     expect(deniedStatus.status).toBe(403);
-    const deniedStep = await stepDeletion(testGarageId, startBody.jobToken, 'valid-staff-token-garage-a');
+    const deniedStep = await stepDeletion(testGarageId, startBody.jobToken, 'valid-garage-token-garage-a');
     expect(deniedStep.status).toBe(403);
   });
 
@@ -457,7 +457,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect(await missingStatus.json()).toMatchObject({ success: false, code: 'DELETION_JOB_NOT_FOUND', statusCode: 404 });
 
     const deniedStatus = await api.fetch(new Request('http://localhost/api/garages/delete-status?garageId=any-garage', {
-      headers: { Authorization: 'Bearer valid-staff-token-garage-a' }
+      headers: { Authorization: 'Bearer valid-garage-token-garage-a' }
     }), workerEnv);
     expect(deniedStatus.status).toBe(403);
     expect(await deniedStatus.json()).toMatchObject({ success: false, code: 'FORBIDDEN', statusCode: 403 });
@@ -691,28 +691,5 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     ]);
     expect(body.hasMore).toBe(false);
     expect(body.nextCursor).toBeNull();
-  });
-
-  it('checks staff garage scope before revealing whether a requested PIN is already assigned', async () => {
-    mockDb.seed('staff/foreign-staff', {
-      name: 'Foreign staff',
-      garageId: 'garage-not-owned-by-caller',
-      pin: '123456'
-    });
-
-    const response = await api.fetch(new Request('http://localhost/api/staff/update', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer valid-garage-token-garage-a'
-      },
-      body: JSON.stringify({ id: 'foreign-staff', pin: '123456' })
-    }), workerEnv);
-
-    expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
-      success: false,
-      error: 'FORBIDDEN: Cannot update staff outside your garage'
-    });
   });
 });

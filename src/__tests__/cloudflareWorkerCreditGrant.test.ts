@@ -212,7 +212,7 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     expect(owner.status).toBe(200);
     const ownerBody = await owner.json() as any;
     expect(JSON.stringify(ownerBody)).not.toContain('paymentAmountEgp');
-    const other = await api.fetch(new Request(`http://localhost/api/garages/${garageId}/credit-ledger`, { headers: { Authorization: 'Bearer valid-staff-token-other-garage' } }));
+    const other = await api.fetch(new Request(`http://localhost/api/garages/${garageId}/credit-ledger`, { headers: { Authorization: 'Bearer valid-garage-token-other-garage' } }));
     expect(other.status).toBe(403);
   });
 

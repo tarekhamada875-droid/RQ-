@@ -5,7 +5,6 @@ import {
   canClaimAdminSession,
   canSubmitGarageApplication,
   canInvalidateAllSessions,
-  canManageStaffForGarage,
   canUpdateEntityPin,
   canManageDelegates,
   canManageGarageScopedData,
@@ -20,9 +19,9 @@ describe('garage-scoped authorization policy', () => {
     expect(canManageGarageScopedData({ role: 'admin', garageId: 'garage_other' }, 'garage_target')).toBe(true);
   });
 
-  it.each(['garage', 'staff'])('allows %s access only to the matching garage', (role) => {
-    expect(canManageGarageScopedData({ role, garageId: 'garage_target' }, 'garage_target')).toBe(true);
-    expect(canManageGarageScopedData({ role, garageId: 'garage_other' }, 'garage_target')).toBe(false);
+  it('allows garage access only to the matching garage', () => {
+    expect(canManageGarageScopedData({ role: 'garage', garageId: 'garage_target' }, 'garage_target')).toBe(true);
+    expect(canManageGarageScopedData({ role: 'garage', garageId: 'garage_other' }, 'garage_target')).toBe(false);
   });
 
   it('denies unsupported roles, missing principals, and incomplete scope', () => {
@@ -47,42 +46,12 @@ describe('global delegate mutation authorization policy', () => {
   });
 });
 
-describe('staff-management garage-scope policy', () => {
-  it('keeps admins global and resolves a garage owner from entityId when needed', () => {
-    expect(canManageStaffForGarage({ role: 'admin' }, 'garage_target')).toBe(true);
-    expect(canManageStaffForGarage({ role: 'garage', entityId: 'garage_target' }, 'garage_target')).toBe(true);
-  });
-
-  it('allows a garage owner only for the matching target garage', () => {
-    const principal = { role: 'garage', garageId: 'garage_target' };
-    expect(canManageStaffForGarage(principal, 'garage_target')).toBe(true);
-    expect(canManageStaffForGarage(principal, 'garage_other')).toBe(false);
-  });
-
-  it.each([
-    ['staff member', { role: 'staff', garageId: 'garage_target' }],
-    ['delegate with explicit scope', { role: 'delegate', garageId: 'garage_target' }]
-  ])('denies %s even when the target garage matches', (_label, principal) => {
-    expect(canManageStaffForGarage(principal, 'garage_target')).toBe(false);
-  });
-
-  it('denies missing scope, empty targets, and unsupported principals', () => {
-    expect(canManageStaffForGarage({ role: 'garage' }, 'garage_target')).toBe(false);
-    expect(canManageStaffForGarage({ role: 'supervisor' }, 'garage_target')).toBe(false);
-    expect(canManageStaffForGarage({ role: 'viewer' }, 'garage_target')).toBe(false);
-    expect(canManageStaffForGarage({ role: 'worker' }, 'garage_target')).toBe(false);
-    expect(canManageStaffForGarage(undefined, 'garage_target')).toBe(false);
-    expect(canManageStaffForGarage({ role: 'garage', garageId: 'garage_target' }, '')).toBe(false);
-  });
-
-  it('limits PIN updates to Admin or the owning garage for garage/staff targets', () => {
+describe('PIN update authorization policy', () => {
+  it('limits PIN updates to Admin or the owning garage', () => {
     expect(canUpdateEntityPin({ role: 'admin' }, 'delegates', 'any-garage')).toBe(true);
     expect(canUpdateEntityPin({ role: 'garage', garageId: 'garage_target' }, 'garages', 'garage_target')).toBe(true);
-    expect(canUpdateEntityPin({ role: 'garage', garageId: 'garage_target' }, 'staff', 'garage_target')).toBe(true);
-    expect(canUpdateEntityPin({ role: 'garage', garageId: 'garage_target' }, 'staff', 'garage_other')).toBe(false);
-    expect(canUpdateEntityPin({ role: 'staff', garageId: 'garage_target' }, 'garages', 'garage_target')).toBe(false);
-    expect(canUpdateEntityPin({ role: 'staff', garageId: 'garage_target' }, 'staff', 'garage_target')).toBe(false);
-    expect(canUpdateEntityPin({ role: 'delegate', garageId: 'garage_target' }, 'staff', 'garage_target')).toBe(false);
+    expect(canUpdateEntityPin({ role: 'garage', garageId: 'garage_target' }, 'garages', 'garage_other')).toBe(false);
+    expect(canUpdateEntityPin({ role: 'delegate', garageId: 'garage_target' }, 'garages', 'garage_target')).toBe(false);
     expect(canUpdateEntityPin(undefined, 'garages', 'garage_target')).toBe(false);
   });
 });
@@ -128,7 +97,6 @@ describe('admin-session authorization policy', () => {
 describe('admin maintenance authorization policy', () => {
   it.each([
     ['garage', { role: 'garage' }],
-    ['staff', { role: 'staff' }],
     ['delegate', { role: 'delegate' }],
     ['supervisor', { role: 'supervisor' }],
     ['missing principal', undefined],
@@ -150,7 +118,7 @@ describe('admin maintenance authorization policy', () => {
 describe('financial report authorization policy', () => {
   it('allows admins and denies every non-admin or missing principal', () => {
     expect(canViewFinancialReport({ role: 'admin' })).toBe(true);
-    for (const role of ['garage', 'staff', 'delegate', 'supervisor', 'backend-operator', 'viewer', 'worker', 'unknown']) {
+    for (const role of ['garage', 'delegate', 'supervisor', 'backend-operator', 'viewer', 'worker', 'unknown']) {
       expect(canViewFinancialReport({ role })).toBe(false);
     }
     expect(canViewFinancialReport(undefined)).toBe(false);
@@ -162,7 +130,7 @@ describe('garage application authorization policy', () => {
   it('allows administrators and every delegate only', () => {
     expect(canSubmitGarageApplication({ role: 'admin' })).toBe(true);
     expect(canSubmitGarageApplication({ role: 'delegate' })).toBe(true);
-    for (const role of ['garage', 'staff', 'supervisor', 'backend-operator', 'viewer', 'worker', 'unknown']) {
+    for (const role of ['garage', 'supervisor', 'backend-operator', 'viewer', 'worker', 'unknown']) {
       expect(canSubmitGarageApplication({ role })).toBe(false);
     }
     expect(canSubmitGarageApplication(undefined)).toBe(false);
@@ -176,7 +144,7 @@ describe('garage reconciliation and projection maintenance authorization', () =>
   });
 
   it.each(ADMIN_ONLY_GARAGE_MAINTENANCE_OPERATIONS)('denies non-admins from running %s', (operation) => {
-    for (const role of ['garage', 'staff', 'delegate', 'supervisor', 'backend-operator', 'viewer', 'worker']) {
+    for (const role of ['garage', 'delegate', 'supervisor', 'backend-operator', 'viewer', 'worker']) {
       expect(canRunGarageMaintenance({ role }, operation)).toBe(false);
     }
     expect(canRunGarageMaintenance(undefined, operation)).toBe(false);
@@ -185,16 +153,16 @@ describe('garage reconciliation and projection maintenance authorization', () =>
 });
 
 describe('vehicle operation garage-scope authorization', () => {
-  it.each(['garage', 'staff'])('uses the session garage for %s and permits only a matching requested scope', (role) => {
-    expect(authorizeVehicleGarageScope({ role, garageId: 'garage_1' }, undefined)).toEqual({
+  it('uses the session garage for garage owners and permits only a matching requested scope', () => {
+    expect(authorizeVehicleGarageScope({ role: 'garage', garageId: 'garage_1' }, undefined)).toEqual({
       allowed: true,
       garageId: 'garage_1'
     });
-    expect(authorizeVehicleGarageScope({ role, garageId: 'garage_1' }, 'garage_1')).toEqual({
+    expect(authorizeVehicleGarageScope({ role: 'garage', garageId: 'garage_1' }, 'garage_1')).toEqual({
       allowed: true,
       garageId: 'garage_1'
     });
-    expect(authorizeVehicleGarageScope({ role, garageId: 'garage_1' }, 'garage_2')).toEqual({
+    expect(authorizeVehicleGarageScope({ role: 'garage', garageId: 'garage_1' }, 'garage_2')).toEqual({
       allowed: false,
       reason: 'garage_scope_mismatch'
     });
@@ -202,10 +170,6 @@ describe('vehicle operation garage-scope authorization', () => {
 
   it('preserves the distinct missing-session-garage denial', () => {
     expect(authorizeVehicleGarageScope({ role: 'garage' }, 'garage_1')).toEqual({
-      allowed: false,
-      reason: 'garage_id_missing'
-    });
-    expect(authorizeVehicleGarageScope({ role: 'staff', garageId: '' }, undefined)).toEqual({
       allowed: false,
       reason: 'garage_id_missing'
     });

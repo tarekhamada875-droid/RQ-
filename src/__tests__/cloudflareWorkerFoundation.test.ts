@@ -74,7 +74,6 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
     for (const token of [
       'valid-admin-token',
       'valid-garage-token-g1',
-      'valid-staff-token-g1',
       'valid-delegate-token'
     ]) {
       const res = await api.fetch(new Request('http://localhost/api/system-config', {
