@@ -325,14 +325,25 @@ try {
   await assertFails(updateDoc(doc(adminDb, 'system_config/safe-config'), { startupNotice: 'admin-update' }));
   await assertFails(updateDoc(doc(staffDb, 'system_config/safe-config'), { startupNotice: 'staff-update' }));
 
-  // Subscriber reads retain their existing owner/Admin/delegate scope; every mutation is Worker-only.
-  // Staff sessions are retired and no longer grant subscriber access.
+  // Subscriber reads: owner and admin only. Delegates and retired staff are denied
+  // (owner rule: delegates see garages and commission, never cars or customer data).
+  // Every subscriber mutation is Worker-only.
   const subscriberPath = 'garages/g-1/subscribers/sub-1';
-  for (const readerDb of [adminDb, ownerDb, delegateDb]) {
+  for (const readerDb of [adminDb, ownerDb]) {
     await assertSucceeds(getDoc(doc(readerDb, subscriberPath)));
     await assertSucceeds(getDocs(collection(readerDb, 'garages/g-1/subscribers')));
   }
+  await assertFails(getDoc(doc(delegateDb, subscriberPath)));
+  await assertFails(getDocs(collection(delegateDb, 'garages/g-1/subscribers')));
   await assertFails(getDoc(doc(staffDb, subscriberPath)));
+
+  // Vehicle records: owner and admin only. Delegates are denied the same way.
+  for (const readerDb of [adminDb, ownerDb]) {
+    await assertSucceeds(getDoc(doc(readerDb, 'garages/g-1/vehicles/ABC123')));
+    await assertSucceeds(getDocs(collection(readerDb, 'garages/g-1/vehicles')));
+  }
+  await assertFails(getDoc(doc(delegateDb, 'garages/g-1/vehicles/ABC123')));
+  await assertFails(getDocs(collection(delegateDb, 'garages/g-1/vehicles')));
   const deniedSubscriberMutations = [adminDb, ownerDb, staffDb, delegateDb].flatMap((clientDb, index) => [
     setDoc(doc(clientDb, `garages/g-1/subscribers/client-created-${index}`), {
       id: `client-created-${index}`, ownerName: 'Client Write', phone: '000', plateNumber: 'ZZZ999',
