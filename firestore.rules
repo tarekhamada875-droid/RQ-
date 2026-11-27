@@ -203,17 +203,20 @@ service cloud.firestore {
       allow update: if false; // Garage documents are written only by the Worker
       
       match /vehicles/{vehicleId} {
+        // Delegates never read vehicle records (owner rule: delegates see
+        // garages and commission, never cars or customer data). Vehicle data
+        // flows to browsers only through the Worker for admin/garage sessions.
         allow read: if isValidId(garageId) && (
           isAdmin() ||
-          isGarageSession(garageId) ||
-          isDelegateForGarage(garageId)
+          isGarageSession(garageId)
         );
         allow create, update, delete: if false; // Replaced by server-side API
       }
 
       match /subscribers/{subscriberId} {
-        allow get: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId));
-        allow list: if isSignedIn() && (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId));
+        // Delegates never read subscriber records (plates, phones, owner names).
+        allow get: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin());
+        allow list: if isSignedIn() && (isGarageSession(garageId) || isAdmin());
         allow create, update, delete: if false; // All mutations must use the Worker
       }
     }
