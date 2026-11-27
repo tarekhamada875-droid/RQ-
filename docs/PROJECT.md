@@ -45,13 +45,13 @@ New writes must reject them. The server endpoints for these features no longer e
 
 The Worker is authoritative for identity, role, garage scope, financial values, subscriber eligibility, counters, reports, and mutations. The browser renders server decisions and may provide optimistic feedback, but it cannot approve money, change balances, or make final eligibility decisions. The browser performs zero direct Firestore writes.
 
-The target BFF boundary is for the browser to use the Worker for all application-data reads and writes. That migration is not yet complete: direct Firestore read listeners and one-shot reads remain in vehicle, garage, delegate, subscriber, staff, activity, and session client code. Replace them feature-by-feature with authenticated, role-scoped Worker routes, preserving current multi-device freshness; do not treat the BFF target as complete until those browser read paths are removed and verified.
+The target BFF boundary is for the browser to use the Worker for all application-data reads and writes. That migration is not yet complete: direct Firestore read listeners and one-shot reads remain in vehicle, garage, delegate, subscriber, activity, and session client code. Replace them feature-by-feature with authenticated, role-scoped Worker routes, preserving current multi-device freshness; do not treat the BFF target as complete until those browser read paths are removed and verified.
 
 For vehicle check-in and check-out, keep transaction controls visibly locked while the request is pending and for at least three seconds through the completion feedback. Do not present a vehicle, counter, credit, or revenue change as successful before Worker confirmation. After a confirmed check-in, animate the committed inside-car count first, then apply the committed credit balance so the five debit arrows follow the count motion; the full feedback sequence must finish before controls unlock. After a confirmed checkout, apply the committed vehicle removal and totals, return from the inside-vehicle list to the main dashboard, and animate the committed inside-car count downward. Realtime snapshots must not revert confirmed transaction values.
 
 Multi-document business changes use Firestore transactions. Retried intents use idempotency keys and request fingerprints. Domain events, activity records, projections, and ledgers must agree through reconciliation.
 
-Staff deletion performs full revocation: all active sessions are revoked, the session index is invalidated, the Firebase Auth user is deleted, and the staff member's activity history is removed.
+The `staff` role has been retired (PR #864–#867, 2026-11-27). The `staff` and `staff_sessions` Firestore collections are preserved for historical data but denied to all client access. Server-side cleanup (garage deletion) and PIN uniqueness checks still reference the `staff` collection via the Admin SDK, which bypasses rules. Historical vehicle records may still carry `enteredByRole: 'staff'`.
 
 Garage deletion is a multi-step process that also cleans up payment reference markers, credit ledger entries, activity logs, staff records, sessions, and private PINs.
 

@@ -14,6 +14,9 @@
 //   - Referral reward: 10 credits, one-time on first qualifying grant (owner decision, PR #666).
 //   - PINs are stored in private_pins/ (not on entity docs).
 //   - PIN retirement: once used, a PIN can never be reused.
+//   - The `staff` role has been retired (PR #864–#867). The `staff` and
+//     `staff_sessions` collections are preserved but denied to all client
+//     access. Historical vehicle records may carry `enteredByRole: 'staff'`.
 //
 // ===============================================================
 
@@ -63,13 +66,7 @@ service cloud.firestore {
     }
 
     function isGarageSession(garageId) {
-      return isSignedIn() && (
-        isGarageOwner(garageId) ||
-        (exists(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.isActive == true &&
-         exists(/databases/$(database)/documents/staff/$(get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId)) &&
-         get(/databases/$(database)/documents/staff/$(get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId)).data.garageId == garageId)
-      );
+      return isGarageOwner(garageId);
     }
 
 
@@ -94,11 +91,8 @@ service cloud.firestore {
         );
     }
 
-    function isStaffSession(staffId) {
-      return isSignedIn() && exists(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.isActive == true &&
-             get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId == staffId;
-    }
+    // isStaffSession removed (PR 4/4) — staff role retired.
+    // The staff_sessions collection is preserved but denied below.
 
     function incoming() {
       return request.resource.data;
@@ -145,9 +139,8 @@ service cloud.firestore {
     }
 
     match /staff_sessions/{sessionUid} {
-      allow get: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
-      allow list: if isAdmin();
-      allow create, update, delete: if false; // Server-only: written by the Worker (Admin SDK)
+      // Retired-role sessions are preserved but inaccessible through client rules.
+      allow read, write: if false;
     }
 
     // ===============================================================
@@ -191,8 +184,10 @@ service cloud.firestore {
     }
 
     match /staff/{staffId} {
-      allow read: if isSignedIn() && (isAdmin() || isGarageSession(resource.data.garageId) || isStaffSession(staffId));
-      allow create, update, delete: if false;
+      // Role retirement is non-destructive: keep existing records but deny client access.
+      // Server-side cleanup (garageDeletionCleanupAdapter) and PIN uniqueness checks
+      // (pinRepository) use the Admin SDK, which bypasses rules.
+      allow read, write: if false;
     }
 
     match /garages/{garageId} {
