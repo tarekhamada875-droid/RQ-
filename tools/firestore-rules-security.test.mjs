@@ -220,14 +220,15 @@ try {
   assert.equal(orderedActivityLogs.docs[199].id, 'activity-index-199', 'the final record must still be within the newest 200');
   assert.ok(orderedActivityLogs.docs.every((log) => log.data().garageId === 'g-1'), 'activity history must remain garage-scoped');
 
-  // Admin, owner, staff, and delegate access stays scoped to the expected records.
+  // Admin, owner, and delegate access stays scoped to the expected records.
+  // Staff sessions are retired (PR 4/4) — staffDb no longer grants garage or staff access.
   await assertSucceeds(getDoc(doc(adminDb, 'garages/g-1')));
   await assertSucceeds(getDocs(collection(adminDb, 'garages')));
   await assertSucceeds(getDoc(doc(ownerDb, 'garages/g-1')));
   await assertFails(getDoc(doc(ownerDb, 'garages/g-2')));
-  await assertSucceeds(getDoc(doc(staffDb, 'garages/g-1')));
+  await assertFails(getDoc(doc(staffDb, 'garages/g-1')));
   await assertFails(getDoc(doc(staffDb, 'garages/g-2')));
-  await assertSucceeds(getDoc(doc(staffDb, 'staff/staff-peer')));
+  await assertFails(getDoc(doc(staffDb, 'staff/staff-peer')));
   await assertFails(getDoc(doc(otherGarageStaffDb, 'staff/staff-peer')));
   await assertSucceeds(getDoc(doc(delegateDb, 'garages/g-1')));
   await assertFails(getDoc(doc(delegateDb, 'garages/g-2')));
@@ -242,7 +243,8 @@ try {
   await assertFails(getDoc(doc(ownerDb, 'admin_settings/subscription_prices')));
   await assertFails(getDoc(doc(ownerDb, 'admin_settings/private_setting')));
 
-  // Staff documents are readable by scoped roles but all browser writes are Worker-only.
+  // Staff documents are denied to all client roles (retired collection); all browser writes are Worker-only.
+  await assertFails(getDoc(doc(staffDb, 'staff/staff-1')));
   await assertFails(updateDoc(doc(staffDb, 'staff/staff-1'), { lastActive: new Date() }));
   const deniedStaffWrites = [
     updateDoc(doc(staffDb, 'staff/staff-peer'), { name: 'Must Not Change' }),
@@ -254,7 +256,7 @@ try {
   ];
   await Promise.all(deniedStaffWrites.map(assertFails));
 
-  // A same-garage staff session is not an owner key for protected garage settings.
+  // A retired staff session has no owner key for protected garage settings.
   const deniedGarageWrites = [
     updateDoc(doc(staffDb, 'garages/g-1'), { hourlyRate: 99 }),
     updateDoc(doc(staffDb, 'garages/g-1'), { overnightRate: 99 }),
@@ -323,12 +325,14 @@ try {
   await assertFails(updateDoc(doc(adminDb, 'system_config/safe-config'), { startupNotice: 'admin-update' }));
   await assertFails(updateDoc(doc(staffDb, 'system_config/safe-config'), { startupNotice: 'staff-update' }));
 
-  // Subscriber reads retain their existing owner/staff/Admin/delegate scope; every mutation is Worker-only.
+  // Subscriber reads retain their existing owner/Admin/delegate scope; every mutation is Worker-only.
+  // Staff sessions are retired and no longer grant subscriber access.
   const subscriberPath = 'garages/g-1/subscribers/sub-1';
-  for (const readerDb of [adminDb, ownerDb, staffDb, delegateDb]) {
+  for (const readerDb of [adminDb, ownerDb, delegateDb]) {
     await assertSucceeds(getDoc(doc(readerDb, subscriberPath)));
     await assertSucceeds(getDocs(collection(readerDb, 'garages/g-1/subscribers')));
   }
+  await assertFails(getDoc(doc(staffDb, subscriberPath)));
   const deniedSubscriberMutations = [adminDb, ownerDb, staffDb, delegateDb].flatMap((clientDb, index) => [
     setDoc(doc(clientDb, `garages/g-1/subscribers/client-created-${index}`), {
       id: `client-created-${index}`, ownerName: 'Client Write', phone: '000', plateNumber: 'ZZZ999',
@@ -345,7 +349,7 @@ try {
   await assertFails(updateDoc(doc(delegateDb, 'delegates/del-2'), { lastActive: new Date() }));
   await assertFails(updateDoc(doc(delegateDb, 'private_pins/del-1'), { pin: '1234' }));
 
-  // Retired Supervisor history is preserved but never grants access.
+  // Retired Supervisor and Staff history is preserved but never grants access.
   const retiredDb = env.authenticatedContext('sup-uid').firestore();
   const deniedReads = [
     getDoc(doc(retiredDb, 'supervisor_sessions/sup-uid')),
@@ -355,7 +359,10 @@ try {
     getDoc(doc(retiredDb, 'garages/g-1')),
     getDocs(collection(retiredDb, 'garages')),
     getDoc(doc(retiredDb, 'garages/g-1/subscribers/sub-1')),
-    getDoc(doc(retiredDb, 'garages/g-1/daily_counts/2026-10-07'))
+    getDoc(doc(retiredDb, 'garages/g-1/daily_counts/2026-10-07')),
+    getDoc(doc(staffDb, 'staff_sessions/staff-uid')),
+    getDoc(doc(staffDb, 'staff/staff-1')),
+    getDocs(collection(staffDb, 'staff'))
   ];
   await Promise.all(deniedReads.map(assertFails));
 
@@ -371,7 +378,12 @@ try {
     updateDoc(doc(retiredDb, 'garages/g-1/subscribers/sub-1'), { ownerName: 'Should Be Denied', phone: '001' }),
     deleteDoc(doc(retiredDb, 'garages/g-1/subscribers/sub-1')),
     updateDoc(doc(retiredDb, 'garages/g-1/daily_counts/2026-10-07'), { count: 2 }),
-    setDoc(doc(retiredDb, 'garages/g-1/daily_counts/2026-10-08'), { dateId: '2026-10-08', count: 1, limit: 10 })
+    setDoc(doc(retiredDb, 'garages/g-1/daily_counts/2026-10-08'), { dateId: '2026-10-08', count: 1, limit: 10 }),
+    updateDoc(doc(staffDb, 'staff_sessions/staff-uid'), { lastActive: new Date() }),
+    deleteDoc(doc(staffDb, 'staff_sessions/staff-uid')),
+    updateDoc(doc(staffDb, 'staff/staff-1'), { name: 'Must Not Change' }),
+    deleteDoc(doc(staffDb, 'staff/staff-1')),
+    setDoc(doc(staffDb, 'staff/new-id'), staff('Retired Write', 'g-1'))
   ];
   await Promise.all(deniedRetiredWrites.map(assertFails));
 
@@ -382,7 +394,7 @@ try {
     assert.deepEqual((await getDoc(doc(storedDb, 'supervisors/sup-1'))).data(), legacySupervisor);
   });
 
-  console.log('Firestore rules emulator matrix passed: owner/admin/staff/delegate scopes, staff/activity-log composite indexes and ordering, protected staff and garage writes, raw config-read denial, Worker-only subscriber mutations, cross-garage denials, and retired Supervisor access.');
+  console.log('Firestore rules emulator matrix passed: owner/admin/delegate scopes, staff/activity-log composite indexes and ordering, retired staff/supervisor full-deny, raw config-read denial, Worker-only subscriber mutations, cross-garage denials.');
 } finally {
   await env.cleanup();
 }
