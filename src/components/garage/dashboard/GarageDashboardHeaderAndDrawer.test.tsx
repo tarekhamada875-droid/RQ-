@@ -4,7 +4,6 @@ import { GarageDashboardHeaderAndDrawer } from './GarageDashboardHeaderAndDrawer
 
 const makeProps = () => ({
   garage: { id: 'garage-1', name: 'Test Garage', hasMonthlySubscribers: true } as any,
-  currentStaff: null,
   isInputFocused: false,
   isMenuOpen: false,
   setIsMenuOpen: vi.fn(),
@@ -35,13 +34,6 @@ describe('GarageDashboardHeaderAndDrawer icon actions', () => {
 
   it('hides the retired Packages action for garage owners', () => {
     const props = makeProps();
-    render(<GarageDashboardHeaderAndDrawer {...props} isMenuOpen />);
-
-    expect(screen.queryByRole('button', { name: 'الباقات' })).not.toBeInTheDocument();
-  });
-
-  it('keeps the owner-only Packages action hidden for staff accounts', () => {
-    const props = { ...makeProps(), currentStaff: { id: 'staff-1', name: 'Test Staff' } as any };
     render(<GarageDashboardHeaderAndDrawer {...props} isMenuOpen />);
 
     expect(screen.queryByRole('button', { name: 'الباقات' })).not.toBeInTheDocument();

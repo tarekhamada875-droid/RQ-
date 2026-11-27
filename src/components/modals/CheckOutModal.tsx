@@ -11,12 +11,11 @@ import { getCairoDateKey } from '../../domain/garage/businessDay';
 import { useServerTimeNow } from '../../hooks/serverTimeContext';
 import { useAsyncAction } from '../../hooks/useAsyncAction';
 import { ModalShell } from '../ui/ModalShell';
-import { Vehicle, Garage, Staff } from '../../types';
+import { Vehicle, Garage } from '../../types';
 
 interface CheckOutModalProps {
   selectedVehicle: Vehicle;
   garage: Garage;
-  currentStaff?: Staff | null;
   isLoading: boolean;
   loadingType: string | null;
   onConfirm: () => void | Promise<void>;
@@ -27,7 +26,6 @@ interface CheckOutModalProps {
 export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
   selectedVehicle,
   garage,
-  currentStaff,
   isLoading,
   loadingType,
   onConfirm,
@@ -38,8 +36,8 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
   const entryDate = selectedVehicle.entryTime ? safeDate(selectedVehicle.entryTime) : now;
   const diffMs = Math.max(0, now.getTime() - entryDate.getTime());
   const isInitialMinute = !selectedVehicle.isSubscriber && isWithinEntryErrorWindow(diffMs); // 5-minute entry-error correction window
-  const entrantEntityId = currentStaff?.id ?? garage.id;
-  const entrantRole = currentStaff ? 'staff' : 'garage';
+  const entrantEntityId = garage.id;
+  const entrantRole = 'garage';
   const canDelete = selectedVehicle.enteredByEntityId === entrantEntityId && selectedVehicle.enteredByRole === entrantRole;
   // During grace window: only delete is allowed (no checkout). After grace:
   // only checkout is allowed (no delete). This prevents 0-EGP checkouts that

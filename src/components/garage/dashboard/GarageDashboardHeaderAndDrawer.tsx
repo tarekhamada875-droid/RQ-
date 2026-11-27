@@ -14,12 +14,11 @@ import {
   History,
   Menu,
 } from 'lucide-react';
-import { Garage, Staff } from '../../../types';
+import { Garage } from '../../../types';
 import { IconButton } from '../../ui/IconButton';
 
 interface GarageDashboardHeaderAndDrawerProps {
   garage: Garage;
-  currentStaff: Staff | null;
   isInputFocused: boolean;
   isMenuOpen: boolean;
   setIsMenuOpen: (open: boolean) => void;
@@ -31,7 +30,6 @@ interface GarageDashboardHeaderAndDrawerProps {
 
 export const GarageDashboardHeaderAndDrawer = memo(({
   garage,
-  currentStaff,
   isInputFocused,
   isMenuOpen,
   setIsMenuOpen,
@@ -101,7 +99,7 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span className="text-mobile-wrap text-xs font-black text-slate-900 dark:text-slate-100 max-w-[120px] leading-snug">
-                        {currentStaff ? currentStaff.name : 'مدير الجراج'}
+                        {'مدير الجراج'}
                       </span>
                     </div>
                   </div>
@@ -122,9 +120,8 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                   <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">عمليات</span>
                 </div>
                 <div className="space-y-2">
-                  {!currentStaff && (
-                    <button
-                      onClick={() => onNavigateOverlay('reports')}
+                  <button
+                    onClick={() => onNavigateOverlay('reports')}
                       className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-200 dark:border-slate-800 outline-none cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5">
@@ -134,7 +131,6 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                         <span className="font-bold text-sm">التقارير</span>
                       </div>
                     </button>
-                  )}
 
                   <button
                     onClick={() => onNavigateOverlay('history')}
@@ -151,7 +147,7 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                     )}
                   </button>
 
-                  {!currentStaff && garage?.hasMonthlySubscribers && (
+                  {garage?.hasMonthlySubscribers && (
                     <button
                       onClick={() => onNavigateOverlay('subscribers')}
                       className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-200 dark:border-slate-800 outline-none"

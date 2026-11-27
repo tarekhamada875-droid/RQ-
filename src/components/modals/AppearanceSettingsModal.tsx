@@ -2,13 +2,12 @@ import React, { memo } from 'react';
 import { ChevronRight, Sun, Moon, Check } from 'lucide-react';
 import { useTheme } from '../../utils/ThemeContext';
 import { soundManager } from '../../utils/sounds';
-import { Garage, Staff } from '../../types';
+import { Garage } from '../../types';
 import { isLightColor } from '../../utils/colors';
 import { FullScreenSheet } from '../ui/FullScreenSheet';
 
 interface AppearanceSettingsModalProps {
   garage?: Garage | null;
-  currentStaff?: Staff | null;
   onClose: () => void;
   showToast?: (msg: string, type: 'success' | 'error') => void;
   onToggleMenu?: () => void;

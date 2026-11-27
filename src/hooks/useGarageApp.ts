@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Garage, Staff } from '../types';
+import { Garage } from '../types';
 import type { GarageDeletionProgress } from '../services/garageDeletionService';
 import { useLocalStorageState } from './useLocalStorage';
 import { useOnlineStatus } from './useOnlineStatus';
@@ -84,7 +84,6 @@ export function useGarageApp() {
 
   const [garage, setGarage] = useLocalStorageState<Garage | null>('app_garage', null);
   const [delegate, setDelegate] = useLocalStorageState<any | null>('app_delegate', null);
-  const [currentStaff, setCurrentStaff] = useLocalStorageState<Staff | null>('app_staff', null);
 
   // vehicles/todayTransactions state removed (PR2, 2026-11-23): the always-on
   // active-vehicles stream was retired. RegistrationCard looks up plates
@@ -133,15 +132,11 @@ export function useGarageApp() {
     setGarage,
     delegate,
     setDelegate,
-    currentStaff,
-    setCurrentStaff,
     showToast,
   });
 
   const session = {
     ...sessionHook,
-    currentStaff,
-    setCurrentStaff,
   };
 
   // 2. Data Sync Hook
@@ -153,7 +148,6 @@ export function useGarageApp() {
     garage,
     setGarage,
     delegate,
-    currentStaff,
     setDelegate,
     selectedGarageForDetails,
     setSelectedGarageForDetails,
@@ -169,7 +163,6 @@ export function useGarageApp() {
   const vehicleOperations = useVehicleOperations({
     garage,
     setGarage,
-    currentStaff,
     isOnline,
     showToast,
     closeKeyboard,
@@ -184,7 +177,6 @@ export function useGarageApp() {
     setUser: session.setUser,
     setGarage,
     setDelegate,
-    setCurrentStaff,
     setSelectedGarageForDetails,
     setView,
     setIsLoading: vehicleOperations.setIsLoading,

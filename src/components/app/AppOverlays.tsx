@@ -23,9 +23,9 @@ const SubscriberWarningModal = lazyWithRetry(() => import('../modals/SubscriberW
 export function AppOverlays() {
   const { view, selectedGarageForDetails, setShowDeleteConfirm, showDeleteConfirm, garageDeletionProgress } = useNavigationUi();
   const { garage, delegate } = useGarageData();
-  const { currentStaff, sessionId, showLogoutConfirm, setShowLogoutConfirm, handleLogout } = useSession();
+  const { sessionId, showLogoutConfirm, setShowLogoutConfirm, handleLogout } = useSession();
   const activeIdentity = view === 'garage'
-    ? (currentStaff?.id ? `staff:${currentStaff.id}` : garage?.id ? `garage:${garage.id}` : 'garage:pending')
+    ? (garage?.id ? `garage:${garage.id}` : 'garage:pending')
     : view === 'delegate_dashboard'
       ? (delegate?.id ? `delegate:${delegate.id}` : 'delegate:pending')
       : (view === 'admin_dashboard' || view.startsWith('admin_'))
@@ -40,7 +40,7 @@ export function AppOverlays() {
         in production. It's kept for compilation; the active check-in flow goes
         through RegistrationCard → handleCheckIn(type, plateValue) directly. */}
     {showCheckInModal && garage && <CheckInModal plateValue="" garage={garage} isLoading={isLoading} loadingType={loadingType} onCheckIn={handleCheckIn} onCancel={() => setShowCheckInModal(false)} />}
-    {showCheckOutModal && selectedVehicle && garage && <CheckOutModal selectedVehicle={selectedVehicle} garage={garage} currentStaff={currentStaff} isLoading={isLoading} loadingType={loadingType} onConfirm={confirmCheckOut} onDelete={handleDeleteVehicle} onCancel={() => { setShowCheckOutModal(false); setSelectedVehicle(null); }} />}
+    {showCheckOutModal && selectedVehicle && garage && <CheckOutModal selectedVehicle={selectedVehicle} garage={garage} isLoading={isLoading} loadingType={loadingType} onConfirm={confirmCheckOut} onDelete={handleDeleteVehicle} onCancel={() => { setShowCheckOutModal(false); setSelectedVehicle(null); }} />}
     {showDeleteConfirm && view === 'admin_garage_details' && selectedGarageForDetails && <DeleteGarageConfirmModal garage={selectedGarageForDetails} isLoading={isLoading} progress={garageDeletionProgress} onConfirm={() => deleteGarage(selectedGarageForDetails)} onCancel={() => setShowDeleteConfirm(false)} />}
     {showDeleteConfirm && selectedVehicle && <DeleteVehicleConfirmModal vehicle={selectedVehicle} isLoading={isLoading} onConfirm={handleDeleteVehicle} onCancel={() => { setShowDeleteConfirm(false); setSelectedVehicle(null); }} />}
     {showSubscriberWarning && subscriberWarningPlate && <SubscriberWarningModal plateNumber={subscriberWarningPlate} onConfirm={() => { setShowSubscriberWarning(false); setSubscriberWarningPlate(''); }} />}

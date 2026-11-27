@@ -7,7 +7,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { FullScreenSheet } from '../ui/FullScreenSheet';
-import { Garage, Staff } from '../../types';
+import { Garage, StaffMember } from '../../types';
 import { garageService, vehicleService, GarageDashboardSummary, isFreshGarageDashboardSummary } from '../../services';
 import { formatArabicDigits } from '../../utils/plates';
 import { GarageReportStatCard } from './reports/GarageReportStatCard';
@@ -22,7 +22,7 @@ type ReportViewMode = 'initial' | 'daily' | 'monthly';
 
 interface GarageReportsViewProps {
   garage: Garage;
-  staffList: Staff[];
+  staffList: StaffMember[];
   /** AUDIT F-3 (2026-11-26): lazy staff-roster loader from the sync hook.
    *  Called once on mount — replaces the retired eager boot fetch so a
    *  garage session pays the roster reads only when reports are opened. */

@@ -42,8 +42,6 @@ function TestHarness() {
     isAuthReady: true,
     sessionId: 'test-session-id',
     isSessionReady: true,
-    currentStaff: null,
-    setCurrentStaff: vi.fn(),
     showLogoutConfirm,
     setShowLogoutConfirm,
     isLoggingOut: false,

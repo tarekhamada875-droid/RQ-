@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
-import { Vehicle, Garage, Staff } from '../types';
+import { Vehicle, Garage } from '../types';
 import { adminService, vehicleService } from '../services';
 import { soundManager } from '../utils/sounds';
 import { useServerTimeGetNow } from './serverTimeContext';
@@ -23,7 +23,6 @@ function withAsyncLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
 interface UseVehicleOperationsProps {
   garage: Garage | null;
   setGarage: React.Dispatch<React.SetStateAction<Garage | null>>;
-  currentStaff: Staff | null;
   isOnline: boolean;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   closeKeyboard: () => void;
@@ -35,7 +34,6 @@ interface UseVehicleOperationsProps {
 export function useVehicleOperations({
   garage,
   setGarage,
-  currentStaff,
   isOnline,
   showToast,
   closeKeyboard,
@@ -224,8 +222,8 @@ export function useVehicleOperations({
           plateNumberRaw: raw,
           type: type,
           garageId: garage.id,
-          staffId: currentStaff ? currentStaff.id : null,
-          staffName: currentStaff ? currentStaff.name : 'مدير الجراج',
+          staffId: null,
+          staffName: 'مدير الجراج',
           isSubscriber: isSubscriber
         }, idempotencyKey)
       );
@@ -312,7 +310,7 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, setGarage, isLoading, closeKeyboard, currentStaff, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
+  }, [isOnline, garage, setGarage, isLoading, closeKeyboard, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
   // PR-U: removed newPlateNumber from deps — it's now a parameter, not state.
   // PR2 (2026-11-23): vehicles/setVehicles removed from deps — the local
   // vehicles cache is gone.
@@ -341,8 +339,8 @@ export function useVehicleOperations({
           garage.id,
           vehicleToOut.id,
           cost,
-          currentStaff ? currentStaff.name : 'مدير الجراج',
-          currentStaff ? currentStaff.id : undefined,
+          'مدير الجراج',
+          undefined,
           idempotencyKey
         )
       );
@@ -419,7 +417,7 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, getNow, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, onCheckOutComplete]);
+  }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, showToast, getNow, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, onCheckOutComplete]);
 
   // Delete Vehicle — receipt-mode (mirrors check-in/check-out).
   //
@@ -440,8 +438,8 @@ export function useVehicleOperations({
     }
     if (!garage || !selectedVehicle) return;
 
-    const entrantEntityId = currentStaff?.id ?? garage.id;
-    const entrantRole = currentStaff ? 'staff' : 'garage';
+    const entrantEntityId = garage.id;
+    const entrantRole = 'garage';
     const isEntrant = selectedVehicle.enteredByEntityId === entrantEntityId && selectedVehicle.enteredByRole === entrantRole;
     if (!isEntrant) {
       showToast('يمكن فقط لمسجّل هذه السيارة حذفها', 'error');
@@ -478,8 +476,8 @@ export function useVehicleOperations({
         garage.id,
         vehicleToDelete.id,
         todayYMD,
-        currentStaff ? currentStaff.name : 'مدير الجراج',
-        currentStaff ? currentStaff.id : undefined
+        'مدير الجراج',
+        undefined
       );
 
       if (!success) {
@@ -522,7 +520,7 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, selectedVehicle, currentStaff, showToast, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
+  }, [isOnline, garage, selectedVehicle, showToast, setGarage, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
 
   // PR-H2: memoize the return value. Previously exempted in PR-H with
   // incorrect React logic ("useCallback handlers are stable so consumers

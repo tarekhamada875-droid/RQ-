@@ -43,7 +43,6 @@ describe('CheckOutModal confirmation guard', () => {
       <CheckOutModal
         selectedVehicle={vehicle}
         garage={garage}
-        currentStaff={null}
         isLoading={false}
         loadingType={null}
         onConfirm={onConfirm}

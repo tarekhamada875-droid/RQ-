@@ -8,7 +8,7 @@
  * inputs always produce the same output, no side effects.
  */
 
-import type { ActivityLog, Garage, Vehicle, Staff } from '../../../types';
+import type { ActivityLog, Garage, Vehicle, StaffMember } from '../../../types';
 import { TODAY_ACTIVITY_LOG_LIMIT } from '../../../services/activityLogShared';
 
 export type GarageReportRecord = Partial<Vehicle> & Partial<ActivityLog> & { id: string };
@@ -59,7 +59,7 @@ export function pickReportsNoticeState(
 
 export function buildGarageReportStats(
   records: GarageReportRecord[],
-  staffList: Staff[],
+  staffList: StaffMember[],
   localGarage: Garage | null | undefined,
 ): GarageReportStats {
   let hourlyExited = 0;

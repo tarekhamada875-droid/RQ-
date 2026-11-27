@@ -7,8 +7,7 @@ import { authService } from '../services/authService';
 import { safeDate } from '../utils/dates';
 import { normalizeDigits, normalizePhone } from '../utils/plates';
 import { APP_TEXT } from '../constants';
-import { auth, db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { auth } from '../firebase';
 import { claimEntitySession, releaseEntitySession, recordSessionAsClaimed, EntityRole } from '../services/authSessionService';
 import { logDiagnostic } from '../utils/authDiagnosticLogger';
 import { classifyAuthFailure } from '../utils/classifyAuthFailure';
@@ -22,7 +21,6 @@ interface UseAdminAndGarageManagementProps {
   setUser: (u: any) => void;
   setGarage: (g: Garage | null) => void;
   setDelegate: (d: any | null) => void;
-  setCurrentStaff: (s: any | null) => void;
   setSelectedGarageForDetails: (g: Garage | null) => void;
   setView: (view: any) => void;
   setIsLoading: (b: boolean) => void;
@@ -44,7 +42,6 @@ export function useAdminAndGarageManagement({
   setUser,
   setGarage,
   setDelegate,
-  setCurrentStaff,
   setSelectedGarageForDetails,
   setView,
   setIsLoading,
@@ -151,8 +148,7 @@ export function useAdminAndGarageManagement({
       }
       const entityId = role === 'admin' ? 'auth_pin'
         : (role === 'delegate' ? account?.id
-        : (role === 'staff' ? account?.id
-        : (role === 'garage' ? account?.id : null)));
+        : (role === 'garage' ? account?.id : null));
 
       logDiagnostic('LOGIN_CREDENTIALS_AUTHENTICATED', { role, entityId, uid });
 
@@ -207,35 +203,11 @@ export function useAdminAndGarageManagement({
         }
       }
 
-      let linkedStaffGarage: Garage | null = null;
       if (role === 'garage' && account) {
         if (account.status === 'pending' || account.status === 'rejected') {
           showToast('عذراً، هذا الحساب قيد المراجعة والإنشاء من قبل الإدارة', 'error');
           await releaseEntitySession({ role: 'garage', entityId, sessionId, uid }).catch(() => {});
           return;
-        }
-      } else if (role === 'staff' && account) {
-        try {
-          const gSnap = await getDoc(doc(db, 'garages', account.garageId));
-          if (!gSnap.exists()) {
-            showToast('الورشة المرتبطة بهذا الحساب غير موجودة', 'error');
-            await releaseEntitySession({ role: 'staff', entityId, sessionId, uid }).catch(() => {});
-            return;
-          }
-
-          const linkedGarage = { id: gSnap.id, ...gSnap.data() } as Garage;
-          linkedStaffGarage = linkedGarage;
-          if (linkedGarage.status === 'pending' || linkedGarage.status === 'rejected') {
-            showToast('عذراً، هذا الحساب قيد المراجعة والإنشاء من قبل الإدارة', 'error');
-            await releaseEntitySession({ role: 'staff', entityId, sessionId, uid }).catch(() => {});
-            return;
-          }
-        } catch (garageReadError) {
-          // The Staff session was already claimed; release this exact claim before returning to login.
-          await releaseEntitySession({ role: 'staff', entityId, sessionId, uid }).catch((releaseError) => {
-            console.warn('Failed to release Staff session after garage validation error:', releaseError);
-          });
-          throw garageReadError;
         }
       }
 
@@ -251,17 +223,8 @@ export function useAdminAndGarageManagement({
       } else if (role === 'delegate') {
         setDelegate(cleanAccount);
         setView('delegate_dashboard');
-      } else if (role === 'staff') {
-        if (linkedStaffGarage) {
-          const gData = { ...linkedStaffGarage };
-          if ((gData as any).pin) delete (gData as any).pin;
-          setGarage(gData);
-        }
-        setCurrentStaff(cleanAccount);
-        setView('garage');
       } else if (role === 'garage') {
         setGarage(cleanAccount);
-        setCurrentStaff(null);
         setView('garage');
       }
 
@@ -279,7 +242,7 @@ export function useAdminAndGarageManagement({
     } finally {
       setIsLoading(false);
     }
-  }, [isOnline, loginPhone, closeKeyboard, sessionId, showToast, setView, setGarage, setDelegate, setCurrentStaff, setLoginPhone, setUser, setIsLoading]);
+  }, [isOnline, loginPhone, closeKeyboard, sessionId, showToast, setView, setGarage, setDelegate, setLoginPhone, setUser, setIsLoading]);
 
   const handleDelegateLogin = useCallback(async (pin: string) => {
     if (!isOnline) {

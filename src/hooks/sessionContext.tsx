@@ -1,6 +1,5 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import type { User } from 'firebase/auth';
-import type { Staff } from '../types';
 
 /**
  * Session shared state — auth user, session id, logout flow.
@@ -8,7 +7,7 @@ import type { Staff } from '../types';
  * Previously drilled: useGarageSession → useGarageApp.session →
  * AppRoutes/AppOverlays → AdminDashboard → AdminHeader /
  * AdminNavigationAndViews (handleLogout, handleInitiateLogout,
- * showLogoutConfirm, currentStaff, sessionId through 3–4 layers).
+ * showLogoutConfirm, sessionId through 3–4 layers).
  *
  * Now: App wraps the tree with SessionProvider; descendants call
  * useSession() to get what they need.
@@ -19,8 +18,6 @@ export interface SessionContextValue {
   isAuthReady: boolean;
   sessionId: string;
   isSessionReady: boolean;
-  currentStaff: Staff | null;
-  setCurrentStaff: (s: Staff | null) => void;
   showLogoutConfirm: boolean;
   setShowLogoutConfirm: (show: boolean) => void;
   isLoggingOut: boolean;

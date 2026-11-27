@@ -102,8 +102,6 @@ const mockSession: SessionContextValue = {
   isAuthReady: true,
   sessionId: 'test-session',
   isSessionReady: true,
-  currentStaff: null,
-  setCurrentStaff: vi.fn(),
   showLogoutConfirm: false,
   setShowLogoutConfirm: vi.fn(),
   isLoggingOut: false,

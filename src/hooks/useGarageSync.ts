@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
-import { Garage, Staff } from '../types';
+import { Garage, StaffMember } from '../types';
 import { adminService, delegateService, garageService } from '../services';
 
 interface UseGarageSyncProps {
@@ -10,7 +10,6 @@ interface UseGarageSyncProps {
   garage: Garage | null;
   setGarage: React.Dispatch<React.SetStateAction<Garage | null>>;
   delegate: any | null;
-  currentStaff: Staff | null;
   setDelegate: (d: any | null) => void;
   selectedGarageForDetails: Garage | null;
   setSelectedGarageForDetails: (g: Garage | null) => void;
@@ -35,7 +34,6 @@ export function useGarageSync({
   garage,
   setGarage,
   delegate,
-  currentStaff,
   setDelegate,
   selectedGarageForDetails,
   setSelectedGarageForDetails,
@@ -62,7 +60,7 @@ export function useGarageSync({
   const adminGarageRequestVersionRef = useRef(0);
   const adminDelegateRequestVersionRef = useRef(0);
   const adminListsLoadedRef = useRef(false);
-  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [delegatePagination, setDelegatePagination] = useState({
     createdGarages: { hasMore: false, nextCursor: null as string | null },
     referredGarages: { hasMore: false, nextCursor: null as string | null },
@@ -127,7 +125,7 @@ export function useGarageSync({
   // entity, user) still change the key and clear everything below.
   const isAdminView = view === 'admin_dashboard' || view.startsWith('admin_');
   const dataOwnerKey = (view === 'garage'
-    ? `garage:${garage?.id ?? ''}:staff:${currentStaff?.id ?? 'owner'}:user:${user?.uid ?? ''}`
+    ? `garage:${garage?.id ?? ''}:user:${user?.uid ?? ''}`
     : view === 'delegate_dashboard'
       ? `delegate:${delegate?.id ?? ''}:user:${user?.uid ?? ''}`
       : isAdminView
