@@ -24,7 +24,7 @@ const GarageDashboardLazy = lazyWithRetry(() => import('../garage/GarageDashboar
 export function AppRoutes() {
   const { view, setView, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails, loginPhone, setLoginPhone, showToast, closeKeyboard, showSubscribers, setShowSubscribers, setShowDeleteConfirm } = useNavigationUi();
   const { isAuthReady, currentStaff, handleInitiateLogout } = useSession();
-  const { garage, delegate, delegates, allGarages, delegateGarages, staffList, setStaffList, delegatePagination, delegateListsLoading, delegateListsError, delegateDashboardLoading, delegateDashboardError, retryDelegateDashboard, loadMoreDelegateGarages, loadMoreAdminGarages, loadMoreAdminDelegates, refreshAdminLists, adminGarageHasMore, adminDelegateHasMore, adminListsLoading, adminListsError, ensureStaffLoaded } = useGarageData();
+  const { garage, delegate, delegates, allGarages, delegateGarages, staffList, delegatePagination, delegateListsLoading, delegateListsError, delegateDashboardLoading, delegateDashboardError, retryDelegateDashboard, loadMoreDelegateGarages, loadMoreAdminGarages, loadMoreAdminDelegates, refreshAdminLists, adminGarageHasMore, adminDelegateHasMore, adminListsLoading, adminListsError, ensureStaffLoaded } = useGarageData();
   const { isLoading, setIsLoading } = useVehicleOps();
   const { handleGarageLogin, createNewGarage, removeDelegate } = useAdminMutations();
 
@@ -77,7 +77,7 @@ export function AppRoutes() {
     return <ErrorBoundary><DelegateDashboardProvider value={delegateDashboardValue}><DelegateDashboardLazy delegate={delegate} allGarages={delegateGarages} onLogout={handleInitiateLogout} onCreateGarage={createNewGarage} isLoading={isLoading} /></DelegateDashboardProvider></ErrorBoundary>;
   }
 
-  if (view === 'admin_garage_details' && selectedGarageForDetails) return <ErrorBoundary><AdminGarageDetailsLazy selectedGarageForDetails={selectedGarageForDetails} setView={setView} setSelectedGarageForDetails={setSelectedGarageForDetails} setShowDeleteConfirm={setShowDeleteConfirm} staffList={staffList} setStaffList={setStaffList} isLoading={isLoading} setIsLoading={setIsLoading} onRefreshAdminLists={refreshAdminLists} /></ErrorBoundary>;
+  if (view === 'admin_garage_details' && selectedGarageForDetails) return <ErrorBoundary><AdminGarageDetailsLazy selectedGarageForDetails={selectedGarageForDetails} setView={setView} setSelectedGarageForDetails={setSelectedGarageForDetails} setShowDeleteConfirm={setShowDeleteConfirm} isLoading={isLoading} setIsLoading={setIsLoading} onRefreshAdminLists={refreshAdminLists} /></ErrorBoundary>;
 
   if (view === 'admin_delegate_details' && selectedDelegateForDetails) {
     const liveDelegate = delegates.find(d => d.id === selectedDelegateForDetails.id) || selectedDelegateForDetails;

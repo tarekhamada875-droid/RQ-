@@ -1,10 +1,4 @@
-import { Check, CheckCircle2, ChevronDown, Clock, Loader2, Plus, Settings, Trash2, Users } from 'lucide-react';
-import { adminService, authService } from '../../services';
-import { applyStaffPinUpdate, formatDisplayPin, isValidStaffPin } from '../../utils/pins';
-import { normalizeDigits } from '../../utils/plates';
-import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
-import { useToast } from '../../hooks/toast';
-import type { Staff } from '../../types';
+import { CheckCircle2, ChevronDown, Clock, Loader2, Settings } from 'lucide-react';
 import { FastInput } from '../ui/FastInput';
 
 interface RateCheck {
@@ -24,17 +18,6 @@ interface AdminGarageSettingsSectionProps {
   hasRateChanges: boolean;
   isSavingRates: boolean;
   handleSaveRates: () => Promise<void> | void;
-  staffList: Staff[];
-  setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
-  openAddStaffModal: () => void;
-  editingStaffPinId: string | null;
-  setEditingStaffPinId: (id: string | null) => void;
-  editingStaffPinValue: string;
-  setEditingStaffPinValue: (value: string) => void;
-  isUpdatingStaffPin: boolean;
-  /** Shared save helper (useAsyncAction.run) owned by AdminGarageDetailsView. */
-  runStaffPinUpdate: (fn: () => Promise<void>, onError?: (error: unknown) => void) => Promise<void | undefined>;
-  setStaffToDelete: (staff: Staff | null) => void;
 }
 
 export const AdminGarageSettingsSection = ({
@@ -48,22 +31,10 @@ export const AdminGarageSettingsSection = ({
   hasRateChanges,
   isSavingRates,
   handleSaveRates,
-  staffList,
-  setStaffList,
-  openAddStaffModal,
-  editingStaffPinId,
-  setEditingStaffPinId,
-  editingStaffPinValue,
-  setEditingStaffPinValue,
-  isUpdatingStaffPin,
-  runStaffPinUpdate,
-  setStaffToDelete,
 }: AdminGarageSettingsSectionProps) => {
-  const { showToast } = useToast();
-
   return (
     <>
-          {/* ================= ZONE 3: SETTINGS & STAFF (COLLAPSIBLE ACCORDION) ================= */}
+          {/* ================= ZONE 3: SETTINGS (COLLAPSIBLE ACCORDION) ================= */}
           <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden ">
             {/* Accordion Header */}
             <button
@@ -75,7 +46,7 @@ export const AdminGarageSettingsSection = ({
                   <Settings className="w-5 h-5" />
                 </div>
                 <h3 className="text-base font-black text-slate-900 dark:text-white">
-                  {'الإعدادات والتعريفة وطاقم العمل'}
+                  {'الإعدادات والتعريفة'}
                 </h3>
               </div>
   
@@ -173,130 +144,6 @@ export const AdminGarageSettingsSection = ({
                       </>
                     )}
                   </button>
-                </div>
-  
-                {/* Staff Management Section */}
-                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-2">
-                      <Users className="w-4 h-4 text-emerald-600" />
-                      <span>{'طاقم عمل الجراج (الموظفين)'}</span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 font-mono">
-                        {staffList.length}
-                      </span>
-                    </h4>
-                    <button 
-                      onClick={openAddStaffModal}
-                      className="flex items-center gap-1 bg-slate-900 dark:bg-emerald-600 text-white px-3 py-1.5 rounded-xl font-black text-xs shadow-sm cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>{'إضافة موظف'}</span>
-                    </button>
-                  </div>
-  
-                  <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar-slate">
-                    {staffList.map(s => (
-                      <div key={s.id} className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center text-xs font-black">
-                            {s.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="text-xs font-black text-slate-900 dark:text-white">{s.name}</p>
-                            
-                            {editingStaffPinId === s.id ? (
-                              <div className="flex items-center gap-1 mt-1">
-                                <FastInput
-                                  type="tel"
-                                  inputMode="numeric"
-                                  defaultValue={editingStaffPinValue}
-                                  onCommit={(v) => setEditingStaffPinValue(normalizeDigits(v).replace(/\D/g, '').slice(0, 5))}
-                                  onLiveValue={(v) => setEditingStaffPinValue(normalizeDigits(v).replace(/\D/g, '').slice(0, 5))}
-                                  mask={(v) => normalizeDigits(v).replace(/\D/g, '').slice(0, 5)}
-                                  minLength={5}
-                                  maxLength={5}
-                                  pattern="[0-9]{5}"
-                                  className="w-14 text-[10px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded px-1 text-center font-mono font-black placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                                  placeholder="••••"
-                                  autoFocus
-                                />
-                                <button
-                                  onClick={async () => {
-                                    if (!isValidStaffPin(editingStaffPinValue)) {
-                                      showToast('رمز دخول الموظف يجب أن يتكون من 5 أرقام بالضبط.', 'error');
-                                      return;
-                                    }
-                                    await runStaffPinUpdate(async () => {
-                                      const pinCheck = await authService.isPinTaken(editingStaffPinValue, s.id);
-                                      if (pinCheck.taken) {
-                                        showToast('الرمز مستخدم بالفعل', 'error');
-                                        return;
-                                      }
-                                      await adminService.updateStaff(s.id, { pin: editingStaffPinValue });
-                                      setStaffList(prev => applyStaffPinUpdate(prev, s.id, editingStaffPinValue));
-                                      setEditingStaffPinId(null);
-                                    }, (err) => {
-                                      console.error(err);
-                                      const failure = classifyApiFailure(err);
-                                      const reference = getApiFailureReference(err);
-                                      let message = 'تعذر تحديث رمز الموظف. حاول مرة أخرى.';
-                                      if (failure === 'network') message = 'تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.';
-                                      else if (failure === 'timeout') message = 'انتهت مهلة تحديث رمز الموظف. تحقق من التغيير قبل إعادة المحاولة.';
-                                      else if (failure === 'server') {
-                                        const suffix = reference ? ` (${'رقم التتبع'}: ${reference})` : '';
-                                        message = `${'حدث خطأ في الخادم أثناء تحديث رمز الموظف.'}${suffix}`;
-                                      }
-                                      showToast(message, 'error');
-                                    });
-                                  }}
-                                  disabled={isUpdatingStaffPin}
-                                  className="w-5 h-5 bg-emerald-600 text-white rounded flex items-center justify-center"
-                                >
-                                  {isUpdatingStaffPin ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3 stroke-[3]" />}
-                                </button>
-                                <button
-                                  onClick={() => setEditingStaffPinId(null)}
-                                  className="text-[10px] text-slate-400 px-0.5"
-                                >
-                                  {'إلغاء'}
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="text-[10px] text-slate-400">{'الرمز:'}</span>
-                                <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-md text-[10px] font-mono font-black">
-                                  {formatDisplayPin(s.pin)}
-                                </span>
-                                <button 
-                                  onClick={() => {
-                                    setEditingStaffPinId(s.id);
-                                    setEditingStaffPinValue(s.pin && s.pin.length === 64 ? '' : (s.pin || ''));
-                                  }}
-                                  className="text-[10px] text-emerald-600 font-bold"
-                                >
-                                  {'تعديل'}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-  
-                        <button 
-                          onClick={() => setStaffToDelete(s)} 
-                          className="w-8 h-8 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-lg flex items-center justify-center cursor-pointer"
-                          title={'حذف الموظف'}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-  
-                    {staffList.length === 0 && (
-                      <div className="text-center py-4 text-xs text-slate-400 font-bold">
-                        {'لا يوجد موظفين مسجلين لهذا الجراج'}
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             )}

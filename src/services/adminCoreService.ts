@@ -1,57 +1,13 @@
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { db } from '../firebase';
 import { apiFetch } from '../api/apiClient';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { Staff } from '../types';
 
 export const adminCoreService = {
-  // Staff
-
-  addStaff: async (data: Omit<Staff, 'id'>) => {
-    try {
-      const res = await apiFetch('/api/staff/create', {
-        method: 'POST',
-        body: data
-      });
-      return { id: res.id };
-    } catch (error: any) {
-      if (error.message === 'PIN_ALREADY_TAKEN' || error.message === 'PIN_PREVIOUSLY_USED') {
-        throw new Error('الرمز مستخدم بالفعل', { cause: error });
-      }
-      throw error;
-    }
-  },
-
-
-  updateStaff: async (id: string, data: Partial<Staff>) => {
-    try {
-      const { pin: _pin, ...otherFields } = data;
-      await apiFetch('/api/staff/update', {
-        method: 'POST',
-        body: { id, ...otherFields, ...(data.pin ? { pin: data.pin } : {}) }
-      });
-    } catch (error: any) {
-      if (error.message === 'PIN_ALREADY_TAKEN' || error.message === 'PIN_PREVIOUSLY_USED') {
-        throw new Error('الرمز مستخدم بالفعل', { cause: error });
-      }
-      handleFirestoreError(error, OperationType.UPDATE, `staff/${id}`);
-      throw error;
-    }
-  },
-
-
-  removeStaff: async (id: string) => {
-    try {
-      await apiFetch('/api/staff/delete', {
-        method: 'POST',
-        body: { id }
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `staff/${id}`);
-      throw error;
-    }
-  },
-
-
+  // Reads the staff list for a garage. Used by the garage-side reports view
+  // to break down per-staff performance. The admin-side staff management UI
+  // (add/update/delete) was removed when the staff role was retired; the
+  // collection itself is preserved until the role's full removal phase.
   getStaffByGarageOnce: async (garageId: string): Promise<Staff[]> => {
     try {
       const q = query(collection(db, 'staff'), where('garageId', '==', garageId));
