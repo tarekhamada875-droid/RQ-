@@ -3,6 +3,15 @@ main = "dist/worker.js"
 compatibility_date = "2025-06-01"
 compatibility_flags = ["nodejs_compat", "allow_eval_during_startup"]
 
+# Smart Placement (perf audit 2026-11-28): lets Cloudflare co-locate the Worker
+# with its backend (Firestore in europe-west3 / Frankfurt) instead of running at
+# the edge near the user. The user↔Worker leg gains ~15ms but each Worker↔Firestore
+# round trip drops from ~35ms (cross-cloud) to ~3ms (same region). With ~5
+# sequential reads per check-in/out, net saving ≈ 145ms per operation.
+# Available on all Workers plans.
+[placement]
+mode = "smart"
+
 [observability]
 enabled = true
 head_sampling_rate = 0.1
