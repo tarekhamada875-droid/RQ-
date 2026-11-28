@@ -29,12 +29,14 @@ if (!existsSync(deployConfig)) {
   if (!deployContent.includes('crons = [')) fail('wrangler.deploy.toml must declare the keep-warm cron (crons = [...]).');
   if (!deployContent.includes('WORKER_SELF_URL')) fail('wrangler.deploy.toml must define WORKER_SELF_URL.');
   if (!deployContent.includes('PIN_RATE_LIMITER')) fail('wrangler.deploy.toml must keep the PIN_RATE_LIMITER Durable Object binding.');
-  // Smart Placement regression guard (perf audit 2026-11-28): the [placement]
-  // mode = "smart" block co-locates the Worker with Firestore (europe-west3),
-  // cutting ~145ms per check-in/out. A silent removal would silently regress
-  // latency with no error elsewhere — pin it here.
-  if (!/\[placement\]/.test(deployContent) || !/mode\s*=\s*"smart"/.test(deployContent)) {
-    fail('wrangler.deploy.toml must declare [placement] mode = "smart" to co-locate the Worker with Firestore.');
+  // Placement regression guard (2026-11-28, updated from mode = "smart"): the
+  // [placement] region hint co-locates the Worker with Firestore (europe-west3),
+  // cutting ~145ms per check-in/out. The region hint is deterministic from the
+  // first request; smart mode needed consistent multi-location traffic and could
+  // silently stay at the edge on our low volume. A silent removal would silently
+  // regress latency with no error elsewhere — pin it here.
+  if (!/\[placement\]/.test(deployContent) || !/region\s*=\s*"gcp:europe-west3"/.test(deployContent)) {
+    fail('wrangler.deploy.toml must declare [placement] region = "gcp:europe-west3" to co-locate the Worker with Firestore.');
   }
 }
 
