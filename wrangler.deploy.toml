@@ -3,14 +3,18 @@ main = "dist/worker.js"
 compatibility_date = "2025-06-01"
 compatibility_flags = ["nodejs_compat", "allow_eval_during_startup"]
 
-# Smart Placement (perf audit 2026-11-28): lets Cloudflare co-locate the Worker
-# with its backend (Firestore in europe-west3 / Frankfurt) instead of running at
-# the edge near the user. The user↔Worker leg gains ~15ms but each Worker↔Firestore
-# round trip drops from ~35ms (cross-cloud) to ~3ms (same region). With ~5
-# sequential reads per check-in/out, net saving ≈ 145ms per operation.
-# Available on all Workers plans.
+# Placement region hint (2026-11-28, replaces mode = "smart"): pins the Worker
+# to run next to its single backend — Firestore in europe-west3 / Frankfurt —
+# instead of at the edge near the user. The user↔Worker leg gains ~15ms but each
+# Worker↔Firestore round trip drops from ~35ms (cross-cloud) to ~3ms (same
+# region). With ~5 sequential reads per check-in/out, net saving ≈ 145ms per
+# operation. Chosen over mode = "smart" because smart placement needs consistent
+# traffic from multiple locations (up to 15 min of analysis per deploy) and can
+# silently stay at the edge with INSUFFICIENT_INVOCATIONS on our low traffic;
+# the region hint is deterministic from the first request. The two options are
+# mutually exclusive — region replaces mode, it does not accompany it.
 [placement]
-mode = "smart"
+region = "gcp:europe-west3"
 
 [observability]
 enabled = true
