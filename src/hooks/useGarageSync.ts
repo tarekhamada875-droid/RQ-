@@ -78,26 +78,34 @@ export function useGarageSync({
   const delegateDashboardGenerationRef = useRef(0);
   // Packages state removed — feature retired by owner.
 
-  // ── Initial sync gate (fixes reopen-refresh race) ────────────────────
-  // The dashboard can render from persisted localStorage state as soon as
-  // `isSessionReady` flips true, but Firestore listeners have NOT yet
-  // delivered their first fresh (non-cached) snapshot. If the user starts
-  // a check-in/out during that brief window, optimistic UI writes can be
-  // clobbered by stale cached snapshots or by a queued first-snapshot
-  // that pre-dates the user's write. To kill that race entirely, we gate
-  // the dashboard on `isInitialSyncComplete`: it flips true only after
-  // `subscribeToGarage` has delivered at least one non-cached snapshot, OR
-  // after a 10-second timeout (so a flaky network cannot permanently lock
-  // the user out). Only the garage view is gated — admin/delegate views use
-  // different listeners and are not affected by the original race.
+  // ── Initial sync gate (cache-first, perf audit 2026-11-28) ──────────
+  // The dashboard renders as soon as the garage listener delivers its
+  // FIRST snapshot — cached OR fresh. IndexedDB persistence is enabled
+  // (firebase.ts persistentLocalCache), so a cached snapshot represents
+  // valid data from the user's own previous session on this device.
+  // The fresh snapshot upgrades state in the background.
   //
-  // PR2 (2026-11-23): the active-vehicles listener was retired (reads
-  // savings) — the gate now waits on the garage listener alone.
+  // History: the gate originally waited for a FRESH (non-cached) snapshot
+  // to prevent stale cached data from clobbering optimistic UI writes
+  // during the brief window between app open and first server snapshot.
+  // That race no longer exists:
+  //  1. The active-vehicles listener (with optimistic-vehicle merging) was
+  //     retired in PR2 (2026-11-23). The gate now waits on the garage
+  //     listener alone.
+  //  2. The _confirmedTransactionUntil merge rule (below, L564-610) now
+  //     protects confirmed counters from stale-snapshot overwrites for 2s
+  //     after every transaction. Cached snapshots always merge (never
+  //     full-overwrite), preserving confirmed fields indefinitely.
+  //
+  // The 10-second timeout remains as the fallback for when no cache exists
+  // and the network is slow — so a flaky network cannot permanently lock
+  // the user out. Only the garage view is gated — admin/delegate views use
+  // different listeners and are not affected.
   //
   // RESUME PERF (stale-tab reopen audit 2026-11-17): the garage-view
   // listener now attaches as soon as the identity is known (restored
   // localStorage garage + auth ready) instead of after the server session
-  // claim. On the owner's 9h-idle reopen that moved first-fresh-snapshot
+  // claim. On the owner's 9h-idle reopen that moved first-snapshot
   // delivery INTO the claim's own latency window (token refresh + validate)
   // instead of after it, so the gate is bounded by the claim alone. The
   // Firestore rules for garages/{id} are satisfied by the same
@@ -107,7 +115,7 @@ export function useGarageSync({
   // fires, and this listener is torn down by the identity change; a
   // permission-denied listener is console noise, never rendered content.
   const [isInitialSyncComplete, setIsInitialSyncComplete] = useState(false);
-  const garageFreshSnapshotReceivedRef = useRef(false);
+  const garageFirstSnapshotReceivedRef = useRef(false);
   const initialSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const INITIAL_SYNC_TIMEOUT_MS = 10_000;
 
@@ -175,9 +183,9 @@ export function useGarageSync({
     setDelegateDashboardError(false);
 
     // Reset initial-sync gate on owner/view/garage change. The new view needs
-    // its own first-fresh-snapshot from its own listeners before it can be
+    // its own first-snapshot from its own listener before it can be
     // considered safe to interact with.
-    garageFreshSnapshotReceivedRef.current = false;
+    garageFirstSnapshotReceivedRef.current = false;
     setIsInitialSyncComplete(false);
     if (initialSyncTimeoutRef.current) {
       clearTimeout(initialSyncTimeoutRef.current);
@@ -551,9 +559,14 @@ export function useGarageSync({
             return;
           }
 
-          // Track first-fresh-snapshot delivery for the initial-sync gate.
-          if (!fromCache && !garageFreshSnapshotReceivedRef.current) {
-            garageFreshSnapshotReceivedRef.current = true;
+          // Cache-first gate (perf audit 2026-11-28): open the gate on the
+          // FIRST snapshot — cached OR fresh. IndexedDB persistence is enabled,
+          // so a cached snapshot is valid data from the user's own previous
+          // session. The fresh snapshot upgrades state in the background. The
+          // _confirmedTransactionUntil merge rule below protects confirmed
+          // counters from stale-snapshot overwrites during transactions.
+          if (!garageFirstSnapshotReceivedRef.current) {
+            garageFirstSnapshotReceivedRef.current = true;
             setIsInitialSyncComplete(true);
             if (initialSyncTimeoutRef.current) {
               clearTimeout(initialSyncTimeoutRef.current);
